@@ -133,6 +133,7 @@ debug_reload_chunk={
 common/physics_ticks_per_second=60
 
 [rendering]
+textures/vram_compression/import_etc2_astc=true
 
 ; 桌面档 / 移动档共用渲染基线；两档 FX 与缓冲差异见 quality_preset_*.tres
 renderer/rendering_method="gl_compatibility"
