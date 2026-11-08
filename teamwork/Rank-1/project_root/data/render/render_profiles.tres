@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="RenderProfiles" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/render_profiles.gd" id="1_rp"]
+
+[resource]
+script = ExtResource("1_rp")
+desktop_low_resolution = Vector2i(640, 360)
+mobile_low_resolution = Vector2i(480, 270)
+desktop_resident_chunk_count = 9
+mobile_resident_chunk_count = 4
+desktop_volumetric = true
+desktop_motes = true
+desktop_wet_reflection = true
+desktop_bloom = true
+mobile_volumetric = false
+mobile_motes = false
+mobile_wet_reflection = false
+mobile_bloom = false
+desktop_target_frame_time_ms = 16.67
+mobile_target_frame_time_ms = 33.33
+desktop_vram_limit_mb = 1536
+mobile_vram_limit_mb = 512

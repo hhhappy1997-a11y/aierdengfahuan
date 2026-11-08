@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-020321-544",
+  "from": "总指挥",
+  "target": "2",
+  "task": "[ROUND=R5] 【R5 自动续派 · Rank-2 战斗系统与数据驱动】上一轮已完成并回收回执。本轮目标：E-8 数值冲突与口径裁决落地。读 F:/Game/aierdengfahuan/teamwork\\Rank-2\\任务书-R5.md 并执行；只写 Rank-2\\，既有件不重做；真跑三段门禁并 grep SCRIPT ERROR；完成后写 DONE-R5.md，并按本任务单 id 在 command_center\\ai\\2\\outbox\\ 写回执。默认不刺探、零付费、不自行 git push。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}

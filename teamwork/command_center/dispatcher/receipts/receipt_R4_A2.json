@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-013419-323-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "R4 完成，详见 teamwork/Rank-2/DONE-R4.md。①实际交付：boss_controller.gd（M5 Boss 数据驱动二阶段，P1 2 招→P2 3 招）、combat_event_bus.gd（I-2 信号改挂 /root/GameEvents autoload，既有件零改动）、combat_data_validator._ready() 已实跑（既有脚本未改动）、res://data/schema vs schemas 路径差异已登记（R4-口径与阻塞登记.md）、DONE-R4.md 与本回执；R2/R3 既有 schema/、*.tres、combat_*.gd、motion-mapping.md 等一律未重做未改动。②真跑输出结论：引擎 Godot 4.7.2.stable.official.ed1daf0bf，--version / --headless --import / 17 个 --check-only --script / --headless --quit 全部 EXIT=0（SEG2_SCRIPTS=17 SEG2_FAIL=0，--import 注册 15 个 class_name 含新增 BossController/CombatEventBus）；合并日志 304 行 grep「SCRIPT ERROR」0 命中、段1+段2 宽口径 0 命中；段3 实跑宽口径 4 条 ERROR: 均为 CombatDataValidator 的 E-8 数据表自洽校验 FAIL（检查项 491、错误 3，bleed 380>330 / poison 450>360 / frost 400>320 抗性溢出，与 DONE-R2 静态推算吻合），属既有 .tres 数值与 E-8 口径冲突、非脚本解析或运行时错误，如实登记不冒充全 PASS。M5 控制器实跑 P1(p1_,2招)→P2(p2_,3招) 过渡 48 帧、加权抽取命中 dagger_slash/staff_slam/holy_hammer 三招 total=5.60、击杀发 I-2；I-2 改挂实跑 /root/GameEvents 收到 3 条单 String 击杀信号，2 号未写 flag；数值全部留表里（新增件无 const、无本案战斗数值字面量，全仓 const 仅既有 2 处 MIN_DAMAGE）。③未完成项与阻塞（不阻塞本轮收尾）：E-8 三组 max_resistance 与校验式冲突待 HOST 裁决、schema/schemas 路径口径待裁决、PlayerStateMachine 上历史 I-2 signal 声明去留待裁决（需改既有件、本轮未擅改）、rootmotion.json 无预置实例未生成本作 clip、Q1~Q7 跨模块待裁决、未写总线（超出唯一可写范围且本轮指令不写总线）。零付费/零外部依赖/无探针脚本落工位/未自行 commit 或 push。"
+}

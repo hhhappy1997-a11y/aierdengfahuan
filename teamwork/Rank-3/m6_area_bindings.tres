@@ -1,0 +1,68 @@
+[gd_resource type="Resource" script_class="M6AreaBindings" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/rpg/m6_area_bindings.gd" id="1_m6"]
+
+[resource]
+script = ExtResource("1_m6")
+network_id = "network_01_lands_between"
+bindings = [{
+"area_id": "area_limgrave",
+"region": "limgrave",
+"chunk_origin_x": 0,
+"chunk_origin_y": 0,
+"scene_path": "res://scenes/areas/Limgrave.tscn",
+"grace_ids": ["grace_limgrave_gatefront", "grace_limgrave_chapel"],
+"boundary_flags": [],
+"is_dungeon": false,
+"is_underground": false
+}, {
+"area_id": "area_weeping_peninsula",
+"region": "weeping_peninsula",
+"chunk_origin_x": 0,
+"chunk_origin_y": 0,
+"scene_path": "res://scenes/areas/WeepingShore.tscn",
+"grace_ids": ["grace_weeping_shore"],
+"boundary_flags": ["world.limgrave_bridge_01.crossed"],
+"is_dungeon": false,
+"is_underground": false
+}, {
+"area_id": "area_stormveil_outskirts",
+"region": "stormveil",
+"chunk_origin_x": 0,
+"chunk_origin_y": 0,
+"scene_path": "res://scenes/areas/StormveilGate.tscn",
+"grace_ids": ["grace_stormveil_gate"],
+"boundary_flags": ["combat.boss_01_margit.defeated"],
+"is_dungeon": false,
+"is_underground": false
+}, {
+"area_id": "underground_01_siofra_well",
+"region": "siofra_well",
+"chunk_origin_x": 0,
+"chunk_origin_y": 0,
+"scene_path": "res://scenes/areas/SiofraWell.tscn",
+"grace_ids": ["grace_siofra_well"],
+"boundary_flags": ["world.siofra_well_lift_01.unlocked"],
+"is_dungeon": false,
+"is_underground": true
+}, {
+"area_id": "dungeon_01_bellvault",
+"region": "bellvault",
+"chunk_origin_x": 0,
+"chunk_origin_y": 0,
+"scene_path": "res://scenes/dungeons/Bellvault.tscn",
+"grace_ids": ["grace_bellvault_entry", "grace_bellvault_deep"],
+"boundary_flags": ["dungeon.bellvault.entered"],
+"is_dungeon": true,
+"is_underground": false
+}, {
+"area_id": "dungeon_02_sunless_tomb",
+"region": "sunless_tomb",
+"chunk_origin_x": 0,
+"chunk_origin_y": 0,
+"scene_path": "res://scenes/dungeons/SunlessTomb.tscn",
+"grace_ids": ["grace_sunless_tomb_entry"],
+"boundary_flags": ["dungeon.sunless_tomb.entered"],
+"is_dungeon": true,
+"is_underground": false
+}]

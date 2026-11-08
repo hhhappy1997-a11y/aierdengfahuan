@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-020321-549",
+  "from": "总指挥",
+  "target": "4",
+  "task": "[ROUND=R5] 【R5 自动续派 · Rank-4 美术管线与工具链】上一轮已完成并回收回执。本轮目标：出图 job 验收与 ComfyUI 主路线落地。读 F:/Game/aierdengfahuan/teamwork\\Rank-4\\任务书-R5.md 并执行；只写 Rank-4\\，既有件不重做；真跑三段门禁并 grep SCRIPT ERROR；完成后写 DONE-R5.md，并按本任务单 id 在 command_center\\ai\\4\\outbox\\ 写回执。默认不刺探、零付费、不自行 git push。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}
