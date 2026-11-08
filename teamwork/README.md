@@ -14,6 +14,7 @@
 | GitHub 仓库 | ✅ `hhhappy1997-a11y/aierdengfahuan`，**每次更新必须 commit + push** |
 | Windows `exe` / Android `apk` | ⏳ 待 Godot 工程落地后构建（Android 环境在 D 盘，路径待登记） |
 | 美术素材 | ✅ 本地 ComfyUI；`128bit` + `256 色`（128bit 含义待确认） |
+| 本机工具链 | ✅ 已接入 `D:\godogen` / `_assets` / `_deps`，见 `00-工具链接入说明.md`（7 个工具就绪） |
 
 > **监测方式（用户拍板）**：默认**不刺探**。主 AI 与 4 个执行 AI 都不主动扫目录、不轮询、不写探针脚本。
 > 进度跟踪改为**事件驱动**：你发文件 → 主 AI 登记 `00-进度台账.md` 并按 §1 分工归入 `inbox\Rank-N\`；你明确说「刺探」→ 才做一次只读现场检查；你说「汇总」→ 才产出 `00-汇总.md`。

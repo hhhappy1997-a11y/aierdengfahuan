@@ -122,7 +122,7 @@ key   := <模块> "." <对象> "." <状态>
 - 对象段优先使用数据表 id（如 `elite_01_bell_warden`、`grace_limgrave_gatefront`），保证与 2 号数据表、3 号房间表可对账。
 - value 白名单：`bool / int / float / String`；`null` 不是合法 value（"未设置"用 `get_flag(key, false)` 表达）。
 
-> ⚠️ 契约 §2 表格给的规则是三段式，但示例写作 `world.grace_limgrave_lit`（两段式）。本规范按任务书 §5「严格三段式」执行，示例统一为 `grace.limgrave_gatefront.lit`。该差异已列入 `README.md` 待裁决 A1，3 号不自行修改契约。
+> ⚠️ 契约 §2 表格给的规则是三段式，但示例写作「world.grace_limgrave_lit」（两段式，**本规范不采用**）。本规范按任务书 §5「严格三段式」执行，示例统一为 `grace.limgrave_gatefront.lit`。该差异已列入 `README.md` 待裁决 **A8**，3 号不自行修改契约。
 
 ### 3.2 命名空间表
 
@@ -159,7 +159,7 @@ key   := <模块> "." <对象> "." <状态>
 | `grace.limgrave_gatefront.unlocked` | bool | `false` | 点燃即解锁 | 传送网络节点 |
 | `grace.bellvault_entry.lit` | bool | `false` | 地牢内点燃 | |
 | `grace.bellvault_entry.unlocked` | bool | `false` | 点燃即解锁 | |
-| `dungeon.bellvault.shortcut_opened` | bool | `false` | 单向门开启 | 与 `world...unlocked` 同批写 |
+| `dungeon.bellvault.shortcut_opened` | bool | `false` | 单向门开启 | 与 `world.bellvault_shortcut_door_01.unlocked` 同批写 |
 | `dungeon.bellvault.deepest_floor` | int | `0` | 抵达新层 | M3 密度统计用 |
 | `grace.network.last_rest_epoch` | int | `0` | 每次赐福休息 | 见 §4.6 |
 | `grace.network.last_grace_id` | String | `""` | 休息 / 传送落点 | 死亡后复活点 |

@@ -462,3 +462,4 @@ trigger_owner_id = "npc_01_bellkeeper"
 start_node_id = "node_first_meet"
 nodes = [SubResource("Resource_n01"), SubResource("Resource_n02"), SubResource("Resource_n03"), SubResource("Resource_n04"), SubResource("Resource_n05"), SubResource("Resource_n06"), SubResource("Resource_n07"), SubResource("Resource_n08")]
 linked_quest = SubResource("Resource_q01")
+linked_graphs = [SubResource("Resource_graph_memory")]

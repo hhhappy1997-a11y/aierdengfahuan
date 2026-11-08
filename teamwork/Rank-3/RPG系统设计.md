@@ -19,7 +19,7 @@
 持久层     SaveDelta（见《存档与flag规范.md》）
 ```
 
-**关键设计决策**：触发源只负责"何时打开哪个图、以谁的身份"，不含任何分支逻辑。赐福处「交谈」与「回忆」调用的是**同一个 `DialogueRunner`、同一套 `DialogueGraph` 结构**，仅 `trigger_source` 与 `trigger_owner_id` 不同；`dialogue_and_quest.tres` 里同时给出 `graph_npc_bellkeeper`（NPC 交谈）与 `graph_grace_bellkeeper_memory`（赐福回忆）两个图，后者复用前者的 `DialogueNode` 子资源，验证复用不是空话。
+**关键设计决策**：触发源只负责"何时打开哪个图、以谁的身份"，不含任何分支逻辑。赐福处「交谈」与「回忆」调用的是**同一个 `DialogueRunner`、同一套 `DialogueGraph` 结构**，仅 `trigger_source` 与 `trigger_owner_id` 不同；`dialogue_and_quest.tres` 里同时给出 `graph_npc_bellkeeper`（NPC 交谈，主资源）与 `graph_grace_bellkeeper_memory`（赐福回忆，子资源）两个图，后者复用前者的 `DialogueNode` / `DialogueGate` 子资源，并挂在主资源的 `linked_graphs` 上（单文件即可按 `graph_id` 索引，不会出现孤立子资源）。
 
 ---
 
@@ -106,6 +106,7 @@
 | `start_node_id` | String | `""` | 入口节点 |
 | `nodes` | Array | `[]` | 元素 `DialogueNode` |
 | `linked_quest` | Resource | `null` | 元素 `QuestData`，可为 null（纯闲聊图） |
+| `linked_graphs` | Array | `[]` | 元素 `DialogueGraph`，把同一 `.tres` 内的其它图挂到主资源上，避免子资源孤立被丢弃；赐福回忆图即由此被访问 |
 
 **入口解析规则（与 `dialogue_and_quest.tres` 一致）**：`DialogueRunner.open_graph()` 从 `start_node_id` 在 `nodes` 数组中的位置**向后扫描**，只考虑 `is_entry == true` 的节点，取第一个 `gates` 全通过者作为实际入口；全不通过则不弹对话框。`DialogueChoice.next_node_id` 的跳转目标**不检查 gates / is_entry**，直接播放（分支选择本身已完成门控）。`start_node_id` 不在 `nodes` 中时 `push_error`。
 
