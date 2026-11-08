@@ -1,0 +1,124 @@
+; Godot 4 工程配置（Rank-1 / R2 交付件，工位内文本件）
+; 供建立工程根时拷贝到 F:\Game\aierdengfahuan\project.godot
+; config_version 依据：本机引擎 D:\Godot\Godot_v4.7.2-stable_win64.exe --version
+;   实测 4.7.2.stable.official.ed1daf0bf；Godot 4.x 工程配置格式版本为 5（整数，
+;   非引擎版本号），并经本轮 --headless --import / --headless --quit 真跑验证引擎接受该值。
+; 5 个 autoload 的归属口径见 00-续派与监测规则.md §6 第 3 条：GameEvents 由 3 号实现、1 号注册。
+; 跨工位脚本（WorldState / GameEvents / SaveSystem）的最终实现由 3 号提供，1 号只在此登记路径。
+
+config_version=5
+
+[application]
+
+config/name="艾尔登法环 · HD-2D"
+config/description="2.5D HD-2D 法环同人：3D 地形 + 2D 像素角色"
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/quit_on_go_back=false
+
+[autoload]
+
+WorldState="*res://scripts/world/world_state.gd"
+GameEvents="*res://scripts/core/game_events.gd"
+SaveSystem="*res://scripts/world/save_system.gd"
+ChunkManager="*res://scripts/world/chunk_streaming.gd"
+SceneRouter="*res://scripts/core/scene_router.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/size/resizable=true
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/vsync/vsync_mode=1
+
+[hd2d]
+
+; 工程侧冻结值（供 4 号 A4 / A8 对齐，详见 DONE-R2.md「给 4 号的冻结值」）
+render/low_resolution_width=640
+render/low_resolution_height=360
+render/integer_upscale_factor=2
+render/pixels_per_meter=32.0
+; 桌面 / 移动双档画质 Resource（数值落在这两个 .tres 里，本段只登记路径与默认档）
+quality/default_preset="res://data/render/quality_preset_desktop.tres"
+quality/mobile_preset="res://data/render/quality_preset_mobile.tres"
+
+[input]
+
+move_up={
+"deadzone": 0.2,
+"events": [Object(InputEventKey, "physical_keycode": 87), Object(InputEventKey, "keycode": 4194320)]
+}
+move_down={
+"deadzone": 0.2,
+"events": [Object(InputEventKey, "physical_keycode": 83), Object(InputEventKey, "keycode": 4194322)]
+}
+move_left={
+"deadzone": 0.2,
+"events": [Object(InputEventKey, "physical_keycode": 65), Object(InputEventKey, "keycode": 4194319)]
+}
+move_right={
+"deadzone": 0.2,
+"events": [Object(InputEventKey, "physical_keycode": 68), Object(InputEventKey, "keycode": 4194321)]
+}
+light_attack={
+"deadzone": 0.2,
+"events": [Object(InputEventMouseButton, "button_index": 1), Object(InputEventKey, "physical_keycode": 74)]
+}
+heavy_attack={
+"deadzone": 0.2,
+"events": [Object(InputEventMouseButton, "button_index": 2), Object(InputEventKey, "physical_keycode": 75)]
+}
+roll={
+"deadzone": 0.2,
+"events": [Object(InputEventKey, "physical_keycode": 32)]
+}
+guard={
+"deadzone": 0.2,
+"events": [Object(InputEventKey, "keycode": 4194325)]
+}
+lock_on={
+"deadzone": 0.2,
+"events": [Object(InputEventMouseButton, "button_index": 3), Object(InputEventKey, "physical_keycode": 81)]
+}
+use_item={
+"deadzone": 0.2,
+"events": [Object(InputEventKey, "physical_keycode": 82)]
+}
+interact={
+"deadzone": 0.2,
+"events": [Object(InputEventKey, "physical_keycode": 69)]
+}
+menu={
+"deadzone": 0.2,
+"events": [Object(InputEventKey, "keycode": 4194305)]
+}
+debug_perf_hud={
+"deadzone": 0.2,
+"events": [Object(InputEventKey, "keycode": 4194334)]
+}
+debug_reload_chunk={
+"deadzone": 0.2,
+"events": [Object(InputEventKey, "keycode": 4194335)]
+}
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+common/physics_ticks_per_second=60
+
+[rendering]
+
+; 桌面档 / 移动档共用渲染基线；两档 FX 与缓冲差异见 quality_preset_*.tres
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+; 项目级 Nearest：注意合法键为 canvas_textures，不是 canvas_items（R2 §2 特别指定）
+textures/canvas_textures/default_texture_filter=0
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true
+anti_aliasing/quality/msaa_2d=0
+anti_aliasing/quality/msaa_3d=0
+environment/defaults/default_clear_color=Color(0.07, 0.1, 0.16, 1)

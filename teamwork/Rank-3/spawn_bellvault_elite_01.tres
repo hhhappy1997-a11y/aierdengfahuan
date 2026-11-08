@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="SpawnRequest" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/rpg/spawn_request.gd" id="1_spawnreq"]
+
+[resource]
+script = ExtResource("1_spawnreq")
+request_id = "spawn_bellvault_elite_01"
+enemy_id = "elite_01_bell_warden"
+spawn_point_id = "marker_b2_bell_hall_elite"
+position = Vector3(0, -6, -14)
+facing_degrees = 180.0
+level = 12
+hp_override = -1
+stance_override = -1.0
+aggro_radius = 9.0
+leash_radius = 16.0
+respawn_policy = "never"
+defeated_flag = "combat.elite_01_bell_warden.defeated"
+loot_table_id = "loot_01_bell_warden"
+patrol_route = [Vector3(-4, -6, -13), Vector3(4, -6, -13), Vector3(0, -6, -18)]
+is_boss = false
+spawn_group_id = "group_bellvault_b2"
+metadata = {
+"hall_id": "room_b2_01_bell_hall",
+"intro_camera": false,
+"music_cue": "none"
+}

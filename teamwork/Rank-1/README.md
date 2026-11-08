@@ -123,3 +123,70 @@ F:\Game\aierdengfahuan\teamwork\Rank-1\任务书.md   ← 主 AI 派单，只读
 2. 按 §4 粘贴 `project.godot` 配置，按 §3 注册 5 个 autoload（注意 `chunk_streaming.gd` **不要**加 `class_name`）。
 3. 按 §5 用编辑器 Input Map 生成 input actions（1 号只给映射表，避免手写序列化字段与小版本不一致）。
 4. M0 在引擎里首次打开 `Main.tscn`，验证脚贴地、像素硬边、无 z-fighting；再按 `接口契约.md` §5 推进 M1/M2。
+
+---
+
+## 7. R2 交付清单（追加节；§1~§6 首轮内容原样不改）
+
+> 派单：`任务书-R2.md`；临时口径：`00-续派与监测规则.md` §6；引擎 `D:\Godot\Godot_v4.7.2-stable_win64.exe`（`--version` 实测 `4.7.2.stable.official.ed1daf0bf`）。
+> 本轮把 §4 记录的「未运行 / `project.godot` 未产出 / `scene_router`、`camera_rig`、性能 HUD、画质档待 M1/M2」推进为**引擎可解析、可打开**的工程侧交付件，并按契约 §10 真跑三段构建门禁。R2 口径 §6 第 8 条已作废「本机未找到 godot、无法真跑」的旧结论。
+> 完成标志另见本工位 `DONE-R2.md`（HOST 监测只认该文件）。
+
+### 7.1 本轮实际交付 / 更新文件
+
+| 文件 | 动作 | 内容 | 工程落位（`res://`） |
+|---|---|---|---|
+| `project.godot` | 新建 | 合法 Godot 4 工程配置：`config_version=5`、5 个 autoload、15 个 input action、`[hd2d]` 冻结值、双档画质路径、`[rendering]` 用 `textures/canvas_textures/default_texture_filter=0`、Jolt + 固定 ticks | 工程根 `project.godot` |
+| `scene_router.gd` | 新建 | `SceneRouter` autoload：`pause_chunk_stream()` / `resume_chunk_stream()` / `request_short_load(dungeon_id, direction)` / `travel_to_grace(target_grace_id)` 及 6 个信号，回应 3 号 A6「加载接口归属」；`_ready()` 实际加载两份画质档 `.tres` | `scripts/core/scene_router.gd` |
+| `camera_rig.gd` | 新建 | 相机跟随 + SubViewport 低分辨率缓冲 / 整数倍放大；冻结 `640×360 @2x`、`PIXELS_PER_METER = 32.0` 常量供 4 号 A4 | `scripts/render/camera_rig.gd` |
+| `performance_hud.gd` | 新建 | M2 的 F3 性能 HUD：帧时间 / p99 / 常驻 chunk 数 / 静态内存（交付件，非临时测量脚本） | `scripts/ui/performance_hud.gd` |
+| `quality_preset_desktop.tres` | 新建 | 桌面档：640×360、9 chunk、FX 全开、16.67 ms、1536 MB | `data/render/quality_preset_desktop.tres` |
+| `quality_preset_mobile.tres` | 新建 | 移动降级档（契约 §9.2）：480×270、4 chunk、FX 全关、33.33 ms、512 MB | `data/render/quality_preset_mobile.tres` |
+| `quality_preset.gd` | 新建（附加必要脚本） | `class_name QualityPreset extends Resource`，定义两档 `.tres` 的字段结构；不替代任何固定交付项 | `scripts/core/quality_preset.gd` |
+| `hybrid_2d3d_animated_sprite.gd` | 更新 | 锁定 `set_pose(pose_name, frame_index)` 的 `frame_index` = 动作内帧索引、clamp 归 1 号；冻结 pose 枚举做名称校验；**不扩展 I-4 接口**，pose 前缀沿用 `p1_`/`p2_` | `scripts/render/hybrid_2d3d_animated_sprite.gd` |
+| `场景树骨架.tscn` | 修正 R1 遗留缺陷 | 真跑暴露两处 `Transform3D(...)` 写成 13 参数（合法 12），已修正为 12 参数，`Main.tscn` 由此可被引擎打开 | `scenes/Main.tscn` |
+| `README.md` | 追加 §7 | 本节，首轮内容不改 | `docs/` |
+| `DONE-R2.md` | 新建 | 完成标志：交付清单 / 真跑输出结论 / 未完成项与阻塞 / 给 4 号的冻结值 | — |
+
+> 任务书 §2 固定 8 类文件全部产出；`quality_preset.gd` 为让 `.tres` 可被引擎加载校验而附加的必要脚本，`场景树骨架.tscn` 为真跑暴露缺陷后的修正，二者均为附加，不替代任何固定项。
+
+### 7.2 真跑结论（契约 §10 三段门禁）
+
+引擎：`D:\Godot\Godot_v4.7.2-stable_win64.exe`，`--version` 实测 `4.7.2.stable.official.ed1daf0bf`（EXIT=0）。
+`config_version` 说明：该键是 Godot 工程配置**格式版本**（整数，Godot 4.x 为 5），**不是引擎版本号**；`--version` 实测值用于 `config/features=PackedStringArray("4.7", "GL Compatibility")`，`config_version=5` 通过下方 `--headless --import` / `--headless --quit` 真跑验证被 4.7.2 接受（日志无 config_version 相关警告、引擎未回写或拒绝），**非凭记忆硬编码**。
+
+在系统临时目录 `C:\Users\62668\AppData\Local\Temp\r1_r2_verify` 建最小工程（放入本工位交付文本件；因 3 号 `WorldState` / `GameEvents` / `SaveSystem` 尚未交付，验证工程内放了 3 个最小 stub 让 5 个 autoload 能加载，stub **不进入交付件、用完即删**），逐条真跑：
+
+| 段 | 命令 | 退出码 | 结论 |
+|---|---|---|---|
+| 0 | `<godot> --version` | 0 | `4.7.2.stable.official.ed1daf0bf` |
+| 1 | `<godot> --headless --path <tmp> --import` | 0 | 全局类 `QualityPreset` / `HybridSpriteRig` 注册成功，无 Parse Error |
+| 2 | `<godot> --headless --path <tmp> --check-only --script <6 个 .gd>` | 6 条均 0 | 6 个本工位 `.gd` 全部静态解析通过 |
+| 3 | `<godot> --headless --path <tmp> --quit` | 0 | 打开 `Main.tscn` + `SceneRouter._ready()` 加载两份 `.tres` 成功 |
+
+- **首轮真跑（未修正前）暴露 3 个真实缺陷**：① `camera_rig.gd` 用了 Godot 4.7 不存在的 `expf()`（G2 SCRIPT ERROR）；② R1 `场景树骨架.tscn` 两处 `Transform3D` 参数个数错误（G1/G3 `Parse Error: [Resource file res://scenes/Main.tscn:53]`、G3 EXIT=1）；③ `.tres` 内 `;` 注释保守移除。三处均已修正后**清缓存全量复跑**上表结果。
+- **grep 校验（关键：运行时 SCRIPT ERROR 不改退出码，必须 grep）**：`grep -rn "SCRIPT ERROR"` → **NONE**；`grep -rni "error"` → **NONE**；`Parse Error / ERROR: / Failed loading` → **NONE**。
+- G3 日志仅有 9 条 `WARNING: [ChunkManager] chunk_limgrave_* 加载跳过：scene_missing`：因临时工程不含 3 号负责的 chunk 场景，属 `chunk_streaming.gd` 既有降级设计（每个 id 只 warn 一次），非 SCRIPT ERROR、不影响退出码。
+- 临时验证工程已删除（`DELETE_OK`），只留上述结论；未写入 teamwork、未提交。
+- **结论：三段门禁真跑通过**，本工位 `.gd` / `.tscn` / `.tres` / `project.godot` 均为 Godot 4.7.2 可解析、可打开的合法语法。
+
+### 7.3 仍未完成项
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| 工程根 `F:\Game\aierdengfahuan\` | 按任务书 §1 约定不建立 | 本轮所有工程根文件以「工位内文本件」产出，注明供建工程根时拷贝；非阻塞 |
+| 3 号 `WorldState` / `GameEvents` / `SaveSystem` 真实实现 | 待 3 号 | 临时验证工程用 stub 代替；真工程落地前需 3 号交付（口径 §6 第 3 条：GameEvents 由 3 号实现、1 号注册） |
+| 3 号 chunk 场景 / 地牢场景 / 赐福网络 | 待 3 号 | G3 的 9 条 `scene_missing` 即此；M2 验收需至少 3 个占位 chunk 场景；`request_short_load` 的 `change_scene_to_file` 目前走空跑降级 |
+| 4 号 `import.json` / spritesheet / ≤256 色调色板 | 待 4 号 | I-5 未联调；`pose_frame_counts` 待导入流程回填，缺省时 `frame_index` 只做下限 clamp |
+| GDExtension `Hybrid2D3D-Renderer` 装入与 `set_custom_aabb` API 校准 | 待 M0 | 脚本已有 `has_method` / 属性守卫，扩展不在时静默降级 |
+| 移动端常驻 chunk 数降级落地 | 待 M2 | `.tres` 写 4，但 R1 `chunk_streaming.gd` 固定 `RADIUS=1` → 9 块，运行时按档位调整半径尚未实现（未伪造已实现） |
+| 人工试玩 / 手感 / 审美判断 | 未做 | 按总纲与契约由用户亲自兜底 |
+| R3 排队包 | 本轮不做 | 按 HOST 23:43 口径，未打开 `任务书-R3.md` |
+
+### 7.4 本轮新增「待主 AI 裁决」（追加，不改 §5）
+
+1. **4 号 A8 `@3x` vs 本工位冻结 `@2x`**：本工位按 R1 `场景树骨架.tscn` 的 `stretch_shrink=2` + 1280×720 窗口冻结 `640×360 @2x`；4 号 A8 假设 `640×360 @3x`。未擅自改骨架，冻结值经 `DONE-R2.md` 单列由 HOST 转交 4 号确认。
+2. **负坐标 chunk id 字面**：真跑日志实证生成 `chunk_limgrave_-1_-1` / `chunk_limgrave_-1_0` 等含连字符形式，按任务书 §3 口径 7 保留契约字面 `chunk_<区域>_-1_0`，**未擅自改 `_m1_`**，与 3 号存档键、4 号资产目录兼容性待裁决。
+3. **`GameEvents` 归属最终裁决**：本轮按口径 §6 第 3 条（3 号实现、1 号注册）推进，最终归属仍待主 AI 裁决后回改。
+4. **移动端降级档的 chunk 半径实现方式**：见 §7.3，需裁决「改 `RADIUS`」还是「保持 9 块、只降分辨率/内存」。
+5. **`config_version` 口径说明**：见 §7.2；若口径要求把 `4.7.2` 直接填入该整数键会产出非法 `project.godot`，已按引擎合法格式版本 5 落地并真跑验证，请主 AI 确认此解释。

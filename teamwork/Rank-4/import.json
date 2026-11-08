@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "asset_id": "boss_01_margit_phase_sheet_v1",
+  "res_path": "res://assets/generated/chars/boss_01_margit_phase_sheet_v1.png",
+  "sprite_sheet": "boss_01_margit_phase_sheet_v1.png",
+  "frame_width": 32,
+  "frame_height": 32,
+  "columns": 8,
+  "rows": 4,
+  "frame_count": 32,
+  "anchor": { "x": 16, "y": 31, "note": "底部中心，脚贴地；全帧共用，禁止逐帧偏移" },
+  "actions": [
+    { "name": "p1_idle", "start_frame": 0, "end_frame": 7, "fps": 8, "loop": true },
+    { "name": "p1_dagger_slash", "start_frame": 8, "end_frame": 15, "fps": 8, "loop": false },
+    { "name": "p2_idle", "start_frame": 16, "end_frame": 23, "fps": 8, "loop": true },
+    { "name": "p2_holy_hammer", "start_frame": 24, "end_frame": 31, "fps": 8, "loop": false }
+  ],
+  "pose_names": ["p1_idle", "p1_dagger_slash", "p2_idle", "p2_holy_hammer"],
+  "palette": [
+    "#0B1226", "#16233F", "#2B3A5C", "#4A6089", "#6E6453", "#9A8E78",
+    "#C6BBA4", "#8A5A22", "#C97A2E", "#F0A94C", "#FFD27A", "#FFF0C2"
+  ],
+  "canvas_base_px": 128,
+  "palette_id": "hd2d_index_256_v1",
+  "palette_ref": "res://assets/generated/_palette/palette_256.json",
+  "pose_prefix_in_use": "p1_",
+  "phase2_pose_prefix": "p2_",
+  "layer_type": "base",
+  "aligned_with": null,
+  "seed": 20271308,
+  "downsample": {
+    "filter": "Point",
+    "colors": 16,
+    "dither": "None",
+    "target_size": [32, 32]
+  },
+  "expected_import_settings": {
+    "compress_mode": "lossless",
+    "mipmaps": false,
+    "texture_filter": "Nearest",
+    "project_default_texture_filter": 0,
+    "fix_alpha_border": true,
+    "process_fix_alpha_border": true,
+    "srgb": "disabled_or_as_configured_by_engine"
+  },
+  "pipeline_tier": "D",
+  "fallback_route": "procedural_draw_placeholder",
+  "prompt_skeleton": "hd2d_pixel_skeleton_v1",
+  "human_refine": "not_required",
+  "sample_only": true,
+  "r2_note": "R2 字段样例（sample_only=true），演示 canvas_base_px=128 / palette_id / 冻结 pose（含 p1_/p2_ 前缀）/ 四项期望导入值；非真实资产交付，不进入 res://assets/generated/。真实主角 / Boss 资产必须 human_refine=done（资产交付契约.md §6.3）。128px 为生成端设计基准画布，frame_width/height=32 为交付端单帧尺寸，二者不同层级、不互相覆盖。",
+  "generated_at": "2026-11-08",
+  "version": "v1"
+}

@@ -8,7 +8,8 @@ class_name PlayerStateMachine
 ##    本文件唯一允许的战斗数值常量是 MIN_DAMAGE（伤害下限）。
 ##  - I-4：只通过 set_pose(pose_name, frame_index) 通知 1 号的 Hybrid2D3DAnimatedSprite，
 ##    不写 billboard / 锚定 / 缩放 / SpriteFrames 操作。
-##  - I-1：世界状态只经 WorldState.get_flag / set_flag 访问，不读写存档、不碰 SaveDelta。
+##  - I-1：世界状态只经 WorldState.get_flag / set_flag 访问，不读写存档、不碰 SaveDelta；
+##    R2 口径 2 统一双参 get_flag(key, default) / set_flag(key, value)，删除签名兼容分支。
 ##  - I-2：击败事件只发信号，由 3 号订阅写 Delta；2 号不写 defeated_flag_key。
 ##  - 字段定义唯一真源：teamwork/Rank-2/数据表schema.md
 ##  - 目标路径：res://scripts/combat/player_state_machine.gd
@@ -53,7 +54,6 @@ var state_frame: int = 0
 var _action_by_state: Dictionary = {}
 var _sprite: Node = null
 var _world_state: Node = null
-var _flag_get_argc: int = 2
 var _was_invulnerable: bool = false
 var _hit_targets: Dictionary = {}
 
@@ -61,7 +61,6 @@ var _hit_targets: Dictionary = {}
 func _ready() -> void:
 	_sprite = get_node_or_null(sprite_path)
 	_world_state = get_node_or_null(world_state_path)
-	_resolve_world_flag_signature()
 	_build_action_table()
 	if _action_by_state.size() != State.size():
 		push_error("PlayerStateMachine: PlayerActionData 必须覆盖全部 %d 个状态，当前 %d 条（E-6）" % [State.size(), _action_by_state.size()])
@@ -278,26 +277,14 @@ func _apply_pose(action: PlayerActionData) -> void:
 
 # ---------------------------------------------------------------------------
 # I-1：世界状态只经 WorldState.get_flag / set_flag
+# R2 口径 2：统一双参 get_flag(key, default) / set_flag(key, value)，调用方自行 cast；
+#            已删除 R1 的 _resolve_world_flag_signature() 签名兼容分支。
 # ---------------------------------------------------------------------------
-
-func _resolve_world_flag_signature() -> void:
-	# 契约写 get_flag(key)，任务书 §5 写 get_flag(key, default)。此处做一次签名兼容，
-	# 不私改接口；最终口径见 README.md Q2。
-	if _world_state == null or not _world_state.has_method("get_flag"):
-		return
-	for info in _world_state.get_method_list():
-		if String(info.get("name", "")) == "get_flag":
-			var args: Array = info.get("args", [])
-			_flag_get_argc = args.size()
-			return
-
 
 func _read_world_flag(key: String, default_value: Variant) -> Variant:
 	if _world_state == null or not _world_state.has_method("get_flag"):
 		return default_value
-	if _flag_get_argc >= 2:
-		return _world_state.callv("get_flag", [key, default_value])
-	return _world_state.callv("get_flag", [key])
+	return _world_state.call("get_flag", key, default_value)
 
 
 func _write_world_flag(key: String, value: Variant) -> void:

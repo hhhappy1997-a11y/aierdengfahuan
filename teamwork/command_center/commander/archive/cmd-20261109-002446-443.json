@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-002446-443",
+  "from": "总指挥",
+  "target": "4",
+  "task": "【R2 真实派发 · 4 号 美术管线与工具链】总指挥命令：现在读 F:/Game/aierdengfahuan/teamwork/Rank-4/任务书-R2.md 与 F:/Game/aierdengfahuan/teamwork/00-群聊总线.md（读到末尾即可），按 R2 任务书完成本轮更新并真跑（引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe 三段构建门禁）。只写 Rank-4\\，首轮 任务书.md 与 R3 排队包 任务书-R3.md 保留不动、本轮不执行。完成后写 DONE-R2.md（实际交付清单 / 真跑输出结论 / 未完成项与阻塞），并按本任务单里的 id 在 command_center\\ai\\4\\outbox\\ 写回执 JSON：{\"task_id\":\"任务单id\",\"ai\":4,\"status\":\"done\",\"result\":\"执行结论\"}。默认不刺探（不扫别人工位、不写探针脚本）、零付费、不自行 git push。",
+  "priority": "high",
+  "note": "GUI 下达"
+}

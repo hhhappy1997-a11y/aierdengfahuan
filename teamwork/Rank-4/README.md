@@ -112,3 +112,53 @@ F:\Game\aierdengfahuan\teamwork\Rank-4\接口契约.md
 5. **I-5 可直接对接**：`import.json` 15+ 字段 + 3 份合法 JSON 示例 + 装饰层 9 条逐像素对齐约束 + 退回条件，1 号按清单导入即可。
 6. **I-6 可汇总**：`接口契约.md` §4 的 M0~M6 表每行含交付物 / 消费方 / 前置依赖 / 验收标准；Boss 人工精修（M5）周期最长，建议提前 1 个里程碑启动。
 7. **最大风险**：A1 目录命名映射与 A3 pose_name 枚举未冻结，可能影响 4 路产出汇总与 M0 资产注册。
+
+---
+
+## 8. R2 交付清单（2026-11-08 追加；§1~§7 首轮内容不改，只追加）
+
+> 依据：`Rank-4/任务书-R2.md`（首轮 `任务书.md` 保留不改）。R3 为排队包，本轮不执行。只写 `Rank-4\`，未写总线 / 台账 / git（由 HOST 统一收尾）。
+
+### 8.1 本轮实际交付 / 更新文件
+
+| # | 文件 | 动作 | 说明 |
+|---|---|---|---|
+| 1 | `palette_256.json` | 新增 | ≤256 色索引调色板，冻结 32 色 + 语义分组 + L0~L8 |
+| 2 | `pose_names.json` | 新增 | 冻结 pose 枚举 + `p1_`/`p2_` 前缀 + `import.json.actions[].name` 映射 |
+| 3 | `import.json` | 新增 | R2 全字段样例（`canvas_base_px=128` / `palette_id` / 冻结 pose / 四项期望导入值） |
+| 4 | `player_idle_v1.import.json` | 新增 | 按 `<name>_vN.import.json`（A7）命名的实例 |
+| 5 | `delivery_manifest.json` | 新增 | M0 占位批次，含 `pipeline_tier` / `fallback_route` / `palette_id` / `canvas_base_px` / `human_refine` |
+| 6 | `hd2d_placeholder_params.json` | 新增 | 程序化 `_draw()` 占位参数表（只出参数，不产 `.gd`/`.tscn`） |
+| 7 | `HD-2D视觉规范.md` | 追加 §10 | R2 冻结口径：128px + 256 色板、三层尺寸、待 HOST 转交值 |
+| 8 | `资产交付契约.md` | 追加 §8 | 新增字段 / A7 命名 / 调色板引用 / R1 不一致登记 |
+| 9 | `美术管线.md` | 追加 §10 | M0 本地管线验证：节点清单 / 显存档位表 / 降级路径 / qwen-image 边界 |
+| 10 | `README.md` | 追加 §8 | 本节 |
+| 11 | `DONE-R2.md` | 新增 | 完成标志（HOST 监测只认此文件） |
+
+### 8.2 本轮验证结论（详见 `DONE-R2.md`）
+
+- 所有独立 JSON + 文档内嵌 JSON 块经解析器**真跑**，实际输出结论见 `DONE-R2.md` 自检。
+- `import.json` 字段与 R2 §6 第 7 条（128px 基准画布 + ≤256 色索引板）、第 6 条（pose 冻结枚举含 `p1_`/`p2_`）**交叉核对一致**，实际核对输出见 `DONE-R2.md`。
+- M0 本地出图 / ComfyUI 节点核对 / 显存档位实测：能跑的真跑、跑不通的如实写阻塞，见 `DONE-R2.md`。
+
+### 8.3 仍未完成项与阻塞（如实）
+
+| # | 项 | 状态 |
+|---|---|---|
+| 1 | 实际 PNG 精灵表 / `style_anchor.png` / OpenPose 骨架库 | 未产出（M0 本地出图未跑通，不伪造） |
+| 2 | ComfyUI `GET /object_info` 6 类节点核对 | 阻塞：ComfyUI 本机路径未登记，不臆造 |
+| 3 | 显存档位 A~D 实测 | 阻塞：未实测，`pipeline_tier=D` 仅为本轮降级路线 |
+| 4 | `qwen-image --quant nf4` 首次出图 | 见 `DONE-R2.md`（本机至今只跑通过 `qwen-tts`） |
+| 5 | 1 号的基准分辨率 / 放大倍数 / 像素→米缩放比 / AABB 冻结值 | **待 HOST 转交**，不臆断 |
+| 6 | `prompt_skeleton.json` 的 `seed_lock.action_offset` 与 R2 冻结 pose 不一致 | 待 HOST 裁决后整体升 v2 回改（本轮不擅改冻结件） |
+| 7 | `128bit` 原词歧义 | 仍登记在 §5 待裁决，**不自行改口径** |
+| 8 | 主角 / Boss / 关键场景 Aseprite 人工精修 | 未开始（人工环节，M1/M5） |
+
+### 8.4 硬约束遵守声明
+
+- 只写 `Rank-4\`；未写 `Rank-1/2/3\`、未写 teamwork 根目录、未改总纲 / 契约 / 任务书 / 群聊总线。
+- 开工总线只读一次；未扫别人工位、未轮询、未写探针 / 测量 / preflight 脚本。
+- ComfyUI 仍是主美术路线，qwen-image 仅为本地备选；付费 API 一律禁用，不列「确认花费」为待办；`stable-audio`(gated 403) / `gen3d` / `mia-rig` 不申请、不补装、不碰 WSL、不绕过。
+- `image/quantize.py` 未用作 256 色调色板量化器（它是 DiT 权重量化器）。
+- 未产 `.gd` / `.tscn`；未自行 git commit / push；未写群聊总线（HOST 统一代发）。
+- R3 排队包本轮未打开、未执行。

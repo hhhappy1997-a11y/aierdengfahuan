@@ -1,0 +1,90 @@
+[gd_resource type="Resource" script_class="DungeonDefinition" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/rpg/dungeon_definition.gd" id="1_dungeon"]
+[ext_resource type="Script" path="res://scripts/rpg/interactable_spec.gd" id="2_spec"]
+
+[sub_resource type="Resource" id="Spec_shortcut_door"]
+script = ExtResource("2_spec")
+spec_id = "bellvault_shortcut_door_01"
+kind = "one_way_door"
+flag_key = "world.bellvault_shortcut_door_01.unlocked"
+flag_value = true
+prompt_enabled = true
+prompt_icon = ""
+prompt_offset = Vector3(0, 0, 0)
+area_size = Vector3(2, 3, 1)
+item_id = ""
+item_count = 0
+open_side = "b3_side"
+target_floor = 0
+delta_checkpoint = true
+graph_id = ""
+
+[sub_resource type="Resource" id="Spec_hidden_wall"]
+script = ExtResource("2_spec")
+spec_id = "bellvault_hidden_wall_01"
+kind = "hidden_wall"
+flag_key = "world.bellvault_hidden_wall_01.revealed"
+flag_value = true
+prompt_enabled = false
+prompt_icon = ""
+prompt_offset = Vector3(0, 0, 0)
+area_size = Vector3(3, 3, 1)
+item_id = ""
+item_count = 0
+open_side = ""
+target_floor = 0
+delta_checkpoint = false
+graph_id = ""
+
+[sub_resource type="Resource" id="Spec_lift"]
+script = ExtResource("2_spec")
+spec_id = "bellvault_lift_01"
+kind = "lift"
+flag_key = "world.bellvault_lift_01.unlocked"
+flag_value = true
+prompt_enabled = true
+prompt_icon = ""
+prompt_offset = Vector3(0, 0, 0)
+area_size = Vector3(2, 3, 2)
+item_id = ""
+item_count = 0
+open_side = ""
+target_floor = 0
+delta_checkpoint = false
+graph_id = ""
+
+[sub_resource type="Resource" id="Spec_grace"]
+script = ExtResource("2_spec")
+spec_id = "grace_bellvault_entry"
+kind = "grace"
+flag_key = "grace.bellvault_entry.lit"
+flag_value = true
+prompt_enabled = true
+prompt_icon = ""
+prompt_offset = Vector3(0, 0, 0)
+area_size = Vector3(2, 2, 2)
+item_id = ""
+item_count = 0
+open_side = ""
+target_floor = 0
+delta_checkpoint = true
+graph_id = ""
+
+[resource]
+script = ExtResource("1_dungeon")
+dungeon_id = "dungeon_01_bellvault"
+scene_path = "res://scenes/dungeons/Bellvault.tscn"
+floor_count = 3
+floor_height_m = 6.0
+grace_ids = ["grace_bellvault_entry"]
+elite_spawn_ids = ["spawn_bellvault_elite_01"]
+room_ids = ["room_b1_01_gate_tunnel", "room_b1_02_grace_hall", "room_b1_03_gallery", "room_b1_04_guard_post", "room_b1_05_broken_bridge", "room_b1_06_stair_down", "room_b2_01_bell_hall", "room_b2_02_side_aisle", "room_b2_03_hidden_alcove", "room_b2_04_lift_shaft", "room_b2_05_chain_walk", "room_b3_01_well_bottom", "room_b3_02_shortcut_door", "room_b3_03_return_shaft"]
+interactable_specs = [SubResource("Spec_shortcut_door"), SubResource("Spec_hidden_wall"), SubResource("Spec_lift"), SubResource("Spec_grace")]
+shortcut_door_id = "bellvault_shortcut_door_01"
+shortcut_flag = "dungeon.bellvault.shortcut_opened"
+hidden_wall_ids = ["bellvault_hidden_wall_01"]
+delta_checkpoint_reasons = ["dungeon_enter", "grace_lit", "grace_rest", "loot", "quest_stage", "flag_batch", "enemy_defeated", "shortcut_opened", "dungeon_exit"]
+entry_load_boundary = "room_b1_01_gate_tunnel"
+exit_load_boundary = "room_b1_01_gate_tunnel"
+short_load_budget_sec = 0.8

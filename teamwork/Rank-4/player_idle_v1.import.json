@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "asset_id": "char_01_player_tarnished_idle_v1",
+  "res_path": "res://assets/generated/chars/player_tarnished_idle_v1.png",
+  "sprite_sheet": "player_tarnished_idle_v1.png",
+  "frame_width": 32,
+  "frame_height": 32,
+  "columns": 4,
+  "rows": 1,
+  "frame_count": 4,
+  "anchor": { "x": 16, "y": 31, "note": "底部中心，脚贴地；全帧共用" },
+  "actions": [
+    { "name": "p1_idle", "start_frame": 0, "end_frame": 3, "fps": 8, "loop": true }
+  ],
+  "pose_names": ["p1_idle"],
+  "palette": [
+    "#0B1226", "#16233F", "#2B3A5C", "#4A6089", "#6E6453",
+    "#9A8E78", "#C6BBA4", "#8A5A22", "#F0A94C", "#FFF0C2"
+  ],
+  "canvas_base_px": 128,
+  "palette_id": "hd2d_index_256_v1",
+  "palette_ref": "res://assets/generated/_palette/palette_256.json",
+  "pose_prefix_in_use": "p1_",
+  "phase2_pose_prefix": "p2_",
+  "layer_type": "base",
+  "aligned_with": null,
+  "seed": 20271208,
+  "downsample": {
+    "filter": "Point",
+    "colors": 16,
+    "dither": "None",
+    "target_size": [32, 32]
+  },
+  "expected_import_settings": {
+    "compress_mode": "lossless",
+    "mipmaps": false,
+    "texture_filter": "Nearest",
+    "project_default_texture_filter": 0,
+    "fix_alpha_border": true
+  },
+  "pipeline_tier": "D",
+  "fallback_route": "procedural_draw_placeholder",
+  "prompt_skeleton": "hd2d_pixel_skeleton_v1",
+  "human_refine": "not_required",
+  "sample_only": true,
+  "naming_note": "文件名遵循 <name>_vN.import.json（A7 临时口径 / R2 §3 口径3），与同名 PNG 同级对应；本文件为 R2 命名实例，非真实资产交付。",
+  "generated_at": "2026-11-08",
+  "version": "v1"
+}

@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "batch_id": "batch_20261108_m0_r2_placeholder",
+  "interface": "I-5",
+  "provider": "4号工位-美术管线与工具链",
+  "consumer": "1号工位-引擎架构与渲染",
+  "milestone": "M0",
+  "round": "R2",
+  "generated_at": "2026-11-08",
+  "pipeline_tier": "D",
+  "fallback_route": "procedural_draw_placeholder",
+  "palette_id": "hd2d_index_256_v1",
+  "canvas_base_px": 128,
+  "human_refine": {
+    "status": "not_applicable",
+    "reason": "本批次无实际 PNG 精灵表交付（M0 本地出图未跑通），无可精修资产；占位参数表 hd2d_placeholder_params.json 不需要人工精修。",
+    "policy": "真实主角 / Boss / 关键场景资产必须 human_refine=done 才允许交付（资产交付契约.md §2 / §6.3）。"
+  },
+  "expected_import_settings": {
+    "compress_mode": "lossless",
+    "mipmaps": false,
+    "texture_filter": "Nearest",
+    "project_default_texture_filter": 0,
+    "landed_by": "1号工位"
+  },
+  "style_anchor": {
+    "status": "not_produced",
+    "owner": "4号工位（R2 §3 口径6 / A9）",
+    "reason": "style_anchor.png 需本地 ComfyUI 出 1 张基准图 + 人工确认后冻结；本轮 ComfyUI 本机路径未登记、qwen-image 未实跑出图，故未产出。",
+    "not_fabricated": true
+  },
+  "items": [],
+  "item_count": 0,
+  "m0_validation": {
+    "comfyui_object_info": "BLOCKED：ComfyUI 本机路径未登记（00-工具链接入说明.md §7），未臆造地址、未尝试连接，6 类自定义节点核对无法执行",
+    "vram_tier_measured": "BLOCKED：未实测显存档位 A~D；pipeline_tier=D 为本轮实际采用的降级路线，不是显存实测结论",
+    "qwen_image": "已按 --quant nf4 真跑一次（单 GPU job、-o 指向 Rank-4 内、--resolution 512 --steps 10）；实际输出与最终结论见 DONE-R2.md，不在此重复、不宣称已能出图",
+    "json_parse": "全部独立 JSON 与文档内嵌 JSON 块经解析器真跑，实际输出结论见 DONE-R2.md 自检"
+  },
+  "deliverables_this_round": [
+    "palette_256.json",
+    "pose_names.json",
+    "import.json",
+    "player_idle_v1.import.json",
+    "hd2d_placeholder_params.json",
+    "delivery_manifest.json",
+    "DONE-R2.md"
+  ],
+  "notes": [
+    "本批次为零 PNG 占位批次，仅交付规格 JSON 与程序化占位参数表；不伪造产物、不谎报出图成功",
+    "ComfyUI 仍是主美术路线；qwen-image 仅为同为零付费的本地备选，不得取代",
+    "付费 API 一律禁用；stable-audio(gated 403)/gen3d/mia-rig 不可用，不申请、不补装、不碰 WSL",
+    "import.json 与 player_idle_v1.import.json 为字段样例（sample_only=true），非真实资产交付"
+  ]
+}

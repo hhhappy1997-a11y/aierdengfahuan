@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "id": "rank4_pose_names_r2",
+  "version": "r2.0",
+  "status": "frozen_temporary_R2",
+  "owner": "4号工位-美术管线与工具链",
+  "source": "任务书-R2.md §3 口径6；00-续派与监测规则.md §6 第6条（Rank-2 Q5 / Rank-4 A3）",
+  "base_poses": {
+    "core": ["idle", "walk", "run", "roll", "attack_light", "attack_heavy", "hitstun", "death"],
+    "boss": ["dagger_slash", "staff_slam", "holy_hammer"],
+    "note": "基础 pose 名冻结为 8 core + 3 boss 共 11 个，取自 R2 §3 口径6 与续派规则 §6 第6条，逐字一致。"
+  },
+  "prefix_rule": {
+    "allowed_prefixes": ["p1_", "p2_"],
+    "format": "<prefix><base_pose>",
+    "p1_": "阶段1 / 常态：玩家与 Boss 一阶段动作使用；前缀沿用 Rank-2 pose_prefix，不扩展 I-4 接口",
+    "p2_": "阶段2 / Boss 二阶段：阶段切换沿用 2 号 pose_prefix（p1_/p2_），4 号不新增、不改名",
+    "note": "前缀只标阶段，不改 base pose 语义；同一 base pose 在两阶段只换前缀（如 p1_idle → p2_idle），运行时由 2 号切换 SpriteFrames，4 号按完整 pose_name 组织帧条。"
+  },
+  "frozen_pose_names": {
+    "p1_": [
+      "p1_idle", "p1_walk", "p1_run", "p1_roll", "p1_attack_light", "p1_attack_heavy", "p1_hitstun", "p1_death",
+      "p1_dagger_slash", "p1_staff_slam", "p1_holy_hammer"
+    ],
+    "p2_": [
+      "p2_idle", "p2_walk", "p2_run", "p2_roll", "p2_attack_light", "p2_attack_heavy", "p2_hitstun", "p2_death",
+      "p2_dagger_slash", "p2_staff_slam", "p2_holy_hammer"
+    ]
+  },
+  "all_frozen_names": [
+    "p1_idle", "p1_walk", "p1_run", "p1_roll", "p1_attack_light", "p1_attack_heavy", "p1_hitstun", "p1_death",
+    "p1_dagger_slash", "p1_staff_slam", "p1_holy_hammer",
+    "p2_idle", "p2_walk", "p2_run", "p2_roll", "p2_attack_light", "p2_attack_heavy", "p2_hitstun", "p2_death",
+    "p2_dagger_slash", "p2_staff_slam", "p2_holy_hammer"
+  ],
+  "frozen_name_count": 22,
+  "mapping_to_import_actions": {
+    "rule": "import.json.actions[].name 与 import.json.pose_names 必须逐字一致，且每个名字都属于 all_frozen_names；不得出现冻结表外的名字。",
+    "i4": "I-4 set_pose(pose_name, frame_index) 消费同一集合；frame_index 为动作内帧索引，clamp 归 1 号（续派规则 §6 第5条）。",
+    "example": "p1_roll / p2_holy_hammer",
+    "prefix_check": "1 号 / 2 号对齐时按 all_frozen_names 核对，含 p1_/p2_ 前缀方为合规。"
+  },
+  "r1_discrepancy": {
+    "detected": true,
+    "detail": "R1 的 prompt_skeleton.json 的 seed_lock.action_offset 与 接口契约.md §2.3 仍为旧集合 idle/walk/jump/roll/attack/hit/death（含 jump，缺 run/attack_light/attack_heavy/hitstun），与 R2 冻结枚举不一致。",
+    "handling": "prompt_skeleton.json 是 R1 冻结件（frozen=true，usage_notes 第8条：字段一经冻结不得按批次微调，确需改动须主 AI 裁决并整体升版本号），本轮不擅自改写；登记为待回改项，须 HOST 裁决后整体升 v2 同步 seed 派生映射。",
+    "not_modified_this_round": true
+  },
+  "pending": [
+    "最终枚举以总指挥裁决为准，裁决不同按裁决回改",
+    "128bit 歧义仍登记在 README.md 待裁决，不自行改口径"
+  ]
+}
