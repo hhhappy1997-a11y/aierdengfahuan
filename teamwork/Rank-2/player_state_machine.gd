@@ -92,7 +92,8 @@ func _physics_process(_delta: float) -> void:
 
 func _build_action_table() -> void:
 	_action_by_state.clear()
-	for action: PlayerActionData in actions:
+	for entry in actions:
+		var action: PlayerActionData = entry as PlayerActionData
 		if action == null:
 			continue
 		var s: State = _state_from_name(action.state_name)
@@ -140,12 +141,12 @@ func _current_action() -> PlayerActionData:
 
 
 func _total_frames(action: PlayerActionData) -> int:
-	## E-2：total 不设字段，只由三段相加派生，避免双源不一致。
+	# E-2：total 不设字段，只由三段相加派生，避免双源不一致。
 	return action.startup_frames + action.active_frames + action.recovery_frames
 
 
 func _is_persistent(s: State) -> bool:
-	## 持续状态不自动回到 idle，由输入 / 世界状态驱动转移。
+	# 持续状态不自动回到 idle，由输入 / 世界状态驱动转移。
 	match s:
 		State.IDLE, State.WALK, State.RUN, State.DEATH:
 			return true
@@ -218,8 +219,7 @@ func _enter_state(s: State) -> void:
 
 
 func _exit_state(s: State) -> void:
-	var action: PlayerActionData = _action_by_state.get(s, null) as PlayerActionData
-	if action == null:
+	if not _action_by_state.has(s):
 		return
 	_hit_targets.clear()
 	if _was_invulnerable:
@@ -232,9 +232,9 @@ func _exit_state(s: State) -> void:
 # ---------------------------------------------------------------------------
 
 func is_invulnerable() -> bool:
-	## E-7：无敌区间 [invulnerable_start_frame, invulnerable_end_frame)
-	## 翻滚自洽等式：start == startup_frames，end == startup_frames + active_frames，
-	## total == startup + active + recovery。非无敌动作两端为 -1，判定自动关闭。
+	# E-7：无敌区间 [invulnerable_start_frame, invulnerable_end_frame)
+	# 翻滚自洽等式：start == startup_frames，end == startup_frames + active_frames，
+	# total == startup + active + recovery。非无敌动作两端为 -1，判定自动关闭。
 	var a: PlayerActionData = _current_action()
 	if a == null:
 		return false
@@ -244,7 +244,7 @@ func is_invulnerable() -> bool:
 
 
 func is_in_hit_window() -> bool:
-	## 攻击判定帧区间 [startup_frames, startup_frames + active_frames) 左闭右开。
+	# 攻击判定帧区间 [startup_frames, startup_frames + active_frames) 左闭右开。
 	var a: PlayerActionData = _current_action()
 	if a == null or a.motion_multiplier <= 0.0:
 		return false
@@ -256,7 +256,7 @@ func frame_to_seconds(action: PlayerActionData, frames: int) -> float:
 
 
 func register_hit(target_id: String) -> bool:
-	## 同一动作内对同一目标只结算一次。
+	# 同一动作内对同一目标只结算一次。
 	if _hit_targets.has(target_id):
 		return false
 	_hit_targets[target_id] = true
@@ -272,8 +272,8 @@ func _apply_pose(action: PlayerActionData) -> void:
 		return
 	var frame_index: int = action.pose_frame_offset + state_frame
 	_sprite.call("set_pose", action.pose_name, frame_index)
-	## Boss 二阶段的 pose_prefix 拼接、SpriteFrames 替换入口归属见 README.md Q1；
-	## 本状态机不触碰 1 号的精灵表、billboard、锚定与缩放。
+	# Boss 二阶段的 pose_prefix 拼接、SpriteFrames 替换入口归属见 README.md Q1；
+	# 本状态机不触碰 1 号的精灵表、billboard、锚定与缩放。
 
 
 # ---------------------------------------------------------------------------
@@ -281,8 +281,8 @@ func _apply_pose(action: PlayerActionData) -> void:
 # ---------------------------------------------------------------------------
 
 func _resolve_world_flag_signature() -> void:
-	## 契约写 get_flag(key)，任务书 §5 写 get_flag(key, default)。此处做一次签名兼容，
-	## 不私改接口；最终口径见 README.md Q2。
+	# 契约写 get_flag(key)，任务书 §5 写 get_flag(key, default)。此处做一次签名兼容，
+	# 不私改接口；最终口径见 README.md Q2。
 	if _world_state == null or not _world_state.has_method("get_flag"):
 		return
 	for info in _world_state.get_method_list():
@@ -301,8 +301,8 @@ func _read_world_flag(key: String, default_value: Variant) -> Variant:
 
 
 func _write_world_flag(key: String, value: Variant) -> void:
-	## 严禁用于 defeated_flag_key：击败记录由 I-2 信号交由 3 号写入 Delta。
-	## 本函数仅供 M5 缓存运行时战斗态（如阶段号），不触碰存档文件与 SaveDelta。
+	# 严禁用于 defeated_flag_key：击败记录由 I-2 信号交由 3 号写入 Delta。
+	# 本函数仅供 M5 缓存运行时战斗态（如阶段号），不触碰存档文件与 SaveDelta。
 	if key.ends_with(".defeated"):
 		push_error("PlayerStateMachine: 击败 flag 只能由 3 号经 I-2 写入，2 号禁止写 -> %s" % key)
 		return
@@ -315,8 +315,8 @@ func _write_world_flag(key: String, value: Variant) -> void:
 # ---------------------------------------------------------------------------
 
 func report_defeat(instance_id: String, is_boss: bool) -> void:
-	## instance_id：优先 SpawnRequest.enemy_instance_id，缺省时回退 EnemyData / BossData.id。
-	## 3 号订阅 enemy_defeated / boss_defeated 后写 SaveDelta；2 号不 set_flag、不写存档。
+	# instance_id：优先 SpawnRequest.enemy_instance_id，缺省时回退 EnemyData / BossData.id。
+	# 3 号订阅 enemy_defeated / boss_defeated 后写 SaveDelta；2 号不 set_flag、不写存档。
 	if is_boss:
 		boss_defeated.emit(instance_id)
 	else:
@@ -339,7 +339,7 @@ func compute_damage(
 	stance_break_multiplier: float,
 	defense: float
 ) -> float:
-	## 伤害 = A × M × P × S − D，下限 MIN_DAMAGE。
+	# 伤害 = A × M × P × S − D，下限 MIN_DAMAGE。
 	var raw: float = attack_power * move_multiplier * phase_multiplier * stance_break_multiplier - defense
 	return maxf(MIN_DAMAGE, raw)
 
@@ -349,15 +349,15 @@ func emit_damage(target_id: String, amount: float, damage_type: String) -> void:
 
 
 func emit_poise_damage(target_id: String, poise_damage: float) -> void:
-	## poise_damage 来自 MoveData.poise_damage / PlayerActionData.poise_damage
+	# poise_damage 来自 MoveData.poise_damage / PlayerActionData.poise_damage
 	poise_damage_dealt.emit(target_id, poise_damage)
 
 
 func compute_effective_status_threshold(buildup: StatusBuildup, accumulated_resistance: float, phase_resistance_multiplier: float) -> float:
-	## 实际阈值 = (threshold + 累计抗性) × PhaseData.status_resistance_multiplier
+	# 实际阈值 = (threshold + 累计抗性) × PhaseData.status_resistance_multiplier
 	return (buildup.threshold + accumulated_resistance) * phase_resistance_multiplier
 
 
 func compute_status_trigger_damage(buildup: StatusBuildup, target_max_hp: float) -> float:
-	## 异常触发伤害不吃招式倍率与阶段倍率（避免乘法套娃）
+	# 异常触发伤害不吃招式倍率与阶段倍率（避免乘法套娃）
 	return maxf(MIN_DAMAGE, target_max_hp * buildup.trigger_damage_ratio + buildup.trigger_damage_flat)
