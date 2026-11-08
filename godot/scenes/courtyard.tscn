@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/render/hybrid_2d3d_animated_sprite.gd" id="1_ypt7w"]
+[ext_resource type="SpriteFrames" path="res://assets/generated/chars/player_spriteframes.tres" id="2_e34af"]
 [ext_resource type="Script" path="res://scripts/render/hd2d_placeholder.gd" id="2_w844m"]
 
 [sub_resource type="Environment" id="Environment_w844m"]
@@ -106,10 +107,12 @@ visible = false
 [node name="Hybrid2D3DAnimatedSprite" type="Node3D" parent="SubViewportContainer/SubViewport/Player" unique_id=1034712492]
 script = ExtResource("1_ypt7w")
 
-[node name="PixelSprite" type="Sprite3D" parent="SubViewportContainer/SubViewport/Player/Hybrid2D3DAnimatedSprite" unique_id=50639287]
+[node name="PixelSprite" type="AnimatedSprite3D" parent="SubViewportContainer/SubViewport/Player/Hybrid2D3DAnimatedSprite" unique_id=532282728]
 centered = false
 offset = Vector2(-16, -48)
 pixel_size = 0.03125
+sprite_frames = ExtResource("2_e34af")
+animation = &"idle"
 
 [node name="ChunkRoot" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1849473350]
 
