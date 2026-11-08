@@ -155,7 +155,7 @@ var bg: Node2D = HD2DPlaceholderAttach.attach(self, {"cam_x": 0.0, "cam_y": 0.0}
 
 ### 5.2 工程实际 `project.godot` 只读核对（本轮「在工程根内」的加强验证）
 
-- `godot\project.godot:132` 实际为 `textures/canvas_textures/default_texture_filter=0`，与 `import.json` 期望值 `0` **一致（True）**。
+- `godot\project.godot` 实际为 `textures/canvas_textures/default_texture_filter=0`（02:52 只读快照第 132 行 / 复核时第 141 行，Rank-1 R8 并行更新使行号下移、键值未变），与 `import.json` 期望值 `0` **一致（True）**。本轮**只读核对、未改一个字节**；并行更新差异如实登记，不冒充。
 - 口径纠正如实登记：任务书字面写 `default_texture_filter=0`，Godot 4 合法键为 `textures/canvas_textures/default_texture_filter`（R6 §2.2 / `project.godot` 头注释已纠正，历史误写 `canvas_items` 不写回）。本轮**只读核对、未改 `project.godot` 一个字节**（Rank-1 独占）。
 - `import.json` 为 `sample_only=true`（字段样例、非真实资产交付）；其 `palette_ref` 指向 `res://assets/generated/_palette/palette_256.json` 与实际落位 `res://assets/generated/palette_256.json` 平级差异，沿用 R6 §1 登记为「1 号导入时对齐」，本轮不擅改冻结 JSON 字段。
 

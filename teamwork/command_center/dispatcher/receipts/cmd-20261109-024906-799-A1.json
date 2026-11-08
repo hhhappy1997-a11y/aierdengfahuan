@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-024906-799-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "R8 完成：project.godot 3 个 autoload 闭合（WorldState/GameEvents 改指 scripts/rpg/ 实际落位；SaveSystem 补 scripts/world/save_system.gd 装配占位）、补 9 个 chunk 占位场景、全量复跑三段门禁两次（最终快照 50 个 .gd）。ERROR 行数 18→4：18 条 autoload ERROR 与 9 条 scene_missing WARNING 全部消除；但 ERROR=0 未达成——剩余 4 行均为跨工位 class_name SpawnRequest 同名全局类冲突（scripts/combat/ vs scripts/rpg/），越出 Rank-1 可写范围，已如实登记待 HOST 裁决，未冒充全绿、未伪造输出。G1/G3 EXIT=0，G2 50 个 .gd 中 49 个 EXIT=0，另 1 条 leaked 为 WARNING 级。详见 DONE-R8.md / GATE-REPORT-R8.md 实际结论。"
+}

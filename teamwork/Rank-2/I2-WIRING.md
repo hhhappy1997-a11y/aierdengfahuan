@@ -25,8 +25,9 @@
   3 号 `game_events.gd`（autoload）/ `save_delta_writer.gd`（订阅方）均为工程根**逐字复制**；
   仅 I-1 与 I-4 用替身桩（§2.3）。
 - **方式边界**：验证在系统临时最小工程完成（§2.1），不写真实工程根 `.godot\`
-  缓存、不越界；真实工程根的 autoload 目标路径不一致（R6 §6.5 / COMBAT-ASSEMBLY.md
-  §3.4）属 1/3 号跨工位集成项，2 号**只登记不擅改**（§6）。
+  缓存、不越界；真实工程根仍存在跨工位集成项（`SpawnRequest` 同名全局类冲突），
+  2 号**只登记不擅改**（§6）。开工时读到的 autoload 路径不一致已由 Rank-1 R8 收口，
+  完整时间线见 §8。
 
 ---
 
@@ -82,14 +83,20 @@ SaveDeltaWriter._on_boss_defeated(boss_id: String)            save_delta_writer.
 
 沿用 R5 / R6（`R5-待裁决登记.md` §2.1、`COMBAT-ASSEMBLY.md` §4.1）同一口径：
 
-- 真实工程根 `godot\project.godot` 的 `[autoload]` 仍指向
-  `res://scripts/core/game_events.gd` / `res://scripts/world/world_state.gd` /
-  `res://scripts/world/save_system.gd`（`project.godot:34-36`），而 3 号实现实际落在
-  `res://scripts/rpg/`（`game_events.gd` / `world_state.gd`；`scripts/core` 与
-  `scripts/world` 下无对应文件）。该不一致由 `COMBAT-ASSEMBLY.md` §6.5 登记为
-  1/3 号跨工位集成项，**R7 开工复查仍未修**，2 号不写 `project.godot`（Rank-1 独占）。
-- 在真实工程根 `--headless --import` 会写 `.godot\` 缓存（超出 2 号唯一可写范围），
-  且四路工位并行写同一工程根。故 I-2 接线验证在系统临时最小工程**镜像布局**完成；
+- **开工时**读到的真实工程根 `godot\project.godot` `[autoload]`（`project.godot:34-36`）
+  仍指向 `res://scripts/core/game_events.gd` / `res://scripts/world/world_state.gd` /
+  `res://scripts/world/save_system.gd`，而 3 号实现实际落在 `res://scripts/rpg/`
+  ——与 `COMBAT-ASSEMBLY.md` §6.5 登记的 1/3 号跨工位集成项一致。
+  **全工程门禁复跑前复查**（`project.godot:41-47`）：Rank-1 R8 已把 `WorldState` /
+  `GameEvents` 修为 `res://scripts/rpg/world_state.gd` / `res://scripts/rpg/game_events.gd`，
+  `SceneRouter` / `ChunkManager` 指向存在文件；该路径不一致项已由 1 号收口，
+  2 号不写 `project.godot`（Rank-1 独占）。完整时间线见 §8。
+- 但真实工程根直接 `--quit` 仍稳定复现 **1 条跨工位 `SCRIPT ERROR`**：
+  `Class "SpawnRequest" hides a global script class`（2 号 `scripts/combat/spawn_request.gd`
+  与 3 号 `scripts/rpg/spawn_request.gd` 同名全局类并存，`COMBAT-ASSEMBLY.md` §6.4
+  已在 R6 登记）。在真实工程根直接验证 I-2 会被该跨工位噪声干扰。
+- 且真实工程根 `--headless --import` 会写 `.godot\` 缓存（超出 2 号唯一可写范围），
+  四路工位并行写同一工程根。故 I-2 接线验证在系统临时最小工程**镜像布局**完成；
   落位成果本身在真实工程根，临时工程只是验证环境。
 - 临时工程：`C:\Users\62668\AppData\Local\Temp\r7_i2_gate_a2\`（收尾删除，见 §7）；
   日志：`C:\Users\62668\AppData\Local\Temp\r7_i2_gate_a2_logs\seg_all.txt`。
@@ -200,24 +207,31 @@ I2Verify (verify.tscn 根, 挂 verify.gd)
 |---|---|
 | `R5-待裁决登记.md` §5「I-2 口径静态核对结论」：两个 R4 新增件与 I-2 一致 | 本轮由**静态升级为实跑**：C1/C2 运行时信号表、C3/C4 真实 emit、C5/C6 flag 写入方，6/6 PASS |
 | `COMBAT-ASSEMBLY.md` §3.4「I-2 一致（收敛链路）」 | 本轮确认收敛链路在 `GameEvents` autoload 真实件上可跑通，且 2 号不双写 |
-| `COMBAT-ASSEMBLY.md` §6.5「1/3 号 autoload 目标路径不一致」 | R7 开工复查**仍存在**（`project.godot:34-36` 指向 `scripts/core` / `scripts/world`），见 §6 |
+| `COMBAT-ASSEMBLY.md` §6.5「1/3 号 autoload 目标路径不一致」 | 开工时（`project.godot:34-36`）仍存在；全工程门禁复跑前复查 `project.godot:41-47`，Rank-1 R8 已把 `WorldState` / `GameEvents` 修为 `res://scripts/rpg/` 真实路径，该项由 1 号收口，时间线见 §8 |
 
 ---
 
 ## 6. 如实登记的边界 / 未完成项（不擅改）
 
-1. **跨工位 autoload 路径不一致（1/3 号集成项）**：真实工程根 `project.godot:34-36`
-   仍指向 `res://scripts/core/game_events.gd`、`res://scripts/world/world_state.gd`、
-   `res://scripts/world/save_system.gd`；3 号实现实际在 `res://scripts/rpg/`。
-   本轮 I-2 验证在镜像临时工程注册正确路径完成；**真实工程根直接启动仍会因此报
-   autoload 缺失 ERROR**（见 `DONE-R7.md` 全工程门禁段）。2 号不写 `project.godot`
-   （Rank-1 独占）、不移动 3 号文件，只登记。
-2. **I-1 / I-4 用替身桩**：验证目标是 I-2 信号与 flag 归属，替身桩边界见 §2.3；
+1. **跨工位 autoload 路径不一致（1/3 号集成项）→ 已由 Rank-1 R8 收口**：开工时
+   `project.godot:34-36` 指向 `scripts/core` / `scripts/world`；全工程门禁复跑前复查
+   `project.godot:41-47`，`WorldState` / `GameEvents` 已改为 `res://scripts/rpg/`
+   真实路径，与 3 号实现一致。2 号不写 `project.godot`（Rank-1 独占）、不移动 3 号文件。
+   完整时间线见 §8。
+2. **`SpawnRequest` 同名全局类并存（I-3 跨工位待裁决，仍存在）**：全工程门禁段 2 / 段 3
+   稳定复现 `SCRIPT ERROR: Parse Error: Class "SpawnRequest" hides a global script class.`
+   （`res://scripts/rpg/spawn_request.gd:2`，backtrace 指向 3 号 `world_state.gd:110`
+   加载 3 号 `spawn_bellvault_elite_01.tres`），系 2 号 `scripts/combat/spawn_request.gd`
+   与 3 号 `scripts/rpg/spawn_request.gd` 均 `class_name SpawnRequest` 所致；
+   `COMBAT-ASSEMBLY.md` §6.4 已在 R6 登记为 I-3 待裁决。2 号不擅自删除 / 改名既有
+   落位件、不改 3 号文件，只登记。真实工程根直接启动因此仍有该 1 条 SCRIPT ERROR，
+   故 I-2 验证在临时镜像工程完成（§2.1）。
+3. **I-1 / I-4 用替身桩**：验证目标是 I-2 信号与 flag 归属，替身桩边界见 §2.3；
    真实工程根由 1/3 号真实件承担，本轮不改动。
-3. **历史 signal / 唯一发射点收敛**：`player_state_machine.gd` 仍未落位工程根
+4. **历史 signal / 唯一发射点收敛**：`player_state_machine.gd` 仍未落位工程根
    （`COMBAT-ASSEMBLY.md` §6.7），其历史 `signal` 与旧 `report_defeat` 本地 emit 属
    既有件，R7 不重做、不擅改，沿用待裁决登记。
-4. **E-8 三项冲突**：与 I-2 无关，本轮未在临时工程挂载 `CombatDataValidator`，
+5. **E-8 三项冲突**：与 I-2 无关，本轮未在临时工程挂载 `CombatDataValidator`，
    不产生 E-8 的 4 条 `ERROR:`；处置见 `DONE-R7.md` §E-8。
 
 ---
@@ -230,3 +244,26 @@ I2Verify (verify.tscn 根, 挂 verify.gd)
 - 零付费 / 零外部依赖；未写总线 / 总纲 / 契约 / 台账；未自行 commit / push；
   未覆盖任何既有文件；中文 UTF-8；Godot 4 合法语法。
 - **真实件逐字复制、真跑输出如实保留，未伪造全绿结论。**
+
+---
+
+## 8. 全工程门禁复跑后复查更正（时间线，R7 收尾补记）
+
+> 本文件 §0 / §2.1 / §5 / §6 里「autoload 路径不一致」的观察，取自 **R7 开工时**读到的
+> `godot\project.godot:34-36`（`GameEvents` → `scripts/core/game_events.gd`、
+> `WorldState` / `SaveSystem` → `scripts/world/*.gd`）。该版本与 `COMBAT-ASSEMBLY.md`
+> §6.5 在 R6 的登记一致，是当时的真实状态。
+> **R7 全工程门禁复跑前复查**（并行工位已更新），`project.godot:41-47` 现为：
+> `WorldState="*res://scripts/rpg/world_state.gd"`、
+> `GameEvents="*res://scripts/rpg/game_events.gd"`、
+> `SceneRouter="*res://scripts/core/scene_router.gd"`、
+> `ChunkManager="*res://scripts/world/chunk_streaming.gd"`、
+> `SaveSystem="*res://scripts/world/save_system.gd"`。
+> 即 Rank-1 R8 已把 `WorldState` / `GameEvents` 收口到 3 号真实实现路径，
+> **R6 §6.5 登记项由 1 号解决**，2 号不写 `project.godot`、不移动他人文件。
+> 该更正不影响 §1~§4 的 I-2 实跑结论：I-2 验证在临时镜像工程自行注册
+> `GameEvents` autoload（真实 `game_events.gd`），与真实工程根 autoload 路径无关，
+> 6/6 PASS 与 `SCRIPT ERROR` grep 0 命中均成立。
+> 真实工程根直接 `--quit` 现存的是**另一条**跨工位 `SCRIPT ERROR`
+> （`SpawnRequest` 同名全局类，见 §6 第 2 条），全工程门禁实际输出与逐条归类见
+> `DONE-R7.md` §4；2 号 R7 新增件零新增 ERROR。

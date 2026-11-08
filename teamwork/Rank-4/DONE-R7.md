@@ -27,7 +27,7 @@
 | # | 本轮要求 | 本轮处理 | 实际结论 |
 |---|---|---|---|
 | 1 | 把 `hd2d_placeholder.gd` 接入场景：不改 `courtyard.tscn`，产出 `Rank-4\scene_integration.md` + `godot\scripts\render\hd2d_placeholder_attach.gd`，给出 Rank-1 一行接入调用 | **已完成** | 两件均新建落盘；一行调用 `HD2D_ATTACH.attach(root, {"canvas_layer": -10, "integer_scale": 2})`（preload 常量声明见 `scene_integration.md` §2.1），不改 scenes / project.godot，见 §1.1 / `scene_integration.md` §2~§4 |
-| 2 | 128px 基准画布 + ≤256 色索引调色板在工程根内的导入验证（lossless / 关 mipmaps / Nearest / `default_texture_filter=0`），所有 JSON 内联真跑解析 | **已完成** | 口径 12/12 PASS；工程实际 `project.godot:132` `textures/canvas_textures/default_texture_filter=0` 与期望一致；落位 4/4 + 独立 10/10 + 内嵌 16/16 真跑解析通过，见 §2.2 |
+| 2 | 128px 基准画布 + ≤256 色索引调色板在工程根内的导入验证（lossless / 关 mipmaps / Nearest / `default_texture_filter=0`），所有 JSON 内联真跑解析 | **已完成** | 口径 12/12 PASS；工程实际 `project.godot` 的 `textures/canvas_textures/default_texture_filter=0` 与期望一致（02:52 只读快照第 132 行 / 复核时第 141 行，Rank-1 R8 并行更新使行号下移、键值未变）；落位 4/4 + 独立 10/10 + 内嵌 16/16 真跑解析通过，见 §2.2 |
 | 3 | **只读**验收单一出图 job（`Rank-4\*.png` 与两份日志）；绝不启动第二个 GPU job、不杀 / 不重启；无 PNG 如实记阻塞；ComfyUI 路径未登记如实记阻塞、不臆造 | **如实执行** | `Rank-4\*.png` 无、stdout 0 字节、stderr 25320 字节停在 `checkpoint shards 50%(1/2)` 约 91 分钟无新增、报错 / 完成关键字均 0 → 记阻塞、不宣称已能出图；未启动第二个 GPU job、未杀 / 未重启；ComfyUI 路径仍「待用户提供 / 待刺探指令」→ 记阻塞、不臆造，见 §2.4 / ③ |
 | 4 | 真跑 `hd2d_placeholder.gd` 的 `--check-only --script` 并 grep `SCRIPT ERROR` | **已完成** | `hd2d_placeholder.gd` 与新建 `hd2d_placeholder_attach.gd` 两段均 `EXIT=0 / SCRIPT_ERROR=0 / Parse_Error=0 / ERROR=0`，输出仅 Godot 版本横幅，见 §2.3 |
 | 5 | `DONE-R7.md` + `scene_integration.md` + 回执 | **已完成** | 两份文档齐备、本文件 ①②③ 齐全；回执按任务单 id 写入 outbox，见 §1.4 |
@@ -47,7 +47,7 @@ HD2D_ATTACH.attach(root, {"canvas_layer": -10, "integer_scale": 2})
 
 ### 1.4 回执落位说明
 
-回执按任务单 id 写入 `teamwork\command_center\ai\4\outbox\receipt_R7_A4.json`。按 `AierdengfahuanCommander.exe` 机制（同 `DONE-R3.md` §1.4 ~ `DONE-R6.md` §1.4），写入后中枢可能实时消费并归档到 `teamwork\command_center\dispatcher\receipts\receipt_R7_A4.json`，outbox 随之清空。§2.6 的最终复核以**实际落位**（outbox 或 receipts）为准做内联 python 真跑解析；本轮不轮询、不伪造「已被接收」之外的状态、不重复写第二份回执。
+回执按任务单 id 写入 `teamwork\command_center\ai\4\outbox\receipt_R7_A4.json`。按 `AierdengfahuanCommander.exe` 机制（同 `DONE-R3.md` §1.4 ~ `DONE-R6.md` §1.4），写入后中枢可能实时消费并归档到 `teamwork\command_center\dispatcher\receipts\receipt_R7_A4.json`，outbox 随之清空。§2.6 的最终复核以**实际落位**（outbox 或 receipts）为准做内联 python 真跑解析；本轮不轮询、不伪造「已被接收」之外的状态、不重复写第二份回执。**实际结果**：写入后被中枢实时消费归档到 `dispatcher\receipts\receipt_R7_A4.json`，outbox 随之清空，§2.6 复核指向该实际落位（`dict(4)` 合法），属正常、非失败。
 
 ---
 
@@ -130,6 +130,7 @@ HD2D_ATTACH.attach(root, {"canvas_layer": -10, "integer_scale": 2})
 ```
 
 > 结论：落位 **4/4** + 独立 **10/10** + 内嵌 **16/16** + 口径 **12/12** 全部真跑解析 / 核对通过；工程实际 `project.godot` 的项目级 Nearest 与 `import.json` 期望值一致；`hd2d_placeholder.gd` 的 9 个视差系数与 `hd2d_placeholder_r5_params.json::parallax` 逐值一致、`_pass_` 10 步、零外部依赖；`attach.gd` 三静态方法 / 幂等 / 仅 load 工程内 .gd 核对通过。
+> **并行更新如实登记**：最终复核（02:57）发现 `project.godot` 的 mtime / 字节数由 02:52 的 5318 变为 6063（该键行号 132→141），系 Rank-1 R8 并行更新（本轮从未写该文件一个字节；`courtyard.tscn` 02:28、`hd2d_placeholder.gd` 02:33 均未变）。只读复核当前 `project.godot:141` 仍为 `textures/canvas_textures/default_texture_filter=0`，**键值未变、导入结论持续成立**；行号差异如实登记，不冒充、不擅改。
 > 口径如实说明：任务书字面 `default_texture_filter=0`，Godot 4 合法键为 `textures/canvas_textures/default_texture_filter`（`project.godot` 头注释与 R6 §2.2 已纠正，历史误写 `canvas_items` 不写回）；`import.json` 为 `sample_only=true` 字段样例，其 `palette_ref` 的 `_palette/` 子路径与实际平级落位差异沿用 R6 登记为「1 号导入时对齐」，本轮不擅改冻结字段。
 
 ### 2.3 引擎 `--check-only --script` 门禁实际输出（含 grep `SCRIPT ERROR`，不隐瞒）
@@ -175,9 +176,39 @@ stderr total_bytes = 25312
 - `Rank-4\*.png` 无 → alpha / 128px / ≤256 色收敛、装饰层逐像素对齐、风格锚图 / 精灵表、显存档位 A~D 峰值实测 **均无法执行 / 阻塞**，不编造校验数据。
 - ComfyUI 本机路径与工作流 JSON：沿用 `00-工具链接入说明.md` §7 与 `MSG-20261109-0249-HOST` / 本轮任务书，仍为「待用户提供 / 待刺探指令」→ **登记阻塞，不臆造地址、不尝试连接 `GET /object_info`、不主动扫盘、不绕过**。**ComfyUI 仍是主美术路线**。
 
-### 2.6 写完文档与回执后的最小复核（保证 §2.2 口径自洽）
+### 2.6 写完文档与回执后的最小复核（实际 stdout）
 
-写完 `scene_integration.md`、`DONE-R7.md` 与回执后再跑一次内联 python：落位 4 件 `json.load` 仍 4/4；`Rank-4\*.md` 行首 `json` 围栏块仍 **16/16**（两份新文档用 `text` / `gdscript` 标记、未新增 `json` 围栏）；回执（以实际落位 outbox 或 receipts 为准）`dict(4)` 合法、`task_id` 与派单一致、`ai=4`、`status=done`。实际 stdout 在最终回报中给出；结论与 §2.2 一致、无漂移即判通过，若不一致回来修正文档、不谎报。
+写完 `scene_integration.md`、`DONE-R7.md` 与回执后已跑一次内联 python，实际输出：
+
+```text
+=== [复核1] 落位件 4 件 json.load（写完文档后） ===
+  OK  delivery_manifest.json     dict(20)
+  OK  import.json                dict(31)
+  OK  palette_256.json           dict(12)
+  OK  pose_names.json            dict(14)
+  -> 落位 JSON: 4/4
+=== [复核2] Rank-4*.md 行首 json 围栏块（含 scene_integration.md / DONE-R7.md） ===
+  -> 内嵌 JSON 块: 16/16 解析通过（两份新文档用 text/gdscript 标记、未新增 json 围栏）
+=== [复核3] 回执 JSON 真跑解析（以实际落位为准） ===
+  实际落位 : .../command_center/dispatcher/receipts/receipt_R7_A4.json | exists = True
+  dict(4)
+  task_id = cmd-20261109-024906-804-A4
+  ai      = 4
+  status  = done
+  result_len = 1342
+  task_id_matches_dispatch = True
+  result_引用_DONE-R7      = True
+=== [复核4] 交付件存在性 + 既有件未改只读核对（复核时刻快照） ===
+  OK  hd2d_placeholder_attach.gd  3776 bytes
+  OK  scene_integration.md        16224 bytes
+  OK  DONE-R7.md                 25094 bytes
+  MISSING  receipt_R7_A4.json (outbox，已被中枢实时消费归档，正常)
+  既有件(未改) project.godot    mtime=2026-11-09 02:57:32 bytes=6063（Rank-1 R8 并行更新，键值仍 0，见 §2.2 登记）
+  既有件(未改) courtyard.tscn   mtime=2026-11-09 02:28:35 bytes=4701
+  既有件(未改) hd2d_placeholder.gd mtime=2026-11-09 02:33:38 bytes=14670
+```
+
+> 结论：落位 **4/4** + 内嵌 **16/16** + 回执 `dict(4)` 合法、`task_id` 与派单一致、`ai=4`、`status=done`、`result` 1342 字且引用本文件，与 §2.2 一致、无漂移。回执写入 outbox 后已被中枢实时消费归档到 `dispatcher/receipts/`（与 `DONE-R6.md` §1.4 机制一致），outbox 随之清空 → 复核指向 `receipts` 实际落位，属正常、非失败、未重复写第二份回执。
 
 ---
 

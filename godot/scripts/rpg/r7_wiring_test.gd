@@ -42,10 +42,17 @@ func _on_dialogue_opened(graph_id: String, trigger_source: String) -> void:
 
 
 func _spawn(path: String, nm: String) -> Node:
+	# 优先复用 Rank-1 已注册的 autoload 单例；缺失才按正确落位路径补位（不改 project.godot）
+	# 双实例会导致各节点 _ready() 拿到的 /root/WorldState 与联调用的 _ws 不是同一对象
+	var existing: Node = get_tree().root.get_node_or_null(NodePath(nm)) as Node
+	if existing != null:
+		print("W7_DIAG reuse /root/%s (autoload already registered)" % nm)
+		return existing
 	var s: GDScript = load(path) as GDScript
 	var n: Node = s.new()
 	n.name = nm
 	get_tree().root.add_child(n)   # add_child 触发 _ready()
+	print("W7_DIAG spawn /root/%s from %s" % [nm, path])
 	return n
 
 
@@ -121,7 +128,8 @@ func _t_flags() -> void:
 
 	# ChunkManager._apply_world_flags 的只读收集入口（I-1 纯读）
 	var collected: Dictionary = _bridge.call("collect_world_flags", [raw, norm, "no.dot.key"])
-	_ck("T2_COLLECT", collected.has(norm) and collected[norm] == true, "collected_keys=%s" % str(collected.keys()))
+	var cv: Variant = collected.get(norm, "<missing>")
+	_ck("T2_COLLECT", collected.has(norm) and cv == true, "collected=%s norm_val=%s" % [str(collected), str(cv)])
 
 	# SaveDelta 静态合并类与 WorldState 口径一致：M4 timestamp 升序回放（seq 与 timestamp 反序）
 	var lines_ts: Array = [
@@ -143,6 +151,7 @@ func _t_flags() -> void:
 
 	# 加载边界 → 强制落盘（dungeon_enter）：ChunkWorldBridge → SaveDeltaWriter.commit → WorldState._commit_delta → 原子写
 	_events.emit_signal("dungeon_transition_requested", "dungeon_01_bellvault", "enter")
+	print("W7_DIAG after_dungeon_emit delta_exists=%s user_dir=%s" % [str(FileAccess.file_exists(DELTA_PATH)), OS.get_user_data_dir()])
 	var delta: Dictionary = _read_delta()
 	_ck("T2_DELTA_WRITTEN", not delta.is_empty(), "delta.json parsed after dungeon_enter commit")
 	if not delta.is_empty():
@@ -207,6 +216,7 @@ func _t_m6() -> void:
 	_ws.call("set_flag", "grace.network.last_grace_id", to_id)
 	# 传送边界信号 → ChunkWorldBridge._on_travel_requested → SaveDeltaWriter.commit(reason=grace_fast_travel) → 原子写
 	_events.emit_signal("travel_requested", to_id)
+	print("W7_DIAG after_travel_emit delta_exists=%s" % str(FileAccess.file_exists(DELTA_PATH)))
 	var landed: Variant = _ws.call("get_flag", "grace.network.last_grace_id", "")
 	_ck("T3_LANDING_FLAG", landed == to_id, "last_grace_id=%s" % str(landed))
 	var delta: Dictionary = _read_delta()
@@ -308,10 +318,15 @@ func _run_all() -> void:
 	_bridge = _spawn(BRIDGE_PATH, "ChunkWorldBridge")
 	_runner = _spawn(RUNNER_PATH, "DialogueRunner")
 	_runner.connect("dialogue_opened", Callable(self, "_on_dialogue_opened"))
+	await get_tree().process_frame   # 等全部节点 _ready() 完成后再联调
 	print("W7_DIAG /root/WorldState resolvable: bridge=%s writer=%s runner=%s" % [
 		str(_bridge.get_node_or_null("/root/WorldState") != null),
 		str(_writer.get_node_or_null("/root/WorldState") != null),
 		str(_runner.get_node_or_null("/root/WorldState") != null)])
+	print("W7_DIAG members bridge.ws=%s bridge.writer=%s writer.ws=%s writer.bus=%s runner.ws=%s" % [
+		str(_bridge.get("_ws") != null), str(_bridge.get("_writer") != null),
+		str(_writer.get("_ws") != null), str(_writer.get("_bus") != null),
+		str(_runner.get("_ws") != null)])
 
 	_t_flags()
 	_t_m6()
