@@ -330,3 +330,243 @@ EXIT=0
 - 默认不刺探：仅执行任务明确要求的 `Rank-4\*.png` 与两份日志只读检查、A8/A9 定向只读核对、引擎 `--headless --check-only` 静态门禁，未扫别人工位、未轮询、未写探针 / 测量 / preflight 脚本；`00-群聊总线.md` 开工只读一次。
 - 中文 UTF-8；所有独立 JSON 与文档内嵌 json 围栏块合法可解析（4/4 落位 + 10/10 独立 + 16/16 内嵌），回执合法；GDScript 为 Godot 4 合法语法（`--check-only` 通过）。
 - **不宣称已能出图、不伪造输出 / 画面 / 截图、不拉起第二个 GPU job、不臆造 ComfyUI 路径、不冒充全工程门禁全绿、不宣称场景已渲染可见、不夸大纹理级导入已生效、不运行 Rank-1 写回脚本、不自行改 A8 口径、不反复改 A9 挂载取舍**：这是本轮最重要的一条。
+
+---
+
+## ⑥ 并发实例复核与补跑（本实例 R10 追加复核 · 2026-11-09 04:41）
+
+> 本实例为 HOST 全闭环调度于 04:03 无人值守自动启动的 R10 执行 AI（派单 `cmd-20261109-040336-525-A4`、`[ROUND=R10]`）。开工只读核对发现本轮 `DONE-R10.md` / `SPEC-VERDICT-CHECK.md` / 回执**已由并发实例先写齐**（回执写入 `outbox\` 后已被中枢实时消费归档到 `dispatcher\receipts\receipt_R10_A4.json`、`outbox\` 随之清空）。按本轮【并发保护】「只补缺口 / 追加复核，不覆盖、不重做」：**未覆盖 / 未重写上述任何既有内容**，只补缺口并追加本复核段。
+> **补跑原因（实质缺口）**：既有 `DONE-R10.md` §1.1 / §2.2 按「可写范围两个占位脚本 `--check-only`」只跑了 G2，而本轮用户【真跑要求】明确要 **三段门禁 G1 `--headless --import` / G2 相关 `.gd` 逐个 `--headless --check-only --script` / G3 `--headless --quit`** 并对全量日志 grep `SCRIPT ERROR` / `Parse Error` / `ERROR`。该缺口由本实例补齐，实际 stdout 与计数见 §6.1。
+> `inbox\` 中 `cmd-20261109-042711-618-A4` 为 `[ROUND=R11]` 另一轮次任务单，**不作本轮依据、本实例不执行 R11**。
+
+### 6.1 三段引擎门禁真跑（本实例，引擎 `D:/Godot/Godot_v4.7.2-stable_win64.exe`）
+
+一次完整真跑的实际 stdout：
+
+```text
+=== [0] 引擎存在性 ===
+-rwxr-xr-x 1 admin 197121 180858888 Sep 24 08:16 /d/Godot/Godot_v4.7.2-stable_win64.exe
+=== [0] 引擎版本（真跑）===
+VERSION_EXIT=0
+4.7.2.stable.official.ed1daf0bf
+=== [G1] --headless --import ===
+G1_EXIT=0
+G1_行数=16
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+[   0% ] first_scan_filesystem | Started 项目初始化 (5 steps)
+[   0% ] first_scan_filesystem | 正在扫描文件结构……
+[  16% ] first_scan_filesystem | 正在加载全局类名……
+[  33% ] first_scan_filesystem | 正在校验 GDExtension……
+[  50% ] first_scan_filesystem | 正在创建自动加载脚本……
+[  66% ] first_scan_filesystem | 正在初始化插件……
+[  83% ] first_scan_filesystem | 正在启动文件扫描……
+[ DONE ] first_scan_filesystem
+
+[   0% ] loading_editor_layout | Started 正在加载编辑器 (5 steps)
+[   0% ] loading_editor_layout | 正在加载编辑器布局……
+[  16% ] loading_editor_layout | 正在加载停靠面板……
+[ DONE ] loading_editor_layout
+
+=== [G2a] --headless --check-only --script hd2d_placeholder.gd ===
+G2a_EXIT=0
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+=== [G2b] --headless --check-only --script hd2d_placeholder_attach.gd ===
+G2b_EXIT=0
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+=== [G3] --headless --quit ===
+G3_EXIT=0
+G3_行数=4
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+WARNING: 2 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
+=== [GREP] 全量日志（G1+G2a+G2b+G3）计数 ===
+ALL_行数=24
+SCRIPT ERROR  = 0
+Parse Error   = 0
+ERROR(全部)   = 0
+WARNING(参考) = 1
+=== [GREP] ERROR / WARNING / leaked 原文（如有）===
+23:WARNING: 2 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+```
+
+> 判读（如实、不冒充全绿）：G1 / G2a / G2b / G3 四段 `EXIT=0`；全量日志 24 行 grep `SCRIPT ERROR=0` / `Parse Error=0` / `ERROR(全部)=0`，`SCRIPT ERROR` 与 `Parse Error` 为 `ERROR` 的子集、均无命中。**仅 1 条 WARNING**：`2 ObjectDB instances were leaked at exit`（G3 退出时，与 `00-汇总.md` §1 / `DONE-R9.md` §2.2 记载的唯一 WARNING 一致，非 ERROR、非 SCRIPT ERROR）—— 如实登记、不隐瞒、不宣称「全绿无警告」。G1 `--import` / G3 `--quit` 会读取 / 更新 `godot\.godot\` 缓存（引擎运行副作用、非本工位手工写入的交付件，`DONE-R9.md` §1.1 一贯口径）；未改 `project.godot` / `scenes\` / 任何 `.gd` / `.tscn` 源文件；未运行 `attach_hd2d_placeholder.gd`（其 `ResourceSaver.save` 会写回 Rank-1 独占场景）。
+
+### 6.2 自身 JSON 自检复跑（本实例，内联 python，不落盘脚本）
+
+第 2 次完整真跑的实际 stdout（`python 3.13.14`，`EXIT=0`）：
+
+```text
+=== [A] 工程根落位件 JSON 真跑解析 ===
+  OK  delivery_manifest.json             dict(20)
+  OK  import.json                        dict(32)
+  OK  palette_256.json                   dict(12)
+  OK  pose_names.json                    dict(14)
+  -> 落位 JSON: 4/4
+=== [B] 源 Rank-4 独立 JSON 真跑解析 ===
+  OK  comfyui_workflow_pixel.json            dict(1)
+  OK  delivery_manifest.json                 dict(20)
+  OK  hd2d_placeholder_params.json           dict(18)
+  OK  hd2d_placeholder_r5_params.json        dict(23)
+  OK  import.json                            dict(32)
+  OK  palette_256.json                       dict(12)
+  OK  player_idle_v1.import.json             dict(31)
+  OK  pose_names.json                        dict(14)
+  OK  prompt_skeleton.json                   dict(20)
+  OK  调度任务单-R2.json                          dict(9)
+  OK  调度任务单-latest.json                      dict(9)
+  -> 独立 JSON: 11/11
+=== [C] Rank-4 *.md 行首 json 围栏块真跑解析 ===
+  OK  ASSET-PROOF.md                     block#1  dict(20)
+  OK  HD-2D视觉规范.md                       block#1  dict(12)
+  OK  R4-验收记录.md                         block#1  dict(8)
+  OK  hd2d_placeholder.md                block#1  dict(2)
+  OK  hd2d_placeholder.md                block#2  dict(10)
+  OK  hd2d_placeholder.md                block#3  dict(3)
+  OK  工具链配置.md                           block#1  dict(1)
+  OK  工具链配置.md                           block#2  dict(1)
+  OK  美术管线.md                            block#1  dict(23)
+  OK  美术管线.md                            block#2  dict(15)
+  OK  美术管线.md                            block#3  dict(2)
+  OK  美术管线.md                            block#4  dict(5)
+  OK  资产交付契约.md                          block#1  dict(24)
+  OK  资产交付契约.md                          block#2  dict(24)
+  OK  资产交付契约.md                          block#3  dict(15)
+  OK  资产交付契约.md                          block#4  dict(8)
+  -> 内嵌 JSON 块: 16/16 解析通过
+=== [D] 关键规格字段只读核对（打印文件实际值）===
+  canvas_base_px                     [('/canvas_base_px', 128), ('/spec/canvas_base_px', 128)]
+  max_colors                         [('/spec/max_colors', 256)]
+  color_count                        [('/spec/color_count', 32)]
+  indexed                            [('/spec/indexed', True)]
+  compress_mode                      [('/expected_import_settings/compress_mode', 'lossless')]
+  mipmaps                            [('/expected_import_settings/mipmaps', False)]
+  texture_filter                     [('/expected_import_settings/texture_filter', 'Nearest')]
+  project_default_texture_filter     [('/expected_import_settings/project_default_texture_filter', 0)]
+  palette_id                         [('/palette_id', 'hd2d_index_256_v1'), ('/palette_id', 'hd2d_index_256_v1')]
+  sample_only                        [('/sample_only', True)]
+  palette colors 数量=32  <=256 : True
+  palette(源) == palette(落位) 逐键 : True
+```
+
+> 判读：落位 **4/4** + 独立 **11/11** + 内嵌 **16/16** 全部 `json.load` / `json.loads` 真跑解析通过；关键规格字段实际值 `canvas_base_px=128` / `max_colors=256` / `color_count=32≤256` / `indexed=true` / `compress_mode=lossless` / `mipmaps=false` / `texture_filter=Nearest` / `project_default_texture_filter=0` / `sample_only=true`，源与落位 `palette_256.json` 逐键一致 `True`；**JSON 自检无回归**。
+> **与既有数字的差异如实登记（不冒充一致）**：独立 JSON 由历轮 `10/10` 变为 `11/11`（多出 `comfyui_workflow_pixel.json`）、`import.json` 由 `dict(31)` 变为 `dict(32)` —— 二者均为并行的 `[ROUND=R11]` 并发实例新增 / 更新件，**非本轮 R10 改动**，且全部合法解析、关键规格字段未漂移，不改变「R10 自检无回归」结论。本实例未写 / 未改任何 JSON。
+
+### 6.3 A9 / A8 复核（本实例，文件实际值提取后比较）
+
+```text
+=== [E] A9 定型参数只读一致性复核（打印实际值）===
+  scene_integration 一行调用 canvas_layer=-10/scale=2      : True
+  scene_integration DEFAULT_CANVAS_LAYER=-10           : True
+  scene_integration DEFAULT_INTEGER_SCALE=2            : True
+  scene_integration TEXTURE_FILTER_NEAREST             : True
+  attach.gd DEFAULT_CANVAS_LAYER = -10                 : True
+  attach.gd DEFAULT_INTEGER_SCALE = 2                  : True
+  attach.gd texture_filter = TEXTURE_FILTER_NEAREST    : True
+  attach.gd set(integer_scale, 默认2) 显式覆盖               : True
+  00-汇总.md §4 A9 layer=-10/scale=2/Nearest             : True
+  -> A9 三处一致 : True
+  [如实登记] hd2d_placeholder.gd 导出默认 integer_scale = 3（R6 冻结件，被场景实例值 2 覆盖）
+=== [F] A8 128bit 歧义登记口径只读复核 ===
+  00-汇总.md §4 A8 含『待用户确认』                              : True
+  00-汇总.md §4 A8 含『暂按』128px 理解                         : True
+  00-汇总.md §4 A8 含『不自行改口径，以用户为准』                       : True
+  00-协作契约.md §9.3 含『待用户确认』                             : True
+  总线 MSG-0400 含 A8 裁决口径                                : True
+  -> A8 仍『待用户确认、暂按 128px 理解』 : True
+```
+
+- **A9**：`layer=-10` / `integer_scale=2` / Nearest 在 `scene_integration.md`（§2.1 一行调用 / §3.1 常量 / §3.2 Nearest / §3.3 config 默认）、`godot\scripts\render\hd2d_placeholder_attach.gd`（`:17` / `:18` / `:44` / `:45`）、`00-汇总.md` §4 A9 三处一致，[E] **9/9 True** → `A9 三处一致=True`。如实登记 `hd2d_placeholder.gd:23` 导出默认 `integer_scale=3` 为 R6 冻结件既有默认、被 `courtyard.tscn:128` 实例值 `2` 与 `attach.gd:45` `set()` 覆盖，属「脚本默认 vs 实例覆盖」、**非参数冲突**；本实例**未改挂载取舍、未反复改口径、未写一个字节**。
+- **A8**：[F] **5/5 True** → `128bit` 歧义**仍登记「待用户确认、暂按 128px 基准画布理解」**、「不自行改口径，以用户为准」；本实例未写上述任何登记文件、未新增解释、未回改口径。
+
+### 6.4 出图 job 只读验收（本实例，一次只读检查，未启动第二个 GPU job）
+
+```text
+=== [G] 单一出图 job 只读验收（Rank-4，一次检查）===
+Rank-4 PNG 计数 = 0
+asset_proof_stdout.txt bytes=0 mtime=2026-11-09 01:05:48.081498900 +0800
+  报错类命中=0 完成类命中=0
+  --- 末 3 行 ---
+asset_proof_stderr.log bytes=25320 mtime=2026-11-09 01:21:30.091430800 +0800
+  报错类命中=0 完成类命中=2
+  --- 末 3 行 ---
+  warnings.warn(
+Fetching 2 files:   0%|          | 0/2 [00:00<?, ?it/s]Fetching 2 files: 100%|██████████| 2/2 [00:00<00:00, 999.83it/s]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards:  50%|█████     | 1/2 [05:35<05:35, 335.95s/it]
+=== NOW ===
+2026-11-09 04:41:07 +0800
+```
+
+- `Rank-4\` 下 PNG 计数 **0**；`godot\assets\generated\` 下 PNG 亦 **0**（只读 Glob）。`asset_proof_stdout.txt` 0 字节、`asset_proof_stderr.log` 25320 字节（mtime `01:21:30`）、末行停在 `Loading checkpoint shards: 50%|█████ | 1/2`、报错类关键字命中 0。「完成类」命中 2 行均为进度条里的 `100%`（`Fetching 2 files: 100%`），**不是出图完成 / 写 PNG**，不据此宣称产出。
+- 本实例复核时刻 `04:41:07 +0800`，距日志最后写入 **199.6 分钟无新增**（并发 `DONE-R10.md` 记 04:10:18 / 168.8 分钟，本实例更晚，如实以本次复核为准、**不改写既有数字**）。
+- 结论：**长期阻塞延续**；无 PNG → 不验收 alpha 通道 / 128px 基准 / ≤256 色（无源图，不编造校验数据）、不宣称已能出图；**未启动第二个 GPU job、未杀 / 未重启 / 未等待**单一 job；程序化 `_draw()` 零依赖兜底口径不变、ComfyUI 仍主美术路线。
+
+### 6.5 回执复核（并发保护，不重复写第二份）
+
+- 实际落位：`teamwork\command_center\dispatcher\receipts\receipt_R10_A4.json`（`command_center\ai\4\outbox\` 已被中枢实时消费清空）—— 与 `DONE-R9.md` §1.3 / `DONE-R10.md` §1.3 机制一致，**正常、非失败**。
+- 复核：`json.load` 得 `dict(4)`；`task_id=cmd-20261109-040336-525-A4` / `ai=4` / `status=done` / `result` 引用 `DONE-R10.md` 与 `SPEC-VERDICT-CHECK.md` 实际结论，四项严格符合本轮派单要求，`result_len` 非空。
+- 处置：按【并发保护】「不覆盖、不重做」，**未重复写第二份回执**、未改已归档回执、`outbox\` 未新增文件；本实例以「复核其合法 + 追加本段留痕」替代重做。
+
+### 6.6 首次自检脚本失败如实登记（不隐瞒）
+
+| 次序 | 现象 | 性质 | 处置 |
+|---|---|---|---|
+| 第 1 次 | [A][B][C] 均 `0/0`，[D] 段 `open(.../import.json)` 抛 `FileNotFoundError`、`EXIT=1` | 内联自检把工程路径写成 Git Bash 挂载形式 `/f/Game/...`，Windows 原生 `python 3.13.14` 不识别该挂载点 → `glob` 全空 | 中断，半截 `0/0` 输出**不采信、不拼接** |
+| 第 2 次 | [A]~[F] 一次完整跑通、`EXIT=0` | 路径改为 `F:/Game/...` | **§6.2 / §6.3 采用的最终输出** |
+
+> 与 `DONE-R10.md` §2.4「首次两次正则失败如实登记、以第 3 次完整一次 stdout 为准」同一口径：失败只涉及自检脚本自身路径写法，**与工程内任何 `.gd` / `.tscn` / JSON 无关**，不沿用旧结论、不冒充一次跑通。
+
+### 6.7 本实例实际写入文件清单（并发保护下）
+
+| # | 文件 | 动作 | 说明 |
+|---|---|---|---|
+| 1 | `Rank-4\DONE-R10.md` | **仅追加本 §6 复核段** | 既有 ①~⑤ 段与全部既有内容一个字节未改、未覆盖、未重做 |
+| 2 | `outbox\receipt_R10_A4.json` | **未写（复核替代）** | 并发实例已写并被中枢归档；按并发保护不重复写第二份 |
+
+> 除此之外本实例**未写任何文件**：未写 `godot\` 任何源文件 / `.gd` / `.tscn` / `project.godot` / `scenes\` / `assets\generated\` 既有 JSON、未写其它工位 / 群聊总线 / 总纲 / 契约 / 任务书、未自行 `git add` / `commit` / `push`、未启动第二个 GPU job。零付费 / 零外部依赖；中文 UTF-8。本 §6 所有代码块用 `text` 标记、不含行首 json 围栏，故 `Rank-4\*.md` 内嵌 JSON 块口径仍 **16/16**（追加后由 §6.8 最小复核实证）。
+
+### 6.8 追加后最小自洽复核（实际 stdout）
+
+写完 §6 后跑一次内联 python（不落盘脚本）复核，实际输出：
+
+```text
+=== [R1] 追加后 Rank-4 *.md 行首 json 围栏块 ===
+  -> 内嵌 JSON 块: 16/16 解析通过
+  DONE-R10.md 含行首 json 围栏 = False
+=== [R2] DONE-R10.md 三段齐全 + 追加段 ===
+  ## ① 实际交付清单                    : True
+  ## ② 自检结果                      : True
+  ## ③ 未完成项与阻塞                   : True
+  ## ⑥ 并发实例复核与补跑                 : True
+  bytes=50712 lines=529 utf8=True
+=== [R3] 回执 JSON 真跑解析（以实际落位为准）===
+  teamwork/command_center/ai/4/outbox/receipt_R10_A4.json                  exists=False
+  teamwork/command_center/dispatcher/receipts/receipt_R10_A4.json          exists=True
+  实际落位 = teamwork/command_center/dispatcher/receipts/receipt_R10_A4.json
+  dict(4) task_id=cmd-20261109-040336-525-A4 ai=4 status=done result_len=1110
+  result 引用 DONE-R10.md = True
+=== [R4] 既有件只读快照（当前实际值，本实例未写）===
+  godot/project.godot                                  mtime=2026-11-09 04:22:02 bytes=6258
+  godot/scenes/courtyard.tscn                          mtime=2026-11-09 03:17:51 bytes=5054
+  godot/scripts/render/hd2d_placeholder.gd             mtime=2026-11-09 02:33:38 bytes=14670
+  godot/scripts/render/hd2d_placeholder_attach.gd      mtime=2026-11-09 02:55:17 bytes=3776
+  godot/assets/generated/palette_256.json              mtime=2026-11-09 02:29:23 bytes=3575
+```
+
+> 判读：[R1] 证明 §6 未引入行首 json 围栏，内嵌块仍 **16/16**（口径自洽）；[R2] 证明 `DONE-R10.md` 三段齐全 + §6 追加段在册、UTF-8 合法；[R3] 证明回执合法落位 `dispatcher\receipts\`、四字段符合派单、`status=done`、`result` 引用本文件，`outbox\` 为空属中枢正常消费、**非回执缺失**；[R4] 中 `courtyard.tscn` / 两个占位 `.gd` / `palette_256.json(落位)` 的 mtime / bytes 与 `DONE-R10.md` §2.6 [复核4] 开工快照逐项一致，`project.godot` 的 `04:22:02 / 6258` 与并发快照 `02:57:32 / 6063` 不同 —— 该差异来自并行的主 AI / Rank-1 于 04:22 的 Android 导出配置修正（`00-汇总.md` §6.1），**非本实例写入**；本实例对 `project.godot` / `scenes\` 只做只读、未调用任何写操作（G1/G3 仅引擎 `.godot\` 缓存副作用）。如实登记、不冒充「逐项一致」。
+
+### 6.9 本实例完成判定
+
+| 本轮交付项 | 本实例结论 |
+|---|---|
+| A9 定型参数一致、不再反复改挂载取舍 | ✓ 三处一致（[E] 9/9 True），脚本默认 3 覆盖关系如实登记，未改一个字节 |
+| A8 仍「待用户确认、暂按 128px 理解」、不改口径 | ✓ [F] 5/5 True，登记口径在册，未写登记文件 |
+| 复跑 JSON 自检 + 两段占位脚本门禁、无回归 | ✓ 4/4 + 11/11 + 16/16 + 关键字段全对；两段 `--check-only` `EXIT=0`；无回归（差异为 R11 并发新增件，已如实登记） |
+| **真跑三段门禁 G1/G2/G3 + grep 全量日志**（并发 DONE 缺口） | ✓ 补齐：G1/G2a/G2b/G3 四段 `EXIT=0`；`SCRIPT ERROR=0` / `Parse Error=0` / `ERROR=0`；仅 1 条 `ObjectDB leaked` WARNING 如实登记、不冒充全绿 |
+| 只读验收单一出图 job、无 PNG 如实登记长期阻塞 | ✓ PNG=0、199.6 分钟无新增、长期阻塞延续；无 PNG 故不验收 alpha/128px/≤256 色；未启动第二个 GPU job、未杀 / 未重启 / 未等待 |
+| 写 `DONE-R10.md` + 回执 | ✓ `DONE-R10.md` 由并发实例先写齐、本实例按并发保护**追加 §6 复核段**（既有内容未覆盖未重做）；回执 `status=done` 已合法落位并被中枢归档、复核通过、**未重复写第二份** |
+
+> **本实例 R10 达成**（并发保护口径）：按「只补缺口 / 追加复核，不覆盖、不重做」补跑并发 DONE 缺的三段门禁 G1/G3、独立复跑 JSON 自检与 A9/A8 复核、完成出图只读验收，并把实际 stdout 与计数写进 §6；未完成项与阻塞沿用 `DONE-R10.md` ③ 列表（长期阻塞 / 待用户确认 / 跨工位裁决点），均属任务书允许的「如实降级 / 只登记不擅改」范围，**不影响 R10 完成判定、不谎报 done**。零付费 / 零外部依赖 / 不自行 git。

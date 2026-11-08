@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-044100-997",
+  "from": "总指挥",
+  "target": "4",
+  "task": "[ROUND=R12] 【R12 出图就绪核验 · Rank-4】04:39 实测 ComfyUI 0.33.2、像素 SDXL checkpoint 可用，但 LoRA/ControlNet 均为 SD1.5 系。读 F:/Game/aierdengfahuan/teamwork\\Rank-4\\任务书-R12.md 并执行：核验兼容性、产出 COMFYUI-READINESS.md（出图前置清单 + 一键命令 + 旧 job 为何不并行）。**只读核验，不 POST /prompt、不出图、不启动第二个 GPU job**；完成后写 DONE-R12.md 并按本任务单 id 写回执。默认不刺探、零付费、不自行 git push。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}
