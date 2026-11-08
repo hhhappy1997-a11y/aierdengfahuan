@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-013419-327-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "R4 完成，结论见 Rank-4/DONE-R4.md（含 ⑥ 本轮复核补记）。交付：R4-验收记录.md（出图 job 只读验收 / alpha·128px·≤256色收敛路线 / ComfyUI 路径登记阻塞 / RGBA 对齐判据 / 结构化验收 JSON）、DONE-R4.md（完成标志）、本回执。出图 PNG 只读检查（唯一一次）：全目录列举无任何 .png；日志 text_encoder 权重 750/750 已加载、transformer checkpoint shards 50%(1/2)、stdout 空 → 如实阻塞，未启动第二个 GPU job、未重复出图命令、未 kill 现有 job，按 HOST 指令不把无 PNG 当作本轮失败。本实例真跑自检：独立 JSON 10/10、内嵌 JSON 块 16/16（仅行首围栏口径；宽口径 16/19 的 3 例为历史 DONE 正文中行内引用字样被正则误纳、非文件缺陷，已在 DONE ⑥ 如实记录）解析通过；256 色板核对 palette_id=hd2d_index_256_v1 / canvas_base_px=128 / indexed / max_colors=256 / 32 色全 hex6 合法且无重复 / import.json 引用与四项导入值全部一致 → PASS；三段门禁本工位无 .gd/.tscn/.tres（count=0），无适用对象、未跑，不编造输出。未完成与阻塞（如实）：需源 PNG 的实测收敛与 RGBA 逐像素对齐、ComfyUI 路径与工作流 JSON 登记、显存峰值实测均阻塞；调度任务单-latest.json 为 R6/016-A4 与本轮 R4/327-A4 不一致，按 HOST 指定以 327-A4 执行、回执 task_id 用 327-A4（未沿用历史命令 id），差异登记待 HOST 裁决。R4 主体产出由上一次并发实例写入、本轮只补缺口（outbox 回执）并在 DONE-R4.md 追加复核补记，R2/R3 及更早产出未改。"
+}

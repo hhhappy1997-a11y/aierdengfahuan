@@ -18,6 +18,15 @@
 ;
 ; 5 个 autoload 的归属口径见 00-续派与监测规则.md §6 第 3 条：GameEvents 由 3 号实现、1 号注册。
 ; 跨工位脚本（WorldState / GameEvents / SaveSystem）的最终实现由 3 号提供，1 号只在此登记路径。
+;
+; [R8 装配层闭合 2026-11-09，HOST 授权 cmd-20261109-024906-799-A1]
+; R7 全工程门禁 18 条 ERROR 全部来自下列 3 个 autoload 指向了不存在的脚本。
+; 裁决结果（3 个注册项分两类闭合，均不写 3 号 scripts/rpg/ 目录）：
+;   - WorldState / GameEvents：3 号实际落位在 scripts/rpg/，注册路径改指向实际落位；
+;   - SaveSystem：全工程根无 save_system.gd，由 Rank-1 在自身可写的 scripts/world/
+;     补「装配占位」件（不实现存档读写，存档按 I-1 / 契约 §6 仍归 3 号），
+;     注册路径保持不变即指向该占位件；真实实现落位后由 HOST 裁决再改指向。
+; 至此 5 个 autoload 全部指向工程中实际存在的脚本。
 
 config_version=5
 
@@ -31,8 +40,8 @@ config/quit_on_go_back=false
 
 [autoload]
 
-WorldState="*res://scripts/world/world_state.gd"
-GameEvents="*res://scripts/core/game_events.gd"
+WorldState="*res://scripts/rpg/world_state.gd"
+GameEvents="*res://scripts/rpg/game_events.gd"
 SaveSystem="*res://scripts/world/save_system.gd"
 ChunkManager="*res://scripts/world/chunk_streaming.gd"
 SceneRouter="*res://scripts/core/scene_router.gd"

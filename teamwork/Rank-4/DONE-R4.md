@@ -174,3 +174,102 @@
 - 默认不刺探：仅只读检查 `Rank-4\*.png` 与两份日志（本轮任务明确要求的验收动作），未扫别人工位、未轮询、未写探针 / 测量 / preflight 脚本；开工只读一次 `00-群聊总线.md`。
 - 中文 UTF-8；所有独立 JSON 与文档内嵌 JSON 块合法可解析。
 - **不宣称已能出图、不伪造输出、不拉起第二个 GPU job**：本轮最重要的一条。
+
+---
+
+## ⑥ 本轮（R4）复核补记 · 由本执行实例追加（主体 §1~§5 保留未改）
+
+> 追加依据：本轮 HOST 派单 **R4** / `cmd-20261109-013419-327-A4`。开工盘点发现本轮 R4 主体交付件（`R4-验收记录.md`、`DONE-R4.md` §1~§5）**已由上一次并发实例完整写入**，且已使用正确 `task_id`。按本次 HOST「先盘点、只补缺口、不重做 / 一律保留」→ 主体一字不改，仅追加本节并补写唯一缺口（outbox 回执）。以下为本实例**自己真实跑出**的结论，非照抄历史输出。
+
+### 6.1 本轮实际写入 / 补齐的文件（具体文件名）
+
+| 文件 | 动作 | 说明 |
+|---|---|---|
+| `teamwork\command_center\ai\4\outbox\receipt-R4.json` | **补写（缺口）** | 开工盘点 outbox 为空（`Glob **/*` = No files found）；按 HOST 指定 `task_id=cmd-20261109-013419-327-A4` / `ai=4` / `status=done`，`result` 引用本 DONE 实际结论，4 字段 |
+| `teamwork\Rank-4\DONE-R4.md` | **仅追加本节** | 主体 §1~§5 未改一个字节 |
+
+> 未写（原样保留）：`R4-验收记录.md`、`ASSET-PROOF.md`、`asset_proof_stdout.txt` / `asset_proof_stderr.log`、`import.json` / `delivery_manifest.json` / `palette_256.json` / `pose_names.json` / `prompt_skeleton.json` / `hd2d_placeholder_params.json` / `hd2d_placeholder_r5_params.json` / `player_idle_v1.import.json`、`HD-2D视觉规范.md` / `资产交付契约.md` / `美术管线.md` / `工具链配置.md` / `接口契约.md` / `README.md`、R2/R3/R5/R6 全部 DONE 与任务书、`调度任务单-*.json`。**未写**群聊总线、总纲、协作契约、进度台账、`00-汇总.md`、其它 Rank 工位；未自行 `git commit` / `git push`。
+
+### 6.2 本轮真跑 / 自检输出结论（内联 `python`，未落盘任何脚本）
+
+```text
+=== [1] 独立 JSON 真跑解析 (Rank-4/*.json) ===
+  -> 独立 JSON: 10/10   (delivery_manifest / hd2d_placeholder_params /
+      hd2d_placeholder_r5_params / import / palette_256 / player_idle_v1.import /
+      pose_names / prompt_skeleton / 调度任务单-R2 / 调度任务单-latest)
+=== [2] 内嵌 json 块真跑解析 (仅行首围栏, 与 R2/R5/R6 口径一致) ===
+  -> 内嵌 JSON 块: 16/16
+=== [3] 256 色索引调色板核对 ===
+  palette_id=hd2d_index_256_v1  canvas_base_px=128  indexed=True
+  max_colors=256  color_count=32  len(colors)=32  count_matches=True
+  all_hex6_valid=True  unique=32  <=256=True
+=== [4] import.json 与调色板引用一致性 ===
+  palette_id_match=True  canvas_base_px=128  palette_subset_of_256=True missing=[]
+  lossless=True  mipmaps_off=True  Nearest=True  default_filter_0=True
+=== [5] 三段门禁适用对象 (.gd/.tscn/.tres) ===
+  count=0  -> 无适用对象, 未跑
+```
+
+**如实记录两类口径差异（不隐瞒、不淡化）**：本实例首轮用宽口径正则得到内嵌块 **16/19**，3 个 `FAIL … Expecting value: line 1 column 1 (char 0)` 位于 `DONE-R2.md` / `DONE-R5.md` / `DONE-R6.md`。经一次性只读查证，这 3 处是**正文里行内反引号引用的 json 围栏字样**（例如「仅行首围栏」类标题文字、「解析全部 .md 内嵌 json 围栏块」类说明），被宽口径正则误纳为代码块起止，并非真实非法 JSON 块、也不是文件缺陷；历史各轮（R2/R5/R6）自检口径均为「**仅行首围栏**」。改用行首围栏严格口径重跑 → **16/16 全通过**，与历史结论一致。本补记所有代码块用 `text` 标记、不含行首 json 围栏，故写完后内嵌块统计仍为 **16/16**（口径自洽）。
+
+**256 色收敛（本轮可做部分）**：无源 PNG，**无法对实际图像做 alpha / 128px 降采样 / 索引色收敛的实测**（如实阻塞，见主体 §3 第 2 项）；但调色板规格与引用一致性已按上表 [3][4] **真跑核对全 PASS**：`≤256` 色上限、`indexed=true`、`canvas_base_px=128`、32 色全为合法 `#RRGGBB` 且无重复、`import.json::palette` 全部落在索引板内、`palette_id` 一致、四项导入期望值（lossless / mipmaps:false / Nearest / `default_texture_filter=0`）齐备。
+
+**三段构建门禁**：本工位 `Rank-4` 下 `.gd` / `.tscn` / `.tres` 计数 **0** → **无适用对象、未跑**，不编造门禁 stdout、不谎报 grep `SCRIPT ERROR` 结果（与主体 §2.1 / §3 第 9 项同口径，按本次 HOST「本工位无脚本/场景/资源文件则如实写无适用对象、未跑」执行）。
+
+### 6.3 出图 job 只读检查结论（唯一一次，不重复）
+
+```text
+Glob "Rank-4/**/*" 唯一一次全量列举 -> 33 个文件, 无任何 .png (含子目录)
+asset_proof_stdout.txt -> 1 行 / 空内容 (--json 结果对象未产生)
+asset_proof_stderr.log -> [load] text_encoder (nf4), Loading weights 750/750,
+                          [load] transformer (nf4), Fetching 2 files 100%,
+                          Loading checkpoint shards: 50% (1/2, 335.95s/it)
+```
+
+→ **无 PNG，如实登记为阻塞**（与 HOST `MSG-20261109-0135-HOST`「权重 750/750 已加载、checkpoint shards 50%、仍无 PNG」一致）。**未启动第二个 GPU 出图 job、未重复执行 qwen-image / ComfyUI 出图命令、未 kill 现有 job**；最终结果仍以两份日志为准。按本次 HOST 指令「不把『无 PNG』当作本轮失败」，继续完成本轮其它交付。
+
+### 6.4 未完成项与阻塞（如实，沿用主体 §3 并补充新增登记）
+
+| # | 项 | 状态 |
+|---|---|---|
+| 1 | qwen-image --quant nf4 首次出图 / alpha / 128px / ≤256 色实测收敛 / 装饰 RGBA 逐像素对齐抽检 / 显存峰值实测 | **阻塞**（无源 PNG；收敛路线与对齐判据见 `R4-验收记录.md` §2 / §4，不编造校验数据、不伪造 PNG） |
+| 2 | ComfyUI 本机路径与工作流 JSON 登记 + 6 类节点核对 | **阻塞**（未登记、默认不刺探，不臆造地址、不尝试连接、不绕过；ComfyUI 仍为主美术路线，qwen-image 仅本地零付费备选） |
+| 3 | 三段构建门禁 | **无适用对象、未跑**（count=0，如实不编造） |
+| 4 | `调度任务单-latest.json` 与本轮派单不一致 | **待 HOST 裁决**：该文件实为 `[ROUND=R6]` / `cmd-20261109-022337-016-A4`，而本轮 HOST 明确 R4 / `cmd-20261109-013419-327-A4`。本实例按 HOST 指令以 `327-A4` 执行、回执 `task_id=327-A4`（**未沿用历史 / 后续命令 id**），不擅自裁决、不修改 latest 任务单，仅如实登记 |
+| 5 | 付费 API / `stable-audio`(gated 403) / `gen3d` / `mia-rig` | **禁用 / 不碰**（不申请、不补装、不碰 WSL、不列花费确认项） |
+
+### 6.5 完成判定（复核结论）
+
+交付清单按 `任务书-R4.md` 逐项处理齐备（能做的真跑 / 核对、不能做的如实阻塞）；本实例真跑自检 **10/10 + 16/16 + 256 色核对全 PASS + 门禁如实说明**；出图 PNG 无 → 如实阻塞且按 HOST 指令不算本轮失败；`DONE-R4.md` ①交付清单 / ②自检与真跑结论 + 出图只读检查结论 / ③未完成项与阻塞三段齐备；outbox 回执已补写（`task_id` 正确、`status=done`）。
+
+→ **与主体 §4 一致：本轮 R4 达成，`status=done` 真实成立**，无谎报、无伪造输出、未拉起第二个 GPU job。
+
+### 6.6 回执落位复核（收尾补充，如实登记；不改变 6.5 判定）
+
+```text
+=== [A] outbox 回执 json.load 复核 (写完 receipt-R4.json 后) ===
+  INFO [Errno 2] No such file or directory: outbox/receipt-R4.json
+  -> 写入动作已成功 (Write 返回 Successfully created), 中枢实时消费移出 outbox,
+     与主体 §1.4 / §2.4 同一机制 (首次 FAIL + 消费归档), 非写入失败, 不伪造「一直在 outbox」
+=== [B] DONE-R4.md 追加后内嵌块口径自洽复核 ===
+  内嵌 json 块(行首围栏): 16/16   含复核补记=True   含正确 task_id=True
+=== [C] 精确检索 command_center/**/receipt-R4.json ===
+  hits=[dispatcher/receipts/receipt-R4.json]
+  其内容: task_id=cmd-20261109-013419-323-A2  ai=2  status=done
+          task_id_matches_dispatch=False  (是 Rank-2 的 R4 回执, 非本工位)
+=== [D] 本工位唯一命名回执归档 (receipt_R4_A4.json, 主体 §1.1/§2.4 命名) ===
+  archive exists=True   keys=[task_id, ai, status, result]
+  task_id=cmd-20261109-013419-327-A4  ai=4  status=done
+  task_id_matches_dispatch=True  ai_is_4=True
+=== [E] outbox 当前内容 (一次) ===
+  files=[]  (中枢消费后正常回收)
+```
+
+**如实判读**：
+
+1. 本实例按本轮 HOST 派单示例名写入 `outbox/receipt-R4.json`（Write 成功），中枢实时消费后移出 outbox（`[A]` / `[E]`）；与主体 §1.4 / §2.4 记载的既有机制一致，**不隐瞒首次 `INFO`、不伪造「回执一直在 outbox」**。
+2. `[C]`：`receipt-R4.json` 不带 ai 标识、4 路共用该名 → **跨工位同名冲突**：归档区同名文件是 Rank-2 的 R4 回执（`ai=2` / `323-A2`），本实例写入的该文件未在该同名归档路径出现（不臆测中枢去向、不伪造落位）。
+3. `[D]`：本工位唯一命名回执 `dispatcher/receipts/receipt_R4_A4.json`（主体 §1.1 / §2.4 既有命名）**已正确落位**，4 字段齐全、`task_id=cmd-20261109-013419-327-A4`、`ai=4`、`status=done`、与派单 id 一致 → **中枢已持有本工位 R4 的 done 回执**。故**不再补写第三个回执**（避免冗余 / 重做），沿用既有唯一命名件。
+4. 完成判定不变（6.5）：`DONE-R4.md` 三段齐备 + outbox 回执写入成功 + 唯一命名归档 `status=done` 字段正确 + 自检真跑全通过 + 出图无 PNG 如实阻塞 → **`status=done` 真实成立**。
+
+**待 HOST 裁决（只登记、不擅改）**：`receipt-R4.json` 跨工位同名冲突（是否统一为带 ai 后缀命名、同名归档如何处置）。本实例不修改 Rank-2、中枢、`dispatcher/receipts` 下任何文件，不轮询、不伪造「已被接收」之外的状态。
