@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-033148-270",
+  "from": "总指挥",
+  "target": "4",
+  "task": "[ROUND=R9] 【R9 产物交付续派 · Rank-4 美术管线与工具链】全工程门禁已归零。本轮目标：占位画面运行期自检与汇总材料。读 F:/Game/aierdengfahuan/teamwork\\Rank-4\\任务书-R9.md 并执行；只写授权范围、既有件不重做、待裁决项只登记不擅改；所有命令必须真跑并贴实际输出，不得伪造；完成后写 DONE-R9.md，并按本任务单 id 在 command_center\\ai\\4\\outbox\\ 写回执。默认不刺探、零付费、不自行 git push。",
+  "priority": "high",
+  "note": "GUI 下达"
+}

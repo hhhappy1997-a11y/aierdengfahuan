@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-030933-289-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "R9 完成：全量三段门禁复跑两次（G1 --import / G2 全量 51 个 .gd 逐个 --check-only --script / G3 --quit），G1/G3 EXIT=0、G2 51/51 EXIT=0；SCRIPT ERROR=0 / Parse Error=0 / ERROR 行数=0，ERROR=0 达成（前后对比 R7 18 → R8 最终 4 → R9 0），ROUND1 与 FINAL 两次结果一致。归因为 Rank-2 依 MSG-20261109-0309-HOST 裁决移除 scripts/combat/spawn_request.gd 的重复 class_name，I-3 权威件 scripts/rpg/spawn_request.gd 保留；Rank-1 未改任何跨工位文件。HD-2D 占位画面按 Rank-4 scene_integration.md §2.1 的一行调用经追加式构建脚本接入 courtyard.tscn：20 → 22 节点，既有 20 节点声明逐字一致（EXISTING_20_NODE_DECLARATIONS_IDENTICAL=true），接入点 root=Courtyard → HD2DPlaceholderLayer(layer=-10) → HD2DPlaceholder(integer_scale=2)，未破坏既有节点、未重做 build_courtyard.gd、未动 project.godot。save_system.gd（Rank-1 装配占位）与 Rank-3 save_delta_writer.gd 的归属结论只登记、未越界改。仍如实登记不冒充全绿的部分：1 条 leaked WARNING（WARNING 级、非 ERROR、G3 EXIT=0）；接入脚本 --script 真跑时点在 Rank-2 移除落位前出现 2 行 SpawnRequest 同名类冲突（并行时序，脚本自身 EXIT=0 且 ATTACH_OK）；出图无 PNG、ComfyUI 路径未登记，未宣称已能出图、未宣称已渲染可见。详见 DONE-R9.md 与 GATE-FINAL.md 实际结论。"
+}

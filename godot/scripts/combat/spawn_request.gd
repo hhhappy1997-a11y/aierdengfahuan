@@ -1,5 +1,7 @@
 extends Resource
-class_name SpawnRequest
+## [R8 裁决 · MSG-20261109-0309-HOST] 去除重复的 class_name SpawnRequest 全局类注册。
+## 按契约 I-3，SpawnRequest 唯一权威件 = res://scripts/rpg/spawn_request.gd（Rank-3 定义）。
+## 本文件保留为 2 号消费侧 17 字段对照规格件，不注册全局类；工程根无 ext_resource 引用它。
 
 ## ===========================================================================
 ## 2 号工位 · R3 落工程规格件：SpawnRequest（I-3 消费侧字段对照，3 号定义）

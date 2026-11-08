@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-030933-293-A3",
+  "ai": 3,
+  "status": "done",
+  "result": "引用 DONE-R8.md 实际结论：R8 四项任务完成。① SaveSystem autoload 归属只登记+建议『保留 Rank-1 占位』，未写 project.godot、未越界改 Rank-1、未选定结论；② 负坐标 chunk_id 归一在本授权目录落地：godot/scripts/rpg 与 teamwork/Rank-3 两份 chunk_world_bridge.gd 增强 sanitize_flag_segment()/normalize_chunk_flag()/normalize_flag_key()（'-'→'neg'，不改 FLAG_KEY_REGEX/§3.1 正则/白名单/Rank-1 文件，diff=IDENTICAL），新建 r8_neg_chunk_test.gd 验证载体，真跑 R8_NORM_SUMMARY pass=18 fail=0；③ dialogue_runner.gd:154 _present_line 仍 pass 归 Rank-1 UI，只登记未改；④ I-1~I-3 联调断言复跑 W7_SUMMARY pass=45 fail=0（与 R7 基线逐字一致，无新增失败），三段门禁 G0/G1/G2/G3/W7/R8 全 EXIT=0、G2_TOTAL=24 G2_FAIL=0、SCRIPT ERROR/ERROR=0（余 ObjectDB leaked/ChunkRoot/I-1 预期拒绝 4 类 WARNING 逐条归因，不冒充全绿）。跨工位并行时序如实登记：SpawnRequest 同名类冲突已被 Rank-2 按 MSG-20261109-0309-HOST 并行清零、本轮 W7 运行期 Rank-1 未触发负坐标 chunk_loaded 故归一生效改由 R8 载体主动断言证明；R8 载体 v1 曾 pass=17 fail=1（断言误判 no.dot.key 为 4 段），修正后 v2 pass=18 fail=0，归一实现未改，未伪造输出。交付主件：teamwork/Rank-3/DONE-R8.md（①交付清单 ②自检含真跑实际输出结论 ③未完成项与阻塞）。"
+}

@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/render/hybrid_2d3d_animated_sprite.gd" id="1_ypt7w"]
+[ext_resource type="Script" path="res://scripts/render/hd2d_placeholder.gd" id="2_w844m"]
 
 [sub_resource type="Environment" id="Environment_w844m"]
 background_mode = 1
@@ -117,3 +118,11 @@ layer = 10
 
 [node name="LightDust" type="Node2D" parent="SubViewportContainer/SubViewport/FXLayer" unique_id=1196391472]
 visible = false
+
+[node name="HD2DPlaceholderLayer" type="CanvasLayer" parent="." unique_id=1016476096]
+layer = -10
+
+[node name="HD2DPlaceholder" type="Node2D" parent="HD2DPlaceholderLayer" unique_id=735159753]
+texture_filter = 1
+script = ExtResource("2_w844m")
+integer_scale = 2

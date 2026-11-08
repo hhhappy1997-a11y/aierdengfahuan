@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-030933-295-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "引用 teamwork/Rank-4/DONE-R8.md 实际结论：①只读验收单一 qwen-image --quant nf4 出图 job——Rank-4 PNG=0、asset_proof_stdout.txt=0 字节、asset_proof_stderr.log=25320 字节停在 checkpoint shards 50%(1/2)，01:21:30→03:17:23 共 115.9 分钟无新增(>90)，报错/完成关键字均 0，判为长期阻塞；正式确立程序化 _draw() 占位为零外部依赖的正式兜底方案(DONE-R8.md §1.3)，ComfyUI 仍主美术路线、不宣称已能出图、不伪造输出、未启动第二个 GPU job/未杀未重启。②palette_256.json 32 色工程根内实际生效验证：project.godot:141 textures/canvas_textures/default_texture_filter=0 与 import.json 期望一致、integer_upscale_factor=2、attach.gd:44 TEXTURE_FILTER_NEAREST 代码落地，128px/indexed=true/max_colors=256/color_count=32/32 色 hex6 去重/语义组覆盖 0~31/luma 一致全 PASS；落位 JSON 4/4 + 独立 10/10 + 内嵌 16/16 + 口径 15/15 内联真跑解析通过；工程根真实 PNG=0/.import=0、两份 import.json 均 sample_only=true，纹理级运行时导入生效无法实测(如实登记，不夸大)。③Rank-1 本轮未按 scene_integration.md 接入占位画面(build_courtyard.gd 无 HD2D_ATTACH 一行调用、scenes 下 11 个 .tscn 含 HD2D 节点者 0)，按有产物才做如实登记画面自检未验收。④ComfyUI 本机路径与工作流 JSON 在 00-工具链接入说明.md §7 仍待用户提供/待刺探指令，记阻塞、不臆造不连接不绕过。⑤两段 --check-only --script 门禁 EXIT=0/SCRIPT ERROR=0/Parse Error=0/ERROR=0(输出仅版本横幅)，未冒充全工程门禁全绿。DONE-R8.md ①交付清单/②自检含解析与真跑实际输出/③未完成项与阻塞 三段齐全；本轮既有件零改动、未写 project.godot/scenes/总线、未自行 git。回执写入 command_center/ai/4/outbox/receipt_R8_A4.json。"
+}

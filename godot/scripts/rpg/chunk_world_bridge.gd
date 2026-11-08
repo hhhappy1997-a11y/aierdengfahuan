@@ -17,8 +17,24 @@ class_name ChunkWorldBridge
 ## 只经 WorldState.get_flag / set_flag 与 3 号内部 SaveDeltaWriter.commit 交互（I-1）。
 ## 不读写存档文件、不构造 SaveDelta、不调 ResourceLoader、不写探针 / 测量 / preflight 脚本。
 ## 中文 UTF-8；Godot 4 全静态类型；零付费 / 零外部依赖。
+##
+## 【R8 · 负坐标归一（本轮落地：只增强本文件，不改对方文件 / 不改正则权威）】
+##   R7 §2 实测：Rank-1 ChunkManager 生成负坐标 chunk_id（chunk_limgrave_-1_-1、
+##   chunk_limgrave_0_-1 等），'-' 不在 I-1 三段式第二段 [a-z0-9_]+ 允许集；旧版
+##   normalize_chunk_flag() 直接拼接 → world.chunk_limgrave_-1_-1.loaded 仍非法，
+##   bridge 只能 push_warning「归一后仍非法」并丢弃（w7.log 两条 WARNING）。
+##   R8 在本文件内新增 sanitize_flag_segment()，把 '-' → "neg" 转义后生成合法 flag；
+##   normalize_chunk_flag() / normalize_flag_key() 均经此清洗。
+##   边界：不改 world_state.gd:24 FLAG_KEY_REGEX、不改 存档与flag规范.md §3.1 正则、
+##   不改 Rank-1 chunk_streaming*.gd 的 chunk_id / flag 命名；待裁决项 B（chunk flag
+##   A/B/C 最终口径）仍只登记不擅改，由 HOST 裁决。本件只保证 3 号归一产物恒定合法。
 
 const VALID_MODULES: Array = ["world", "quest", "combat", "grace", "dungeon"]
+
+# R8 负坐标归一常量：只影响 3 号归一产物，不改下方 FLAG_KEY_REGEX（I-1 正则权威不动）。
+# 合法字符集与 world_state.gd:24 三段式第二段 / 第三段逐字一致。
+const LEGAL_SEGMENT_CHARS: String = "abcdefghijklmnopqrstuvwxyz0123456789_"
+const NEG_TOKEN: String = "neg"   # 单个 '-' → "neg"（-1 → neg1），全合法字符、可读、可反解
 const FLAG_KEY_REGEX: String = "^(world|quest|combat|grace|dungeon)\\.[a-z0-9_]+\\.[a-z0-9_]+$"
 
 # 加载边界 → 存档与flag规范.md §4.8 的强制落盘 reason
@@ -40,23 +56,42 @@ func _ready() -> void:
 
 # ---------------------------------------------------------------- 1) chunk flag 三段式归一
 
+## 把任意字符串收敛成 I-1 三段式允许的「段」（R8 新增）。
+## 每个 '-' 编码为 NEG_TOKEN（"neg"），其余 [a-z0-9_] 原样保留，其它非法字符
+## （大写 / '.' / 空格等）直接丢弃。结果只含 [a-z0-9_]，必定满足 I-1 三段式。
+## 无 '-' 时输出与输入逐字一致（保证既有 45 项联调断言零回归）；不静默猜测业务值。
+## 定位：只生成「稳定 / 唯一 / 合法」的 flag 段，不做业务反解；对 Rank-1 按契约 §2
+## 生成的 chunk_id（区域 slug 为 [a-z0-9_]、坐标为 [0-9-]+）稳定且无碰撞。
+static func sanitize_flag_segment(seg: String) -> String:
+	var out: String = ""
+	for i in range(seg.length()):
+		var c: String = seg.substr(i, 1)
+		if c == "-":
+			out += NEG_TOKEN
+		elif LEGAL_SEGMENT_CHARS.find(c) >= 0:
+			out += c
+	return out
+
 ## 把 Rank-1 的 `chunk.<chunk_id>.loaded` 归一为 I-1 合法三段式 `world.<chunk_id>.loaded`。
 ## 已是合法三段式的 key 原样返回；非法首段统一收敛到 world 段（INV-6：状态全部进 flags）。
+## R8：obj / state 段经 sanitize_flag_segment() 清洗，使含负坐标 '-' 的 key 也能收敛为
+## 合法三段式（如 chunk.chunk_limgrave_0_-1.loaded → world.chunk_limgrave_0_neg1.loaded）。
 ## 非三段式输入返回 ""（调用方过滤，不静默猜测）。
 static func normalize_flag_key(raw_key: String) -> String:
 	var parts: PackedStringArray = raw_key.split(".")
 	if parts.size() != 3:
 		return ""
 	var module: String = parts[0]
-	var obj: String = parts[1]
-	var state: String = parts[2]
 	if not VALID_MODULES.has(module):
 		module = "world"
-	return "%s.%s.%s" % [module, obj, state]
+	return "%s.%s.%s" % [module, sanitize_flag_segment(parts[1]), sanitize_flag_segment(parts[2])]
 
 ## `chunk_limgrave_0_0` → `world.chunk_limgrave_0_0.loaded`（三段式、首段白名单内）。
+## R8：chunk_id 先经 sanitize_flag_segment() 归一，负坐标不再产生非法 flag：
+##   chunk_limgrave_-1_-1 → world.chunk_limgrave_neg1_neg1.loaded（is_valid_flag_key=true）
+##   chunk_limgrave_0_-1  → world.chunk_limgrave_0_neg1.loaded
 static func normalize_chunk_flag(chunk_id: String) -> String:
-	return "world.%s.loaded" % chunk_id
+	return "world.%s.loaded" % sanitize_flag_segment(chunk_id)
 
 ## 三段式 + 首段白名单校验（与 world_state.gd:24 FLAG_KEY_REGEX 逐字一致）。
 static func is_valid_flag_key(key: String) -> bool:

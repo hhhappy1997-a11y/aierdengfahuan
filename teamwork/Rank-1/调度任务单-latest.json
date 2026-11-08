@@ -1,11 +1,11 @@
 {
-  "id": "cmd-20261109-030933-289-A1",
-  "command_id": "cmd-20261109-030933-289",
+  "id": "cmd-20261109-033148-246-A1",
+  "command_id": "cmd-20261109-033148-246",
   "ai": 1,
   "from": "总指挥",
-  "task": "[ROUND=R9] 【R9 裁决后续派 · Rank-1 引擎架构与渲染】总指挥已裁决 SpawnRequest 以 `scripts/rpg/` 为权威。本轮目标：全工程 ERROR 归零回归 + 画面接入。读 F:/Game/aierdengfahuan/teamwork\\Rank-1\\任务书-R9.md 并执行；只写授权范围、既有件不重做、其余待裁决项只登记不擅改；真跑三段门禁并 grep ERROR；完成后写 DONE-R9.md，并按本任务单 id 在 command_center\\ai\\1\\outbox\\ 写回执。默认不刺探、零付费、不自行 git push。",
+  "task": "[ROUND=R10] 【R10 产物交付续派 · Rank-1 引擎架构与渲染】全工程门禁已归零。本轮目标：导出 Windows exe + apk 前置。读 F:/Game/aierdengfahuan/teamwork\\Rank-1\\任务书-R10.md 并执行；只写授权范围、既有件不重做、待裁决项只登记不擅改；所有命令必须真跑并贴实际输出，不得伪造；完成后写 DONE-R10.md，并按本任务单 id 在 command_center\\ai\\1\\outbox\\ 写回执。默认不刺探、零付费、不自行 git push。",
   "priority": "high",
   "note": "GUI 下达",
-  "issued_at": "2026-11-09 03:09:33",
-  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-030933-289-A1\",\"ai\":1,\"status\":\"done\",\"result\":\"...\"}"
+  "issued_at": "2026-11-09 03:31:48",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-033148-246-A1\",\"ai\":1,\"status\":\"done\",\"result\":\"...\"}"
 }
