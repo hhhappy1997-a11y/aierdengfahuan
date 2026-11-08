@@ -1,0 +1,100 @@
+{
+  "sprite_sheet": "boss_spritesheet.png",
+  "frame_width": 128,
+  "frame_height": 128,
+  "columns": 3,
+  "rows": 1,
+  "anchor": [
+    0.5,
+    1.0
+  ],
+  "character": "boss_01_margit",
+  "pose_names": [
+    "dagger_slash",
+    "staff_slam",
+    "holy_hammer"
+  ],
+  "pose_prefix": {
+    "phase_1": "p1_",
+    "phase_2": "p2_"
+  },
+  "phase_hint": {
+    "p1_dagger_slash": 0,
+    "p1_staff_slam": 1,
+    "p2_holy_hammer": 2
+  },
+  "actions": [
+    {
+      "name": "dagger_slash",
+      "start_frame": 0,
+      "end_frame": 0,
+      "fps": 1,
+      "loop": false
+    },
+    {
+      "name": "staff_slam",
+      "start_frame": 1,
+      "end_frame": 1,
+      "fps": 1,
+      "loop": false
+    },
+    {
+      "name": "holy_hammer",
+      "start_frame": 2,
+      "end_frame": 2,
+      "fps": 1,
+      "loop": false
+    }
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "pose": "dagger_slash",
+      "file": "boss_dagger_slash.png",
+      "solid_px": 6185,
+      "colors": 154,
+      "greenish_px": 0
+    },
+    {
+      "index": 1,
+      "pose": "staff_slam",
+      "file": "boss_staff_slam.png",
+      "solid_px": 3916,
+      "colors": 144,
+      "greenish_px": 0
+    },
+    {
+      "index": 2,
+      "pose": "holy_hammer",
+      "file": "boss_holy_hammer.png",
+      "solid_px": 6042,
+      "colors": 112,
+      "greenish_px": 0
+    }
+  ],
+  "palette": "hd2d_index_256_v1",
+  "palette_scope": "shared_sheet_256",
+  "base_canvas_px": 128,
+  "max_colors": 256,
+  "indexed": true,
+  "unique_opaque_rgb": 247,
+  "layer_type": "base",
+  "aligned_with": null,
+  "filter": "nearest",
+  "mipmaps": false,
+  "compression": "lossless",
+  "default_texture_filter": 0,
+  "seed": 20261140,
+  "seeds_by_pose": {
+    "dagger_slash": 20261140,
+    "staff_slam": 20261141,
+    "holy_hammer": 20261142
+  },
+  "pipeline": "comfyui",
+  "pipeline_tier": "primary",
+  "generated_by": "ComfyUI 0.33.2 + pixelArtDiffusionXL_spriteShaper + ImageQuantize(256) + local alpha/crop/degreen + global MEDIANCUT 256",
+  "zero_external_dependency": true,
+  "quality_gate": "实心像素 5%~45% / bbox 不占满 / 最大连通块占比>0.8 / 每帧<=256色 / 绿偏=0；不合格自动换 seed 重试",
+  "rejected": [],
+  "notes": "Boss 三招（R2 冻结 pose 名）各一次真跑通过质检；背景自动判色分离、8 连通域最大块裁切、底部对齐、鲜绿杂色清零；整表全局 256 色量化并保留 alpha。阶段前缀沿用 Boss 数据表的 p1_/p2_ 口径。"
+}
