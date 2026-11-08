@@ -1,0 +1,39 @@
+{
+  "frame_width": 128,
+  "frame_height": 128,
+  "columns": 1,
+  "rows": 1,
+  "anchor": [
+    0.5,
+    1.0
+  ],
+  "actions": [
+    {
+      "name": "idle",
+      "start_frame": 0,
+      "end_frame": 0,
+      "fps": 1,
+      "loop": true
+    }
+  ],
+  "pose_names": [
+    "idle"
+  ],
+  "palette": "hd2d_index_256_v1",
+  "base_canvas_px": 128,
+  "max_colors": 256,
+  "indexed": true,
+  "layer_type": "base",
+  "aligned_with": null,
+  "filter": "nearest",
+  "mipmaps": false,
+  "compression": "lossless",
+  "default_texture_filter": 0,
+  "seed": 20261109,
+  "pipeline": "comfyui",
+  "pipeline_tier": "primary",
+  "generated_by": "ComfyUI 0.33.2 + pixelArtDiffusionXL_spriteShaper + ImageQuantize(256) + local alpha/crop",
+  "source_file": "player_idle_rgba.png",
+  "zero_external_dependency": true,
+  "notes": "背景经本地 Pillow 近白转 alpha；主体经 8 连通域最大块裁切、底部对齐居中；未缩放，硬像素边保持。"
+}
