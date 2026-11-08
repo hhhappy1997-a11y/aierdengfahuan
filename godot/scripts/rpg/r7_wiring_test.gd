@@ -296,6 +296,11 @@ func _cleanup() -> void:
 
 
 func _ready() -> void:
+	# 场景树初始化期间 root 正忙（add_child / 绝对路径 get_node 会被拒），延迟一帧再装配
+	call_deferred("_run_all")
+
+
+func _run_all() -> void:
 	# 用落位后的正确路径手工实例化 3 号 autoload 语义节点（不改 project.godot；顺序保证 _ready 依赖就绪）
 	_ws = _spawn(WS_PATH, "WorldState")
 	_events = _spawn(GE_PATH, "GameEvents")

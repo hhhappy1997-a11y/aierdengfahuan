@@ -1,0 +1,139 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/render/hybrid_2d3d_animated_sprite.gd" id="1_5xnbs"]
+[ext_resource type="Script" path="res://scripts/combat/combat_event_bus.gd" id="2_itmvh"]
+[ext_resource type="Script" path="res://scripts/combat/boss_controller.gd" id="3_hooo5"]
+[ext_resource type="Resource" path="res://data/combat/boss_01_margit.tres" id="4_7hl0m"]
+
+[sub_resource type="Environment" id="Environment_w844m"]
+background_mode = 1
+background_color = Color(0.07, 0.1, 0.16, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.28, 0.36, 0.52, 1)
+ambient_light_energy = 0.6
+tonemap_mode = 2
+fog_enabled = true
+fog_light_color = Color(0.32, 0.42, 0.6, 1)
+fog_density = 0.008
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_e34af"]
+albedo_color = Color(0.14, 0.17, 0.2, 1)
+roughness = 0.9
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_15qxa"]
+size = Vector2(64, 64)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2x0px"]
+albedo_color = Color(0.2, 0.24, 0.27, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_6e1c7"]
+size = Vector3(12, 0.6, 12)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_l1iq4"]
+albedo_color = Color(0.24, 0.28, 0.3, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_k5tdy"]
+size = Vector3(8, 1.2, 8)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_p30c5"]
+albedo_color = Color(0.1, 0.12, 0.15, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_tihrx"]
+size = Vector3(64, 2, 2)
+
+[node name="Courtyard" type="Node3D" unique_id=1214536477]
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="." unique_id=1375263879]
+texture_filter = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+stretch = true
+stretch_shrink = 2
+
+[node name="SubViewport" type="SubViewport" parent="SubViewportContainer" unique_id=519426691]
+own_world_3d = true
+size = Vector2i(640, 360)
+render_target_update_mode = 4
+
+[node name="Camera3D" type="Camera3D" parent="SubViewportContainer/SubViewport" unique_id=2074348766]
+transform = Transform3D(1, 0, 0, 0, 0.8660254, 0.5, 0, -0.5, 0.8660254, 0, 12, 18)
+current = true
+fov = 40.0
+near = 0.1
+far = 400.0
+
+[node name="SunLight" type="DirectionalLight3D" parent="SubViewportContainer/SubViewport" unique_id=243664114]
+transform = Transform3D(0.8660254, 0.35355338, -0.35355338, 0, 0.70710677, 0.70710677, 0.5, -0.6123724, 0.6123724, 0, 0, 0)
+light_color = Color(1, 0.82, 0.55, 1)
+light_energy = 1.6
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="SubViewportContainer/SubViewport" unique_id=1949745634]
+environment = SubResource("Environment_w844m")
+
+[node name="Terrain" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1636525606]
+
+[node name="GroundPlate" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=468563102]
+material_override = SubResource("StandardMaterial3D_e34af")
+mesh = SubResource("PlaneMesh_15qxa")
+
+[node name="TerraceLow" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=1792765888]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.3, -6)
+material_override = SubResource("StandardMaterial3D_2x0px")
+mesh = SubResource("BoxMesh_6e1c7")
+
+[node name="TerraceHigh" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=760291856]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0.6, -8)
+material_override = SubResource("StandardMaterial3D_l1iq4")
+mesh = SubResource("BoxMesh_k5tdy")
+
+[node name="CliffRim" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=186070195]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 20)
+material_override = SubResource("StandardMaterial3D_p30c5")
+mesh = SubResource("BoxMesh_tihrx")
+
+[node name="BackdropFar" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1507239621]
+
+[node name="BackdropMid" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1583456107]
+
+[node name="WetReflection" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1372639736]
+visible = false
+
+[node name="Player" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=2016855823]
+
+[node name="Hybrid2D3DAnimatedSprite" type="Node3D" parent="SubViewportContainer/SubViewport/Player" unique_id=1034712492]
+script = ExtResource("1_5xnbs")
+
+[node name="PixelSprite" type="Sprite3D" parent="SubViewportContainer/SubViewport/Player/Hybrid2D3DAnimatedSprite" unique_id=50639287]
+centered = false
+offset = Vector2(-16, -48)
+pixel_size = 0.03125
+
+[node name="ChunkRoot" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1849473350]
+
+[node name="BossEnemy_01" type="Node3D" parent="SubViewportContainer/SubViewport/ChunkRoot" unique_id=238319143]
+
+[node name="Hybrid2D3DAnimatedSprite" type="Node3D" parent="SubViewportContainer/SubViewport/ChunkRoot/BossEnemy_01" unique_id=4583421]
+script = ExtResource("1_5xnbs")
+
+[node name="PixelSprite" type="Sprite3D" parent="SubViewportContainer/SubViewport/ChunkRoot/BossEnemy_01/Hybrid2D3DAnimatedSprite" unique_id=1554447456]
+centered = false
+offset = Vector2(-16, -48)
+pixel_size = 0.03125
+
+[node name="CombatEventBus" type="Node" parent="SubViewportContainer/SubViewport/ChunkRoot/BossEnemy_01" unique_id=1345982787]
+script = ExtResource("2_itmvh")
+
+[node name="BossController" type="Node" parent="SubViewportContainer/SubViewport/ChunkRoot/BossEnemy_01" unique_id=442545251]
+script = ExtResource("3_hooo5")
+boss_data = ExtResource("4_7hl0m")
+
+[node name="FXLayer" type="CanvasLayer" parent="SubViewportContainer/SubViewport" unique_id=995009074]
+layer = 10
+
+[node name="LightDust" type="Node2D" parent="SubViewportContainer/SubViewport/FXLayer" unique_id=1196391472]
+visible = false
