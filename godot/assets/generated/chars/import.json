@@ -1,7 +1,7 @@
 {
   "frame_width": 128,
   "frame_height": 128,
-  "columns": 4,
+  "columns": 7,
   "rows": 1,
   "anchor": [
     0.5,
@@ -35,13 +35,37 @@
       "end_frame": 3,
       "fps": 1,
       "loop": false
+    },
+    {
+      "name": "attack_heavy",
+      "start_frame": 4,
+      "end_frame": 4,
+      "fps": 1,
+      "loop": false
+    },
+    {
+      "name": "run",
+      "start_frame": 5,
+      "end_frame": 5,
+      "fps": 1,
+      "loop": true
+    },
+    {
+      "name": "hitstun",
+      "start_frame": 6,
+      "end_frame": 6,
+      "fps": 1,
+      "loop": false
     }
   ],
   "pose_names": [
     "idle",
     "walk",
     "roll",
-    "attack_light"
+    "attack_light",
+    "attack_heavy",
+    "run",
+    "hitstun"
   ],
   "palette": "hd2d_index_256_v1",
   "base_canvas_px": 128,
@@ -59,7 +83,7 @@
   "generated_by": "ComfyUI 0.33.2 + pixelArtDiffusionXL_spriteShaper + ImageQuantize(256) + local alpha/crop",
   "source_file": "player_idle_rgba.png",
   "zero_external_dependency": true,
-  "notes": "4 帧 RGBA 精灵表：ComfyUI 0.33.2 + pixelArtDiffusionXL_spriteShaper + ImageQuantize(256) 真跑，本地 Pillow 按四角/主色背景分离 + 8 连通域最大块裁切 + 底部对齐；未缩放，硬像素边保持。attack_heavy 未纳入。 整表再做一次全局 256 色量化（保留 alpha），确保全项目共用一份 ≤256 色索引调色板。",
+  "notes": "4 帧 RGBA 精灵表：ComfyUI 0.33.2 + pixelArtDiffusionXL_spriteShaper + ImageQuantize(256) 真跑，本地 Pillow 按四角/主色背景分离 + 8 连通域最大块裁切 + 底部对齐；未缩放，硬像素边保持。attack_heavy 未纳入。 整表再做一次全局 256 色量化（保留 alpha），确保全项目共用一份 ≤256 色索引调色板。 07:31 扩为 7 帧：attack_heavy 重生成通过、新增 run/hitstun；death 两次重试不合格剔除。hitstun 原图为绿色背景，按主色分离后残留绿意像素数见台账；整表重新全局 256 色量化并保留 alpha。",
   "sprite_sheet": "player_spritesheet.png",
   "frames": [
     {
@@ -89,21 +113,50 @@
       "file": "player_attack_light.png",
       "solid_px": 1965,
       "colors": 141
+    },
+    {
+      "index": 4,
+      "pose": "attack_heavy",
+      "file": "player_attack_heavy.png",
+      "solid_px": 4042,
+      "colors": 154
+    },
+    {
+      "index": 5,
+      "pose": "run",
+      "file": "player_run.png",
+      "solid_px": 5159,
+      "colors": 154
+    },
+    {
+      "index": 6,
+      "pose": "hitstun",
+      "file": "player_hitstun.png",
+      "solid_px": 5506,
+      "colors": 100
     }
   ],
   "seeds_by_pose": {
     "idle": 20261109,
     "walk": 20261110,
     "roll": 20261111,
-    "attack_light": 20261112
+    "attack_light": 20261112,
+    "attack_heavy": 20261120,
+    "run": 20261121,
+    "hitstun": 20261122
   },
   "rejected": [
     {
-      "pose": "attack_heavy",
-      "reason": "ComfyUI 出图 success 但背景为深色装饰、四角与全图主色两种判定均无法分离主体（最大连通块 128x128、57% 实心），质检不通过；原始 PNG 与不合格中间产物已移入 rejected/，待改 prompt/seed 重生成或人工处理"
+      "pose": "death",
+      "attempts": [
+        20261123,
+        20262123
+      ],
+      "reason": "两次真跑均 success 但主体与背景无法分离（80.3% / 74.8% 实心、bbox 占满），质检不通过；原始 PNG 已移入 rejected/"
     }
   ],
   "palette_scope": "shared_sheet_256",
-  "unique_opaque_rgb": 253,
-  "global_quantize": "Pillow MEDIANCUT 256, dither=NONE, alpha preserved"
+  "unique_opaque_rgb": 247,
+  "global_quantize": "Pillow MEDIANCUT 256, dither=NONE, alpha preserved",
+  "quality_gate": "实心像素 5%~45% / bbox 不占满 / 最大连通块占比>0.8 / 每帧<=256色；不合格自动换 seed 重试 1 次"
 }
