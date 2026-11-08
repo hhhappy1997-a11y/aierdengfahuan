@@ -1,0 +1,181 @@
+{
+  "sprite_sheet": "player_decor_spritesheet.png",
+  "layer_type": "decor",
+  "aligned_with": "../chars/player_spritesheet.png",
+  "frame_width": 128,
+  "frame_height": 128,
+  "columns": 8,
+  "rows": 1,
+  "anchor": [
+    0.5,
+    1.0
+  ],
+  "pose_names": [
+    "idle",
+    "walk",
+    "run",
+    "roll",
+    "attack_light",
+    "attack_heavy",
+    "hitstun",
+    "death"
+  ],
+  "actions": [
+    {
+      "name": "idle",
+      "start_frame": 0,
+      "end_frame": 0,
+      "fps": 1,
+      "loop": true
+    },
+    {
+      "name": "walk",
+      "start_frame": 1,
+      "end_frame": 1,
+      "fps": 1,
+      "loop": true
+    },
+    {
+      "name": "run",
+      "start_frame": 2,
+      "end_frame": 2,
+      "fps": 1,
+      "loop": true
+    },
+    {
+      "name": "roll",
+      "start_frame": 3,
+      "end_frame": 3,
+      "fps": 1,
+      "loop": false
+    },
+    {
+      "name": "attack_light",
+      "start_frame": 4,
+      "end_frame": 4,
+      "fps": 1,
+      "loop": false
+    },
+    {
+      "name": "attack_heavy",
+      "start_frame": 5,
+      "end_frame": 5,
+      "fps": 1,
+      "loop": false
+    },
+    {
+      "name": "hitstun",
+      "start_frame": 6,
+      "end_frame": 6,
+      "fps": 1,
+      "loop": false
+    },
+    {
+      "name": "death",
+      "start_frame": 7,
+      "end_frame": 7,
+      "fps": 1,
+      "loop": false
+    }
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "pose": "idle",
+      "file": "player_decor_idle.png",
+      "decor_px": 559,
+      "base_solid_px": 3386,
+      "misaligned_px": 0,
+      "seed": 20261109
+    },
+    {
+      "index": 1,
+      "pose": "walk",
+      "file": "player_decor_walk.png",
+      "decor_px": 725,
+      "base_solid_px": 3550,
+      "misaligned_px": 0,
+      "seed": 20261110
+    },
+    {
+      "index": 2,
+      "pose": "run",
+      "file": "player_decor_run.png",
+      "decor_px": 964,
+      "base_solid_px": 5159,
+      "misaligned_px": 0,
+      "seed": 20261121
+    },
+    {
+      "index": 3,
+      "pose": "roll",
+      "file": "player_decor_roll.png",
+      "decor_px": 881,
+      "base_solid_px": 5249,
+      "misaligned_px": 0,
+      "seed": 20261111
+    },
+    {
+      "index": 4,
+      "pose": "attack_light",
+      "file": "player_decor_attack_light.png",
+      "decor_px": 456,
+      "base_solid_px": 1965,
+      "misaligned_px": 0,
+      "seed": 20261112
+    },
+    {
+      "index": 5,
+      "pose": "attack_heavy",
+      "file": "player_decor_attack_heavy.png",
+      "decor_px": 410,
+      "base_solid_px": 4042,
+      "misaligned_px": 0,
+      "seed": 20261120
+    },
+    {
+      "index": 6,
+      "pose": "hitstun",
+      "file": "player_decor_hitstun.png",
+      "decor_px": 127,
+      "base_solid_px": 5506,
+      "misaligned_px": 0,
+      "seed": 20261122
+    },
+    {
+      "index": 7,
+      "pose": "death",
+      "file": "player_decor_death.png",
+      "decor_px": 639,
+      "base_solid_px": 2244,
+      "misaligned_px": 0,
+      "seed": 20261130
+    }
+  ],
+  "palette": "hd2d_index_256_v1",
+  "palette_scope": "shared_sheet_256",
+  "base_canvas_px": 128,
+  "max_colors": 256,
+  "indexed": true,
+  "unique_opaque_rgb": 210,
+  "filter": "nearest",
+  "mipmaps": false,
+  "compression": "lossless",
+  "default_texture_filter": 0,
+  "seed": "matches base per-frame",
+  "seeds_by_pose": {
+    "idle": 20261109,
+    "walk": 20261110,
+    "run": 20261121,
+    "roll": 20261111,
+    "attack_light": 20261112,
+    "attack_heavy": 20261120,
+    "hitstun": 20261122,
+    "death": 20261130
+  },
+  "pipeline": "derived_from_base (local Pillow, no external generation)",
+  "zero_external_dependency": true,
+  "derivation_rule": "base 像素满足 r>80 且 r>b+20 且 r>g+5 保留原 RGBA，其余一律 (0,0,0,0)",
+  "alignment_contract": "与 base 同尺寸/同帧序/同坐标系/同 seed/同降采样参数；非装饰区全透明；decor 实心像素集合 ⊆ base 实心像素集合",
+  "notes": "装饰层为从已合格 base 帧程序化派生的暖金高光层，不是 AI 独立生成的素材；未做运行时偏移校准，符合 I-5「对齐是生产阶段责任」。"
+}
