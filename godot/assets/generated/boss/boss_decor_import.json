@@ -1,0 +1,96 @@
+{
+  "sprite_sheet": "boss_decor_spritesheet.png",
+  "layer_type": "decor",
+  "aligned_with": "boss_spritesheet.png",
+  "frame_width": 128,
+  "frame_height": 128,
+  "columns": 3,
+  "rows": 1,
+  "anchor": [
+    0.5,
+    1.0
+  ],
+  "character": "boss_01_margit",
+  "pose_names": [
+    "dagger_slash",
+    "staff_slam",
+    "holy_hammer"
+  ],
+  "pose_prefix": {
+    "phase_1": "p1_",
+    "phase_2": "p2_"
+  },
+  "actions": [
+    {
+      "name": "dagger_slash",
+      "start_frame": 0,
+      "end_frame": 0,
+      "fps": 1,
+      "loop": false
+    },
+    {
+      "name": "staff_slam",
+      "start_frame": 1,
+      "end_frame": 1,
+      "fps": 1,
+      "loop": false
+    },
+    {
+      "name": "holy_hammer",
+      "start_frame": 2,
+      "end_frame": 2,
+      "fps": 1,
+      "loop": false
+    }
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "pose": "dagger_slash",
+      "file": "boss_decor_dagger_slash.png",
+      "decor_px": 2653,
+      "base_solid_px": 6185,
+      "misaligned_px": 0,
+      "seed": 20261140
+    },
+    {
+      "index": 1,
+      "pose": "staff_slam",
+      "file": "boss_decor_staff_slam.png",
+      "decor_px": 2546,
+      "base_solid_px": 3916,
+      "misaligned_px": 0,
+      "seed": 20261141
+    },
+    {
+      "index": 2,
+      "pose": "holy_hammer",
+      "file": "boss_decor_holy_hammer.png",
+      "decor_px": 1457,
+      "base_solid_px": 6042,
+      "misaligned_px": 0,
+      "seed": 20261142
+    }
+  ],
+  "palette": "hd2d_index_256_v1",
+  "palette_scope": "shared_sheet_256",
+  "base_canvas_px": 128,
+  "max_colors": 256,
+  "indexed": true,
+  "unique_opaque_rgb": 203,
+  "filter": "nearest",
+  "mipmaps": false,
+  "compression": "lossless",
+  "default_texture_filter": 0,
+  "seed": "matches base per-frame",
+  "seeds_by_pose": {
+    "dagger_slash": 20261140,
+    "staff_slam": 20261141,
+    "holy_hammer": 20261142
+  },
+  "pipeline": "derived_from_base (local Pillow, no external generation)",
+  "zero_external_dependency": true,
+  "derivation_rule": "base 像素满足 r>80 且 r>b+20 且 r>g+5 保留原 RGBA，其余一律 (0,0,0,0)",
+  "alignment_contract": "与 Boss base 同尺寸/同帧序/同坐标系/同 seed/同降采样参数；非装饰区全透明；decor 实心像素集合 ⊆ base 实心像素集合",
+  "notes": "Boss 装饰层从三招已合格 base 程序化派生，不是 AI 独立生成；规则与玩家装饰层一致，便于共用同一份 256 色索引调色板。"
+}
