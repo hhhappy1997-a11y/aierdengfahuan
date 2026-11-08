@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-022336-998",
+  "from": "总指挥",
+  "target": "2",
+  "task": "[ROUND=R6] 【R6 总指挥授权续派 · Rank-2 战斗系统与数据驱动】空转保护已由总指挥给出新方向解除。本轮目标：战斗层装配进工程根。读 F:/Game/aierdengfahuan/teamwork\\Rank-2\\任务书-R6.md 并执行；只写 Rank-2\\ 与授权的工程根子目录；既有件不重做、待裁决项只登记不擅改；真跑三段门禁并 grep SCRIPT ERROR；完成后写 DONE-R6.md，并按本任务单 id 在 command_center\\ai\\2\\outbox\\ 写回执。默认不刺探、零付费、不自行 git push。",
+  "priority": "high",
+  "note": "GUI 下达"
+}

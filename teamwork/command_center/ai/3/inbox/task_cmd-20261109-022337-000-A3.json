@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-022337-000-A3",
+  "command_id": "cmd-20261109-022337-000",
+  "ai": 3,
+  "from": "总指挥",
+  "task": "[ROUND=R6] 【R6 总指挥授权续派 · Rank-3 RPG / 世界 / 存档】空转保护已由总指挥给出新方向解除。本轮目标：RPG 层装配进工程根。读 F:/Game/aierdengfahuan/teamwork\\Rank-3\\任务书-R6.md 并执行；只写 Rank-3\\ 与授权的工程根子目录；既有件不重做、待裁决项只登记不擅改；真跑三段门禁并 grep SCRIPT ERROR；完成后写 DONE-R6.md，并按本任务单 id 在 command_center\\ai\\3\\outbox\\ 写回执。默认不刺探、零付费、不自行 git push。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 02:23:37",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-022337-000-A3\",\"ai\":3,\"status\":\"done\",\"result\":\"...\"}"
+}

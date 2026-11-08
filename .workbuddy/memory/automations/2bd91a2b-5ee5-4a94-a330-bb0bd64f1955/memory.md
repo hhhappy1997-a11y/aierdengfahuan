@@ -28,4 +28,4 @@
 | 2026-11-09 02:06 | R6/R5 | `total=17, done=17, working=0, failed=0`，4 路 idle | 主会话兜底第四圈按**边界收口**完成；四份 DONE 全部标注「待裁决 / 阻塞」→ **触发空转保护**，不再生成 R7/R6 | 登记「任务池已耗尽，等待总指挥给新方向或说汇总」。本轮不派新单是规则判定非遗漏 |
 
 - 备注：`automation_update` 只能配置定时任务，**没有「立即运行」能力**；平台 01:36 未触发属调度侧问题，主会话无法强制。可靠兜底是用户每次下达「自动监测…继续安排下一个」时由主会话执行一次完整循环。
-- **当前状态（02:06）**：所有已派任务完成，`pending=0`。剩余项全部是需总指挥裁决（工程根落位授权、E-8 数值冲突、`schema`/`schemas` 路径、§4.4 旧措辞、chunk flag 归一）、超工位范围（工程根、跨模块装配层）、或外部阻塞（qwen-image 出图 job 无 PNG、ComfyUI 路径未登记）。**下次运行请直接走空转保护：不要生成新轮次、不要硬造任务、不要擅自裁决**，只登记「任务池已耗尽，等待总指挥」并静默结束，除非总指挥已给出新方向或说「汇总」。
+- **状态更新（02:23）**：02:06 的空转保护已由**总指挥裁决解除**。HOST 正式授权在 `F:\Game\aierdengfahuan\godot\` 建立统一 Godot 工程根，四路各写互不重叠子目录（Rank-1 独占 `project.godot` + scripts/core\|render\|ui\|world + scenes + data/render；Rank-2 scripts/combat + data/combat；Rank-3 scripts/rpg + data/rpg + assets/audio/voice；Rank-4 assets/generated + scripts/render/hd2d_placeholder.gd）。已生成 `任务书-R7.md`(Rank-1) 与三份 `任务书-R6.md` 并派发 `cmd-20261109-022336-996-A1` / `998-A2` / `022337-000-A3` / `016-A4`。中枢 `total=21, done=17, working=4, failed=0`。**下次运行按正常全闭环处理这 4 条装配任务**：拉起执行 AI → 收完成 → 续派；待裁决项仍只登记不擅改。总线 `MSG-20261109-0223-HOST` 为裁决原文。

@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-013419-300-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "引用 Rank-1/DONE-R5.md 实际结论：R5 完成（status=done）。①交付：本次新建 BUILD-R5.md、跨模块联调-R5.md、ObjectDB-leak-定位与消除-R5.md、DONE-R5.md、outbox/receipt-R5.json；既有 project_root/（17 件 res:// 工程树）、chunk_streaming_r5.gd、R2/R3/R4 全部保留不改。②真跑(Godot 4.7.2.stable)：--version EXIT=0；三段门禁 G1 --headless --import EXIT=0、G2 对 15 个 .gd 逐个 --check-only --script 全 EXIT=0、G3 --headless --quit EXIT=0；全量日志 grep SCRIPT ERROR=NONE、Parse Error/ERROR/Failed=NONE（WARNING 仅 4 行 2 ObjectDB leaked，WARNING 级不改退出码）。功能驱动 R5_PASS（桌面 9 / 移动端 4 chunk 运行时落地 / I-1 桥接 set_calls=9 read_loaded_flag=true / chunk 实例化），CPU 逻辑帧耗时实测 avg=249.2us max=508.0us（已如实标注非 GPU 渲染帧时间）；ObjectDB leaked 定位钉死为 autoload ChunkManager 在途 load_threaded_request，E1~E5 五组对照 + 消除手段(--quit-after 60)真跑 0 leaked 验证有效。首轮 --script 自定义 MainLoop 驱动 FAILED 含 SCRIPT ERROR 属验证载体缺陷、已如实归档并改真实场景生命周期复跑通过。系统临时验证工程用完已删(DELETE_OK)。③未完成/阻塞（如实登记、未谎报、未淡化）：物理工程根落位超出唯一可写目录、与 Rank-3 真实实现联调未到位、真实渲染帧时间/p99/spike 受 headless 限制未实测、固定门禁 --headless --quit 下 2 leaked WARNING 受不改既有件约束未彻底消除、4 号素材/GDExtension/exe-apk/人工试玩。未写群聊总线/总纲/契约/00-汇总.md，未自行 git，零付费零外部依赖，不刺探。"
+}

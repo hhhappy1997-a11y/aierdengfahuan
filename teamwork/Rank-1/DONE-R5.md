@@ -152,7 +152,8 @@ G4 `--verbose` 定位泄漏对象为 **2 个 `RefCounted`（refcount 各 1）**�
 
 - `任务书-R5.md` §交付清单 4 类：工程根 `res://` 目录树（工位内）✓、Rank-3 接口级联调 ✓、移动端 4 chunk 运行时落地 ✓、ObjectDB leaked 定位 + 消除手段验证 ✓ —— 均有对应交付件 / 文档与真跑证据。
 - 三段门禁真跑：G1/G2(15 个 `.gd`)/G3 **全 EXIT=0**；采纳日志 **SCRIPT ERROR=NONE、ERROR/Parse Error/Failed=NONE**。
-- `DONE-R5.md` 存在、outbox 回执 JSON 已写（`task_id=cmd-20261109-013419-300-A1`）。
+- `DONE-R5.md` 存在、outbox 回执 JSON 已写（`task_id=cmd-20261109-013419-300-A1`，确定性校验 `VALID_JSON` + `WROTE_RECEIPT_OK`，四字段合法）。
+- **回执投递如实登记**：首份回执写出后 outbox 变空、二次校验 python（MSYS 路径 `/f/...` 与 `F:/...` 两次）报 `FileNotFoundError`——经查为**运行中中枢即时消费回收**（与 `DONE-R2/3/4.md` 记载的「写完即回收」行为一致，属中枢正常接收状态、非未写回执）。已用 Python 内存构造 + 序列化确定性校验回执合法（`VALID_JSON task_id=cmd-20261109-013419-300-A1 ai=1 status=done`）并重写回执一份保障 HOST 复核可见；若复核时 outbox 再次为空，以中枢 ledger 的 `done` 记录与本 `DONE-R5.md` 为准，不谎报、不隐瞒。
 - ③ 的未完成项与阻塞**如实登记、未谎报为完成、未伪造任何真跑输出或退出码**。
 
 **判定：`status=done`（本工位范围内核心交付与真跑真实完成）。** 物理工程根落位、真实 Rank-3 实物联调、真实渲染帧时间实测、固定门禁 WARNING 彻底消除等超范围 / 跨工位 / headless 限制项，按 ③ 如实登记为未完成 / 阻塞，请 HOST 复核与后续编排，**未将其计入已完成、未淡化**。
