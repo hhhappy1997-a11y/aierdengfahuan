@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-005741-232-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "R4 完成。实际交付 5 件：build_courtyard.gd、courtyard.tscn（G4 真跑生成，pack/instantiate 节点数 20=20）、chunk_streaming_r4.gd、M1-M2-BUILD.md、DONE-R4.md；R2/R3 既有件一律保留不重做。Godot 4.7.2 三段门禁真跑全 EXIT=0：--import 全局类注册成功、14 个 .gd 全 --check-only EXIT=0、--quit 打开主场景成功；全量日志 grep SCRIPT ERROR=NONE、ERROR/ParseError/Failed=NONE（5 条 WARNING 均逐条归类，其中 4 条为 headless 快速退出的 ObjectDB leaked WARNING，非 SCRIPT ERROR/ERROR，已如实登记未消除）。另实跑 build_courtyard.gd=BUILD_OK nodes=20、G7 直接打开 courtyard.tscn 成功、G6 M2 往返走驱动 M2_PASS（seen=12、max_load_count=1、center_ok=true、flags_ok=true）。桌面/移动双档目标帧时间 16.67/33.33ms 完成资源表静态核对，运行期帧时间/spike 需人工试玩。未完成项与阻塞见 DONE-R4.md ③。详见 Rank-1/DONE-R4.md 与 M1-M2-BUILD.md。"
+}

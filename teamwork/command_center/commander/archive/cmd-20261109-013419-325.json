@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-013419-325",
+  "from": "总指挥",
+  "target": "3",
+  "task": "[ROUND=R4] 【R4 自动续派 · Rank-3 RPG / 世界 / 存档】总指挥命令：上一轮已完成并回收回执。本轮目标：工程根联调 + M6 数据表。现在读 F:/Game/aierdengfahuan/teamwork\\Rank-3\\任务书-R4.md 并按它执行；只写 Rank-3\\，既有交付件不重做；真跑引擎 D://Godot//Godot_v4.7.2-stable_win64.exe 三段门禁并 grep SCRIPT ERROR；完成后写 DONE-R4.md（实际交付清单 / 真跑输出结论 / 未完成项与阻塞），并按本任务单 id 在 command_center\\ai\\3\\outbox\\ 写回执 JSON。默认不刺探、零付费、不自行 git push。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}
