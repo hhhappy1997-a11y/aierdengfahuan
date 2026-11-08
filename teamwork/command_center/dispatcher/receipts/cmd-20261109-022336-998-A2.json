@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-022336-998-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "R6 完成（详见 Rank-2/DONE-R6.md 与 COMBAT-ASSEMBLY.md）：战斗层装配进工程根。godot/scripts/combat/ 落位 12 个 .gd（8 个 Resource 类 + boss_controller/combat_event_bus/combat_resolver 3 件 + player_action_table 装配闭合补位 1 件），godot/data/combat/ 落位 3 份 .tres 并把 11 条 ext_resource 修正为 res://scripts/combat/ 有效路径（残留 0、8 个唯一目标脚本缺失 0）；12 个 .gd 与工位原件逐字一致、3 份 .tres 数值零改动、未写 project.godot、未覆盖既有文件。真跑 Godot 4.7.2 四段门禁：--version/--headless --import/15 个 --check-only --script/--headless --quit 全 EXIT=0，SCRIPT ERROR 专项 grep 0 命中；段 3 如实复现 4 条 E-8 数据层 push_error（检查项 491 错误 3，非脚本错误，不冒充全绿）。I-1~I-4 接线核对一致。E-8 数值、schema 单复数口径、历史 signal/I-2 唯一发射点、SpawnRequest 同名全局类、1/3 号 autoload 路径不一致等待裁决项一律只登记不擅改；补位件 player_action_table.gd 决策与既有 3 个逻辑件未落位已如实登记。临时工程用完即删。"
+}

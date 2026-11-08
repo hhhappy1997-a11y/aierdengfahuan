@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "palette_id": "hd2d_index_256_v1",
+  "version": "r2.0",
+  "status": "frozen_temporary_R2",
+  "owner": "4号工位-美术管线与工具链",
+  "source": "任务书-R2.md §2 / §3 口径7；00-续派与监测规则.md §6 第7条；00-协作契约.md §9.3",
+  "spec": {
+    "canvas_base_px": 128,
+    "indexed": true,
+    "max_colors": 256,
+    "color_count": 32,
+    "encoding": "hex6 uppercase #RRGGBB",
+    "note": "全项目共用一份 ≤256 色索引调色板。当前冻结 32 色，与 HD-2D视觉规范.md §2.2 的 32 色功能色板逐字一致、去重；索引容量上限 256，扩展新色须经主 AI 裁决后统一并入，单资产不得私加。"
+  },
+  "colors": [
+    "#FFF0C2", "#FFD27A", "#F0A94C", "#C97A2E", "#8A5A22",
+    "#BFD0EA", "#7E96BF", "#4A6089", "#2B3A5C", "#16233F", "#0B1226",
+    "#1F3A63", "#16294A", "#0E1B33", "#080F1F",
+    "#E8C479", "#B8944A", "#8A6A32",
+    "#C6BBA4", "#9A8E78", "#6E6453", "#463F35", "#29251F",
+    "#A8C09A", "#6C8A70", "#3E5A4C", "#22372F",
+    "#F5E6C8", "#9FB4D4", "#55688A",
+    "#D9584A", "#6FBF8E"
+  ],
+  "semantic_groups": {
+    "warm_gold_key": {
+      "name": "暖金主光",
+      "indices": [0, 1, 2, 3, 4],
+      "note": "黄金树高光、体积光核心、bloom 过阈色；唯一允许过 bloom 阈值的色族"
+    },
+    "cold_night_fog": {
+      "name": "冷夜雾",
+      "indices": [5, 6, 7, 8, 9, 10],
+      "note": "远景雾、冷阴影中间调；与暖金构成冷暖对冲"
+    },
+    "deep_blue_ui": {
+      "name": "深蓝 UI",
+      "indices": [11, 12, 13, 14],
+      "note": "UI 底板、暗部最深处，兼作轮廓最暗色基准"
+    },
+    "gold_line": {
+      "name": "金线",
+      "indices": [15, 16, 17],
+      "note": "UI 描边、分隔线、角饰；1px 硬边不做渐变（#FFF0C2 已在暖金组，索引 0）"
+    },
+    "stone_earth": { "name": "中性石材/土地", "indices": [18, 19, 20, 21, 22] },
+    "vegetation": { "name": "植被冷绿", "indices": [23, 24, 25, 26] },
+    "ui_text": { "name": "UI 文本", "indices": [27, 28, 29] },
+    "status": { "name": "状态色", "indices": [30, 31] }
+  },
+  "luma_l0_l8": {
+    "note": "灰度明度阶梯 L0~L8，与 HD-2D视觉规范.md §2.3 逐字一致；hex 与 index 均落在 colors 内",
+    "L0": { "index": 14, "hex": "#080F1F", "gray_pct": 8 },
+    "L1": { "index": 10, "hex": "#0B1226", "gray_pct": 12 },
+    "L2": { "index": 9, "hex": "#16233F", "gray_pct": 18 },
+    "L3": { "index": 8, "hex": "#2B3A5C", "gray_pct": 28 },
+    "L4": { "index": 7, "hex": "#4A6089", "gray_pct": 40 },
+    "L5": { "index": 6, "hex": "#7E96BF", "gray_pct": 55 },
+    "L6": { "index": 18, "hex": "#C6BBA4", "gray_pct": 70 },
+    "L7": { "index": 2, "hex": "#F0A94C", "gray_pct": 85 },
+    "L8": { "index": 0, "hex": "#FFF0C2", "gray_pct": 96 }
+  },
+  "usage": [
+    "1. import.json 用 palette_id 引用本板，palette 字段只列本资产实际取用的色号，必须全部落在 colors 内。",
+    "2. 单角色 ≤16 色，取色限本板；降采样 -colors 16 收敛。",
+    "3. 像素素材按 128px 基准画布设计，降采样到 32×32 交付帧时色号必须属于本板。",
+    "4. image/quantize.py 是 DiT 权重量化器，不是 256 色调色板量化器；调色板收敛由 ComfyUI 管线 + Aseprite/ImageMagick 完成，不得混用。"
+  ],
+  "pending": [
+    "128bit 原词歧义仍登记在 README.md 待裁决，本轮按 128px 基准画布理解，不自行改口径",
+    "最终冻结值以总指挥裁决为准，裁决不同按裁决回改"
+  ]
+}

@@ -1,0 +1,465 @@
+
+[gd_resource type="Resource" script_class="DialogueGraph" load_steps=51 format=3]
+
+[ext_resource type="Script" path="res://scripts/rpg/dialogue_gate.gd" id="1_gate"]
+[ext_resource type="Script" path="res://scripts/rpg/dialogue_line.gd" id="1_line"]
+[ext_resource type="Script" path="res://scripts/rpg/dialogue_choice.gd" id="1_choice"]
+[ext_resource type="Script" path="res://scripts/rpg/dialogue_node.gd" id="1_node"]
+[ext_resource type="Script" path="res://scripts/rpg/dialogue_graph.gd" id="1_graph"]
+[ext_resource type="Script" path="res://scripts/rpg/quest_stage.gd" id="1_stage"]
+[ext_resource type="Script" path="res://scripts/rpg/quest_data.gd" id="1_quest"]
+
+
+[sub_resource type="Resource" id="Resource_g01"]
+script = ExtResource("1_gate")
+gate_id = "gate_never_met"
+kind = "flag"
+key = "world.npc_01_bellkeeper.met"
+op = "eq"
+value = false
+negate = false
+
+[sub_resource type="Resource" id="Resource_g02"]
+script = ExtResource("1_gate")
+gate_id = "gate_accepted"
+kind = "flag"
+key = "quest.bell_of_return.accepted"
+op = "eq"
+value = true
+negate = false
+
+[sub_resource type="Resource" id="Resource_g03"]
+script = ExtResource("1_gate")
+gate_id = "gate_stage_le_2"
+kind = "quest_stage"
+key = "quest_01_bell_of_return"
+op = "lte"
+value = 2
+negate = false
+
+[sub_resource type="Resource" id="Resource_g04"]
+script = ExtResource("1_gate")
+gate_id = "gate_has_fragment"
+kind = "item"
+key = "item_bell_fragment"
+op = "gte"
+value = 1
+negate = false
+
+[sub_resource type="Resource" id="Resource_g05"]
+script = ExtResource("1_gate")
+gate_id = "gate_stage_done"
+kind = "quest_stage"
+key = "quest_01_bell_of_return"
+op = "eq"
+value = 3
+negate = false
+
+[sub_resource type="Resource" id="Resource_g06"]
+script = ExtResource("1_gate")
+gate_id = "gate_grace_lit"
+kind = "flag"
+key = "grace.bellvault_entry.lit"
+op = "eq"
+value = true
+negate = false
+
+[sub_resource type="Resource" id="Resource_g07"]
+script = ExtResource("1_gate")
+gate_id = "gate_betrayed"
+kind = "flag"
+key = "quest.bell_of_return.betrayed"
+op = "eq"
+value = true
+negate = false
+
+[sub_resource type="Resource" id="Resource_g08"]
+script = ExtResource("1_gate")
+gate_id = "gate_not_betrayed"
+kind = "flag"
+key = "quest.bell_of_return.betrayed"
+op = "ne"
+value = true
+negate = false
+
+
+[sub_resource type="Resource" id="Resource_g09"]
+script = ExtResource("1_gate")
+gate_id = "gate_not_accepted"
+kind = "flag"
+key = "quest.bell_of_return.accepted"
+op = "ne"
+value = true
+negate = false
+
+[sub_resource type="Resource" id="Resource_l01"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_01"
+speaker = "守钟人·伊莱"
+text = "钟窖底下还留着一枚钟舌。你若下去，替我取回来。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l02"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_02"
+speaker = "守钟人·伊莱"
+text = "它本该在黄昏敲响，让走失的人认得回家的路。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l03"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_03"
+speaker = "守钟人·伊莱"
+text = "井底那扇门只肯从里头开。别指望原路回来。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l04"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_04"
+speaker = "守钟人·伊莱"
+text = "不急。钟不会跑，我也不会。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l05"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_05"
+speaker = "守钟人·伊莱"
+text = "那么去吧。别碰大钟本身——守钟人还醒着。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l06"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_06"
+speaker = "守钟人·伊莱"
+text = "拿回钟舌，回来找我。或者，不回来也行。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l07"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_07"
+speaker = "守钟人·伊莱"
+text = "井底的锈钥匙在回廊，别漏了。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l08"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_08"
+speaker = "守钟人·伊莱"
+text = "没听见钟响，我就当你还在路上。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l09"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_09"
+speaker = "守钟人·伊莱"
+text = "你手里那道金光……是钟舌。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l10"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_10"
+speaker = "守钟人·伊莱"
+text = "交给我，让黄昏再响一次；或者，你自己留着。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l11"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_11"
+speaker = "守钟人·伊莱"
+text = "好。等第一声钟响，你会知道这条路没白走。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l12"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_12"
+speaker = "守钟人·伊莱"
+text = "你把钟舌留在了自己手里。也罢，钟认得它的主人。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l13"]
+script = ExtResource("1_line")
+line_id = "line_bellkeeper_13"
+speaker = "守钟人·伊莱"
+text = "钟会记得你。去吧，别在井底待太久。"
+portrait_id = "portrait_npc_bellkeeper"
+
+[sub_resource type="Resource" id="Resource_l14"]
+script = ExtResource("1_line")
+line_id = "line_memory_01"
+speaker = "记忆的余响"
+text = "钟声曾从这里出发，穿过雾，落回每个走失的人耳边。"
+gates = [SubResource("Resource_g08")]
+portrait_id = ""
+
+[sub_resource type="Resource" id="Resource_l15"]
+script = ExtResource("1_line")
+line_id = "line_memory_02"
+speaker = "记忆的余响"
+text = "钟舌被留在了别处。从此黄昏只有风，没有响。"
+gates = [SubResource("Resource_g07")]
+portrait_id = ""
+
+
+[sub_resource type="Resource" id="Resource_c01"]
+script = ExtResource("1_choice")
+choice_id = "choice_accept"
+text = "接下委托"
+next_node_id = "node_accepted"
+set_flags = {
+"quest.bell_of_return.accepted": true
+}
+grant_items = {}
+consume_items = {}
+advance_quest = {
+"quest_id": "quest_01_bell_of_return",
+"stage_id": "stage_01_fetch"
+}
+end_dialogue = false
+
+[sub_resource type="Resource" id="Resource_c02"]
+script = ExtResource("1_choice")
+choice_id = "choice_decline"
+text = "我再想想"
+next_node_id = "node_declined"
+set_flags = {}
+grant_items = {}
+consume_items = {}
+advance_quest = {}
+end_dialogue = false
+
+[sub_resource type="Resource" id="Resource_c03"]
+script = ExtResource("1_choice")
+choice_id = "choice_hand_over"
+text = "交出钟舌碎片"
+gates = [SubResource("Resource_g04")]
+next_node_id = "node_turn_in_done"
+set_flags = {
+"quest.bell_of_return.completed": true
+}
+grant_items = {}
+consume_items = {
+"item_bell_fragment": 1
+}
+advance_quest = {
+"quest_id": "quest_01_bell_of_return",
+"stage_id": "stage_03_done",
+"reward_key": "full"
+}
+end_dialogue = false
+
+[sub_resource type="Resource" id="Resource_c04"]
+script = ExtResource("1_choice")
+choice_id = "choice_hoard"
+text = "把碎片收进怀里"
+gates = [SubResource("Resource_g04")]
+next_node_id = "node_hoard_done"
+set_flags = {
+"quest.bell_of_return.betrayed": true,
+"quest.bell_of_return.completed": true
+}
+grant_items = {}
+consume_items = {
+"item_bell_fragment": 1
+}
+advance_quest = {
+"quest_id": "quest_01_bell_of_return",
+"stage_id": "stage_03_done",
+"reward_key": "betrayed"
+}
+end_dialogue = false
+
+
+[sub_resource type="Resource" id="Resource_n01"]
+script = ExtResource("1_node")
+node_id = "node_first_meet"
+is_entry = true
+gates = [SubResource("Resource_g01")]
+lines = [SubResource("Resource_l01"), SubResource("Resource_l02"), SubResource("Resource_l03")]
+choices = [SubResource("Resource_c01"), SubResource("Resource_c02")]
+on_enter_flags = {
+"world.npc_01_bellkeeper.met": true
+}
+end_dialogue = false
+
+[sub_resource type="Resource" id="Resource_n02"]
+script = ExtResource("1_node")
+node_id = "node_turn_in_prompt"
+is_entry = true
+gates = [SubResource("Resource_g04")]
+lines = [SubResource("Resource_l09"), SubResource("Resource_l10")]
+choices = [SubResource("Resource_c03"), SubResource("Resource_c04")]
+on_enter_flags = {}
+end_dialogue = false
+
+[sub_resource type="Resource" id="Resource_n03"]
+script = ExtResource("1_node")
+node_id = "node_declined"
+is_entry = true
+gates = [SubResource("Resource_g09")]
+lines = [SubResource("Resource_l04")]
+choices = []
+on_enter_flags = {}
+end_dialogue = true
+
+[sub_resource type="Resource" id="Resource_n04"]
+script = ExtResource("1_node")
+node_id = "node_accepted"
+is_entry = false
+gates = []
+lines = [SubResource("Resource_l05"), SubResource("Resource_l06")]
+choices = []
+on_enter_flags = {}
+end_dialogue = true
+
+[sub_resource type="Resource" id="Resource_n05"]
+script = ExtResource("1_node")
+node_id = "node_in_progress"
+is_entry = true
+gates = [SubResource("Resource_g02"), SubResource("Resource_g03")]
+lines = [SubResource("Resource_l07"), SubResource("Resource_l08")]
+choices = []
+on_enter_flags = {}
+end_dialogue = true
+
+[sub_resource type="Resource" id="Resource_n06"]
+script = ExtResource("1_node")
+node_id = "node_turn_in_done"
+is_entry = false
+gates = []
+lines = [SubResource("Resource_l11")]
+choices = []
+on_enter_flags = {}
+end_dialogue = true
+
+[sub_resource type="Resource" id="Resource_n07"]
+script = ExtResource("1_node")
+node_id = "node_hoard_done"
+is_entry = false
+gates = []
+lines = [SubResource("Resource_l12")]
+choices = []
+on_enter_flags = {}
+end_dialogue = true
+
+[sub_resource type="Resource" id="Resource_n08"]
+script = ExtResource("1_node")
+node_id = "node_completed"
+is_entry = true
+gates = [SubResource("Resource_g05")]
+lines = [SubResource("Resource_l13")]
+choices = []
+on_enter_flags = {}
+end_dialogue = true
+
+[sub_resource type="Resource" id="Resource_n09"]
+script = ExtResource("1_node")
+node_id = "node_grace_memory"
+is_entry = true
+gates = [SubResource("Resource_g06")]
+lines = [SubResource("Resource_l14"), SubResource("Resource_l15")]
+choices = []
+on_enter_flags = {}
+end_dialogue = true
+
+
+[sub_resource type="Resource" id="Resource_s00"]
+script = ExtResource("1_stage")
+stage_id = "stage_00_offer"
+title = "未接：钟窖的传闻"
+entry_flags = {}
+on_complete_flags = {
+"quest.bell_of_return.accepted": true
+}
+rewards = {}
+next_stage_id = "stage_01_fetch"
+
+[sub_resource type="Resource" id="Resource_s01"]
+script = ExtResource("1_stage")
+stage_id = "stage_01_fetch"
+title = "取回钟舌碎片"
+entry_flags = {
+"quest.bell_of_return.stage": 1
+}
+on_complete_flags = {
+"quest.bell_of_return.stage": 2
+}
+rewards = {}
+next_stage_id = "stage_02_return"
+
+[sub_resource type="Resource" id="Resource_s02"]
+script = ExtResource("1_stage")
+stage_id = "stage_02_return"
+title = "把钟舌交还守钟人"
+entry_flags = {
+"quest.bell_of_return.stage": 2
+}
+on_complete_flags = {
+"quest.bell_of_return.stage": 3
+}
+rewards = {
+"runes": 800,
+"items": {
+"item_bell_charm": 1
+},
+"flags": {},
+"branch_overrides": {
+"betrayed": {
+"runes": 200,
+"items": {},
+"flags": {
+"quest.bell_of_return.betrayed": true
+}
+}
+}
+}
+next_stage_id = "stage_03_done"
+
+[sub_resource type="Resource" id="Resource_s03"]
+script = ExtResource("1_stage")
+stage_id = "stage_03_done"
+title = "归乡之铃（已完成）"
+entry_flags = {
+"quest.bell_of_return.completed": true
+}
+on_complete_flags = {}
+rewards = {}
+next_stage_id = ""
+
+
+[sub_resource type="Resource" id="Resource_q01"]
+script = ExtResource("1_quest")
+quest_id = "quest_01_bell_of_return"
+display_name = "归乡之铃"
+prerequisite_flags = {
+"grace.limgrave_gatefront.lit": true
+}
+start_stage_id = "stage_00_offer"
+stages = [SubResource("Resource_s00"), SubResource("Resource_s01"), SubResource("Resource_s02"), SubResource("Resource_s03")]
+rewards = {
+"runes": 0,
+"items": {},
+"flags": {
+"quest.bell_of_return.reward_claimed": true
+}
+}
+
+
+[sub_resource type="Resource" id="Resource_graph_memory"]
+script = ExtResource("1_graph")
+graph_id = "graph_grace_bellkeeper_memory"
+trigger_source = "grace_memory"
+trigger_owner_id = "grace_bellvault_entry"
+start_node_id = "node_grace_memory"
+nodes = [SubResource("Resource_n09"), SubResource("Resource_n08")]
+linked_quest = null
+
+
+[resource]
+script = ExtResource("1_graph")
+graph_id = "graph_npc_bellkeeper"
+trigger_source = "npc_talk"
+trigger_owner_id = "npc_01_bellkeeper"
+start_node_id = "node_first_meet"
+nodes = [SubResource("Resource_n01"), SubResource("Resource_n02"), SubResource("Resource_n03"), SubResource("Resource_n04"), SubResource("Resource_n05"), SubResource("Resource_n06"), SubResource("Resource_n07"), SubResource("Resource_n08")]
+linked_quest = SubResource("Resource_q01")
+linked_graphs = [SubResource("Resource_graph_memory")]

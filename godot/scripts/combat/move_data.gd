@@ -1,0 +1,42 @@
+extends Resource
+class_name MoveData
+
+## ===========================================================================
+## 2 号工位 · R3 落工程规格件：MoveData（招式）
+##
+## 【R3 定位】按 任务书-R3.md §2 落到本工位 schema\ 子目录，文件名为工程名（去掉 R2
+##   平铺规格件的 schema_ 前缀）。等 HOST 汇总时并入工程 data\schemas\；本轮不越界写
+##   工程目录。R2 平铺的 schema_move_data.gd 等规格件一律保留不改、不重做。
+## 【字段唯一真源】teamwork/Rank-2/数据表schema.md §3：字段名 / 类型 / 默认值逐字一致。
+##   数值实例：boss_01_margit.tres 的 3 个 move 子资源、enemy_01_limgrave_soldier.tres。
+## 【落工程路径】res://data/schemas/move_data.gd
+##   依据：数据表schema.md §0.1 路径表 + 3 份 .tres 的 ext_resource 均为 res://data/schemas/。
+##   【口径差异·待 HOST 裁决】任务书-R3.md §2 字面写 res://data/schema/（单数），与
+##   唯一真源 / R2 规格件 / 3 份 .tres 的 res://data/schemas/（复数）不一致。为保证
+##   .tres 不悬空、真跑自洽，本轮按复数声明；差异如实登记在 DONE-R3.md，不擅改他人文档。
+## 【硬约束】total_frames 不设字段，由 startup + active + recovery 派生（E-2）；判定区间
+##   [startup, startup + active) 左闭右开；数值全部留在 .tres 实例。
+## 引擎：Godot 4 标准版 / GDScript，全静态类型。
+## ===========================================================================
+
+@export var id: String = ""
+@export var display_name: String = ""
+@export var pose_name: String = "attack_light"
+@export var startup_frames: int = 12
+@export var active_frames: int = 4
+@export var recovery_frames: int = 18
+@export var motion_multiplier: float = 1.0
+@export var damage_type: String = "physical"
+@export var poise_damage: float = 0.0
+@export var status_buildup_bleed: float = 0.0
+@export var status_buildup_poison: float = 0.0
+@export var status_buildup_frost: float = 0.0
+@export var hitbox_reach_px: float = 64.0
+@export var hitbox_arc_deg: float = 90.0
+@export var hitbox_offset_px: Vector2 = Vector2.ZERO
+@export var min_range_px: float = 0.0
+@export var max_range_px: float = 96.0
+@export var weight: float = 1.0
+@export var cooldown_sec: float = 0.0
+@export var can_cancel_frames: int = 0
+@export var breaks_guard: bool = false

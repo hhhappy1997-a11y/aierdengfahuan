@@ -131,3 +131,42 @@
 ---
 
 > 回执：已写入 `command_center\ai\3\outbox\receipt_R4_A3.json`（`task_id=cmd-20261109-013419-325-A3`、`ai=3`、`status=done`，`result` 引用本文件实际结论）；写入后由 HOST 中枢监测**自动回收**至 `command_center\dispatcher\receipts\receipt_R4_A3.json`，`ai/3/status.json` 同步为 `state=idle` / `current_task=""` / `completed=3`（`last_seen 2026-11-09 01:56:14`）。回收件经 `json.load` 复核合法、字段逐字匹配（RECEIPT_JSON_OK / task_id 匹配 = True）。此为全闭环正常回收行为（写入动作已完成），本轮**未重复写回执**。
+
+---
+
+## ④ 本次 R4 独立执行实例补记（派单 cmd-20261109-013419-325-A3）
+
+> 本段为**本次派单的独立执行实例**追加，上文 ①~③ 由前一次并发实例写入，按「只补缺口、不重做」**一律保留、未改一字**。本次开工按用户 R4 硬性约束重新盘点：R4 全部 5 件交付件（`chunk_world_bridge.gd` / `m6_area_bindings.gd` / `m6_area_bindings.tres` / `voice_line_binder.gd` / `存档规范-4.4口径同步.md`）+ `DONE-R4.md` 均已在位且完整，其 task_id 与本次派单 `cmd-20261109-013419-325-A3` 一致 → **保留、不重做、未改一字**；唯一缺口是 `command_center/ai/3/outbox/` 当前为空（上一实例回执已被 HOST 中枢回收），本实例按本次派单命令 id 补写一份回执。注意 `调度任务单-latest.json` 已被后续 R6 圈次覆盖为 `cmd-20261109-022337-000-A3`/`[ROUND=R6]`，本次以用户明确指定的 R4 派单与命令 id 为准。
+
+### 4.1 本次亲自真跑三段门禁（独立系统临时目录，用完即删）
+
+引擎 `D:/Godot/Godot_v4.7.2-stable_win64.exe`；`--version` 实测 `4.7.2.stable.official.ed1daf0bf`（G0_EXIT=0）。临时最小工程 `C:/Users/62668/AppData/Local/Temp/r4_verify_a3_run`（独立目录名，避免与并发工位冲突）：22 个 `.gd` → `res://scripts/rpg/`、6 份 `.tres` → `res://data/...`、2 份 `.json` → `res://data/voice/`，最小 `project.godot`（config_version=5、3 个 autoload：GameEvents / WorldState / SaveDeltaWriter）+ 空 `main.tscn`；日志独立目录 `r4_verify_a3_logs_run`。SETUP 实测 `GD=22 TRES=6 JSON=2`。**未改工位任何源文件**。
+
+| 段 | 实际命令 | 本次退出码 | 本次实际输出结论 |
+|---|---|---|---|
+| G0 | `<godot> --version` | `0` | `4.7.2.stable.official.ed1daf0bf` |
+| G1 | `<godot> --headless --path <tmp> --import` | `0` | `first_scan_filesystem` 5 steps；`update_scripts_classes` **22 steps**（ChunkWorldBridge / M6AreaBindings / VoiceLineBinder 等全局类实际注册，日志逐条可见）；`loading_editor_layout`；**无 Parse Error** |
+| G2 | `<godot> --headless --path <tmp> --check-only --script res://scripts/rpg/<各 .gd>` × **22** | **22 条全 `0`**（`G2_TOTAL=22 G2_FAIL=0`） | 22 个 `.gd`（含 R4 三个新增件）逐个静态解析通过，逐条 `EXIT=0` |
+| G3 | `<godot> --headless --path <tmp> --quit` | `0` | 日志仅版本行、干净，autoload 实例化路径无 push_warning / ERROR 输出 |
+
+**grep 校验（双重，如实）**：合并 `g1_import.log` + `g2_*.log` + `g3_quit.log` → `all.log`（**87 行**）；bash `grep -nEi "SCRIPT ERROR\|Parse Error\|error:\|ERROR\|Failed loading\|WARNING" all.log` → **`GREP_RESULT=NONE`**；再用 **Grep 工具**对 `all.log` 复核同模式 → **No matches found**。全量日志无任何 `SCRIPT ERROR` / `Parse Error` / `ERROR` / `Failed loading` / `WARNING`。临时工程与日志目录已删除（`DELETE_OK=true removed r4_verify_a3_run + r4_verify_a3_logs_run`），未留在 teamwork 内、未提交。
+
+### 4.2 契约核对（I-1 / I-2 / flag 三段式 / SaveDelta 合并规则）
+
+- **I-1**：`world_state.gd:51` `get_flag(key: String, default: Variant = null) -> Variant`、`:63` `set_flag(key: String, value: Variant) -> void` 与 `接口契约.md` §1.1 逐字一致；R2/R3/R4 均未改签名。
+- **I-2**：`game_events.gd:8~9` `enemy_defeated(enemy_id: String)` / `boss_defeated(boss_id: String)` 单 String 参数；`save_delta_writer.gd:48~56` 订阅并写 `combat.<对象>.defeated = true` + `commit(reason)`，2 号只发信号不双写；与契约 §2 一致。
+- **flag 三段式**：`world_state.gd:24` / `chunk_world_bridge.gd:22` 正则 `^(world\|quest\|combat\|grace\|dungeon)\.[a-z0-9_]+\.[a-z0-9_]+$` 逐字一致；`ChunkWorldBridge.normalize_chunk_flag()` 把 `chunk.<id>.loaded` 归一为合法 `world.<id>.loaded`（跨工位冲突仍待 HOST 裁决，见 §3.1 / §3.3）。
+- **SaveDelta 合并规则**：`world_state.gd:138~223` 的 M1 集合并集只增不减 / M2 inventory 数量快照后写覆盖 / M3 quest_stages 取较大值 / M4 timestamp 升序回放 LWW / removals 优先 / M5 原子写，与 `存档规范-4.4口径同步.md` §2 及 `world_state.gd:7~13` 口径一致。
+- **跨模块联调**：需 Rank-1 ChunkManager / SceneRouter 与 Rank-2 击杀信号的真实实现落位后方能实机联调；按默认不刺探、不越界，本轮**如实登记为未完成/阻塞**（见 §3.1），未刺探别人工位、未做最终裁决。
+
+### 4.3 本次补写的回执
+
+`command_center/ai/3/outbox/receipt-R4.json`：`task_id=cmd-20261109-013419-325-A3`、`ai=3`、`status=done`，`result` 引用本文件实际结论。上文尾注所述「未重复写回执」针对的是上一实例；本次为独立执行实例、outbox 当前为空，故按本次派单命令 id 补写一份，两者不冲突。
+>
+> **（如实补记回收链路）** 本实例写入 `command_center/ai/3/outbox/receipt-R4.json` 后，HOST 中枢监测按全闭环规则即时回收；因 `command_center/dispatcher/receipts/receipt-R4.json` 已被 Rank-2 的 R4 回执（`cmd-20261109-013419-323-A2`）同名占用，中枢将本次这份**加时间戳后缀**收录为 `receipt-R4.json.20261109-024122-955`（815 字节、02:41），`ai/3/outbox/` 随之清空、`ai/3/status.json` mtime 02:41。已用 `json.load` 复核该回收件：`RECEIPT_JSON_OK`、`task_id=cmd-20261109-013419-325-A3`、`ai=3`、`status=done`，四项逐字匹配（TASK_ID_MATCH / AI_MATCH / STATUS_MATCH 均 True）；`dispatcher/receipts/receipt_R4_A3.json`（01:56）为上一实例回执，两不混淆。本实例**未重复写第二份回执**，与上文 ①~③ 尾注所述「写入后由 HOST 中枢自动回收」为同一全闭环正常行为。
+
+### 4.4 本次结论
+
+- **真正完成**：R4 交付清单 5 件齐备（保留既有），三段门禁本次亲自真跑全绿、grep 双复核无脚本错误、契约核对一致，回执已按本次命令 id 补写 → `status=done` 为真实结论。
+- **未完成/阻塞（如实，不隐瞒）**：沿用 §3.1 / §3.3 —— 工程根未建立导致实机跨模块联调未做、§4.4 原文待裁决后回改、Rank-1 `chunk.` 前缀冲突待裁决、`VoiceLineBinder` 接入 `DialogueRunner._present_line` 待落地、M6 `chunk_origin_x/y` 待 1 号布局回填、`save_delta.gd` 与 `world_state.gd` 归属待裁决；均为待裁决 / 非阻塞项，非本轮失败。
+- **合规**：只写 `Rank-3/` 与 outbox 例外；未写总线 / 总纲 / 契约 / 台账 / 其它工位；未自行 git commit / push；零付费 / 零外部依赖、未启动任何 GPU job 或 qwen-tts；默认不刺探（开工只读一次总线，未扫别人工位、未写探针/测量/preflight 脚本）；中文 UTF-8；Godot 4 合法语法。

@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/enemy_data.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/combat/poise_config.gd" id="2_poise"]
+[ext_resource type="Script" path="res://scripts/combat/move_data.gd" id="3_move"]
+[ext_resource type="Script" path="res://scripts/combat/status_buildup.gd" id="4_status"]
+
+[sub_resource type="Resource" id="Resource_poise_soldier"]
+script = ExtResource("2_poise")
+id = "poise_01_limgrave_soldier"
+max_poise = 100.0
+poise_regen_per_sec = 8.0
+poise_regen_delay_sec = 3.0
+stance_break_duration_sec = 2.5
+stance_break_damage_multiplier = 1.4
+executable = true
+execute_hp_ratio_threshold = 0.0
+poise_break_pose_name = "stance_break"
+poise_break_frame = 0
+
+[sub_resource type="Resource" id="Resource_move_01"]
+script = ExtResource("3_move")
+id = "move_01_soldier_slash"
+display_name = "士兵横斩"
+pose_name = "attack_light"
+startup_frames = 12
+active_frames = 4
+recovery_frames = 18
+motion_multiplier = 1.0
+damage_type = "physical"
+poise_damage = 0.0
+status_buildup_bleed = 0.0
+status_buildup_poison = 0.0
+status_buildup_frost = 0.0
+hitbox_reach_px = 64.0
+hitbox_arc_deg = 90.0
+hitbox_offset_px = Vector2(0, 0)
+min_range_px = 0.0
+max_range_px = 96.0
+weight = 1.0
+cooldown_sec = 0.0
+can_cancel_frames = 0
+breaks_guard = false
+
+[resource]
+script = ExtResource("1_enemy")
+id = "enemy_01_limgrave_soldier"
+display_name = "宁姆格福士兵"
+max_hp = 180.0
+base_attack = 55.0
+base_defense = 12.0
+poise = SubResource("Resource_poise_soldier")
+moves = Array[ExtResource("3_move")]([SubResource("Resource_move_01")])
+status_buildups = Array[ExtResource("4_status")]([])
+aggro_radius_px = 260.0
+lose_radius_px = 380.0
+chase_speed_px_per_sec = 84.0
+attack_range_px = 56.0
+ai_poll_interval_sec = 0.25
+rng_seed = 0
+defeated_flag_key = "combat.enemy_01_limgrave_soldier.defeated"
+death_pose_name = "death"
+pose_prefix = "enemy_"

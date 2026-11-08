@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="WorldBaseline" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/rpg/world_baseline.gd" id="1_baseline"]
+
+[resource]
+script = ExtResource("1_baseline")
+baseline_version = 1
+manifest_hash = ""
+default_flags = {
+"combat.elite_01_bell_warden.defeated": false,
+"combat.elite_01_bell_warden.encounter_started": false,
+"dungeon.bellvault.deepest_floor": 0,
+"dungeon.bellvault.shortcut_opened": false,
+"grace.bellvault_entry.lit": false,
+"grace.bellvault_entry.unlocked": false,
+"grace.limgrave_gatefront.lit": false,
+"grace.limgrave_gatefront.unlocked": false,
+"grace.network.last_grace_id": "",
+"grace.network.last_rest_epoch": 0,
+"quest.bell_of_return.accepted": false,
+"quest.bell_of_return.betrayed": false,
+"quest.bell_of_return.completed": false,
+"quest.bell_of_return.reward_claimed": false,
+"quest.bell_of_return.stage": 0,
+"world.bellvault_chest_01.opened": false,
+"world.bellvault_chest_02.opened": false,
+"world.bellvault_hidden_wall_01.revealed": false,
+"world.bellvault_key_01.taken": false,
+"world.bellvault_lift_01.position": 0,
+"world.bellvault_lift_01.unlocked": false,
+"world.bellvault_shortcut_door_01.unlocked": false,
+"world.npc_01_bellkeeper.met": false
+}
+quest_ids = ["quest_01_bell_of_return"]
+grace_ids = ["grace_limgrave_gatefront", "grace_limgrave_chapel", "grace_weeping_shore", "grace_stormveil_gate", "grace_bellvault_entry", "grace_bellvault_deep", "grace_sunless_tomb_entry", "grace_siofra_well"]
+dungeon_ids = ["dungeon_01_bellvault"]
+resource_ids = ["res://data/rpg/dialogue_and_quest.tres", "res://data/rpg/grace_network.tres", "res://data/rpg/dungeon_01_bellvault.tres", "res://data/rpg/spawn_bellvault_elite_01.tres"]
+default_quest_stage_id = "stage_00_offer"

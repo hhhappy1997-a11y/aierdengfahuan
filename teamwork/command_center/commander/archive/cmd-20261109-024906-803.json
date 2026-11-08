@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-024906-803",
+  "from": "总指挥",
+  "target": "3",
+  "task": "[ROUND=R7] 【R7 装配续派 · Rank-3 RPG / 世界 / 存档】上一轮工程根装配已完成，本轮目标：RPG 层跨模块联调。读 F:/Game/aierdengfahuan/teamwork\\Rank-3\\任务书-R7.md 并执行；只写授权范围、既有件不重做、待裁决项只登记不擅改；真跑三段门禁并 grep SCRIPT ERROR；完成后写 DONE-R7.md，并按本任务单 id 在 command_center\\ai\\3\\outbox\\ 写回执。默认不刺探、零付费、不自行 git push。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}

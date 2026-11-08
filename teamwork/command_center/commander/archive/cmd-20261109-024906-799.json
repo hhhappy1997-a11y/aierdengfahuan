@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-024906-799",
+  "from": "总指挥",
+  "target": "1",
+  "task": "[ROUND=R8] 【R8 装配续派 · Rank-1 引擎架构与渲染】上一轮工程根装配已完成，本轮目标：全工程门禁清零 + 装配层闭合。读 F:/Game/aierdengfahuan/teamwork\\Rank-1\\任务书-R8.md 并执行；只写授权范围、既有件不重做、待裁决项只登记不擅改；真跑三段门禁并 grep SCRIPT ERROR；完成后写 DONE-R8.md，并按本任务单 id 在 command_center\\ai\\1\\outbox\\ 写回执。默认不刺探、零付费、不自行 git push。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}

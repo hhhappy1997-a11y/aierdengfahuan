@@ -1,0 +1,213 @@
+[gd_resource type="Resource" script_class="BossData" load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/boss_data.gd" id="1_boss"]
+[ext_resource type="Script" path="res://scripts/combat/phase_data.gd" id="2_phase"]
+[ext_resource type="Script" path="res://scripts/combat/move_data.gd" id="3_move"]
+[ext_resource type="Script" path="res://scripts/combat/poise_config.gd" id="4_poise"]
+[ext_resource type="Script" path="res://scripts/combat/status_buildup.gd" id="5_status"]
+
+[sub_resource type="Resource" id="Resource_poise_boss"]
+script = ExtResource("4_poise")
+id = "poise_01_margit_base"
+max_poise = 120.0
+poise_regen_per_sec = 9.0
+poise_regen_delay_sec = 3.5
+stance_break_duration_sec = 2.5
+stance_break_damage_multiplier = 1.4
+executable = true
+execute_hp_ratio_threshold = 0.0
+poise_break_pose_name = "stance_break"
+poise_break_frame = 0
+
+[sub_resource type="Resource" id="Resource_poise_p2"]
+script = ExtResource("4_poise")
+id = "poise_02_margit_p2"
+max_poise = 150.0
+poise_regen_per_sec = 12.0
+poise_regen_delay_sec = 2.5
+stance_break_duration_sec = 2.0
+stance_break_damage_multiplier = 1.35
+executable = true
+execute_hp_ratio_threshold = 0.0
+poise_break_pose_name = "stance_break"
+poise_break_frame = 0
+
+[sub_resource type="Resource" id="Resource_status_bleed"]
+script = ExtResource("5_status")
+id = "status_01_bleed"
+status_type = "bleed"
+threshold = 180.0
+decay_per_sec = 7.0
+decay_delay_sec = 2.0
+trigger_damage_ratio = 0.12
+trigger_damage_flat = 0.0
+trigger_poise_damage = 25.0
+trigger_pose_name = "status_bleed"
+trigger_frame = 0
+duration_sec = 0.0
+tick_damage_per_sec = 0.0
+resistance_gain_per_trigger = 25.0
+max_resistance = 330.0
+
+[sub_resource type="Resource" id="Resource_status_poison"]
+script = ExtResource("5_status")
+id = "status_02_poison"
+status_type = "poison"
+threshold = 210.0
+decay_per_sec = 6.0
+decay_delay_sec = 2.5
+trigger_damage_ratio = 0.0
+trigger_damage_flat = 40.0
+trigger_poise_damage = 0.0
+trigger_pose_name = "status_poison"
+trigger_frame = 0
+duration_sec = 20.0
+tick_damage_per_sec = 12.0
+resistance_gain_per_trigger = 30.0
+max_resistance = 360.0
+
+[sub_resource type="Resource" id="Resource_status_frost"]
+script = ExtResource("5_status")
+id = "status_03_frost"
+status_type = "frost"
+threshold = 160.0
+decay_per_sec = 5.0
+decay_delay_sec = 2.0
+trigger_damage_ratio = 0.08
+trigger_damage_flat = 0.0
+trigger_poise_damage = 40.0
+trigger_pose_name = "status_frost"
+trigger_frame = 0
+duration_sec = 30.0
+tick_damage_per_sec = 0.0
+resistance_gain_per_trigger = 30.0
+max_resistance = 320.0
+
+[sub_resource type="Resource" id="Resource_move_01"]
+script = ExtResource("3_move")
+id = "move_01_dagger_slash"
+display_name = "短刀横斩"
+pose_name = "dagger_slash"
+startup_frames = 18
+active_frames = 5
+recovery_frames = 24
+motion_multiplier = 1.0
+damage_type = "physical"
+poise_damage = 22.0
+status_buildup_bleed = 0.0
+status_buildup_poison = 0.0
+status_buildup_frost = 0.0
+hitbox_reach_px = 84.0
+hitbox_arc_deg = 100.0
+hitbox_offset_px = Vector2(0, 0)
+min_range_px = 0.0
+max_range_px = 96.0
+weight = 3.0
+cooldown_sec = 0.6
+can_cancel_frames = 0
+breaks_guard = false
+
+[sub_resource type="Resource" id="Resource_move_02"]
+script = ExtResource("3_move")
+id = "move_02_staff_slam"
+display_name = "法杖砸地"
+pose_name = "staff_slam"
+startup_frames = 30
+active_frames = 7
+recovery_frames = 34
+motion_multiplier = 1.55
+damage_type = "physical"
+poise_damage = 45.0
+status_buildup_bleed = 0.0
+status_buildup_poison = 0.0
+status_buildup_frost = 0.0
+hitbox_reach_px = 112.0
+hitbox_arc_deg = 120.0
+hitbox_offset_px = Vector2(0, 0)
+min_range_px = 0.0
+max_range_px = 128.0
+weight = 1.6
+cooldown_sec = 2.2
+can_cancel_frames = 0
+breaks_guard = false
+
+[sub_resource type="Resource" id="Resource_move_03"]
+script = ExtResource("3_move")
+id = "move_03_holy_hammer"
+display_name = "圣光锤击"
+pose_name = "holy_hammer"
+startup_frames = 42
+active_frames = 9
+recovery_frames = 40
+motion_multiplier = 2.1
+damage_type = "holy"
+poise_damage = 70.0
+status_buildup_bleed = 0.0
+status_buildup_poison = 0.0
+status_buildup_frost = 35.0
+hitbox_reach_px = 156.0
+hitbox_arc_deg = 150.0
+hitbox_offset_px = Vector2(0, 0)
+min_range_px = 0.0
+max_range_px = 176.0
+weight = 1.0
+cooldown_sec = 4.0
+can_cancel_frames = 0
+breaks_guard = true
+
+[sub_resource type="Resource" id="Resource_phase_01"]
+script = ExtResource("2_phase")
+id = "phase_01_margit_p1"
+phase_index = 1
+hp_ratio_enter = 1.0
+hp_ratio_exit = 0.5
+phase_damage_multiplier = 1.0
+phase_defense = 0.0
+sprite_frames_path = "res://assets/generated/bosses/margit_phase1.tres"
+pose_prefix = "p1_"
+moves = Array[ExtResource("3_move")]([SubResource("Resource_move_01"), SubResource("Resource_move_02")])
+poise_override = null
+status_resistance_multiplier = 1.0
+transition_pose_name = "phase_transition"
+transition_frames = 48
+transition_invulnerable = true
+aggression = 1.0
+
+[sub_resource type="Resource" id="Resource_phase_02"]
+script = ExtResource("2_phase")
+id = "phase_02_margit_p2"
+phase_index = 2
+hp_ratio_enter = 0.5
+hp_ratio_exit = 0.0
+phase_damage_multiplier = 1.25
+phase_defense = 18.0
+sprite_frames_path = "res://assets/generated/bosses/margit_phase2.tres"
+pose_prefix = "p2_"
+moves = Array[ExtResource("3_move")]([SubResource("Resource_move_01"), SubResource("Resource_move_02"), SubResource("Resource_move_03")])
+poise_override = SubResource("Resource_poise_p2")
+status_resistance_multiplier = 1.35
+transition_pose_name = "phase_transition"
+transition_frames = 48
+transition_invulnerable = true
+aggression = 1.4
+
+[resource]
+script = ExtResource("1_boss")
+id = "boss_01_margit"
+display_name = "恶兆妖鬼 · 玛尔基特"
+max_hp = 3500.0
+base_attack = 120.0
+base_defense = 42.0
+phases = Array[ExtResource("2_phase")]([SubResource("Resource_phase_01"), SubResource("Resource_phase_02")])
+phase_thresholds = Array[float]([0.5])
+poise = SubResource("Resource_poise_boss")
+status_buildups = Array[ExtResource("5_status")]([SubResource("Resource_status_bleed"), SubResource("Resource_status_poison"), SubResource("Resource_status_frost")])
+aggro_radius_px = 420.0
+lose_radius_px = 620.0
+chase_speed_px_per_sec = 96.0
+attack_range_px = 88.0
+ai_poll_interval_sec = 0.2
+rng_seed = 20261108
+defeated_flag_key = "world.boss_01_margit.defeated"
+death_pose_name = "death"
+phase_transition_enabled = true

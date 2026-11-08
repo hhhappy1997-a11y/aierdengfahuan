@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-024906-801-A2",
+  "command_id": "cmd-20261109-024906-801",
+  "ai": 2,
+  "from": "总指挥",
+  "task": "[ROUND=R7] 【R7 装配续派 · Rank-2 战斗系统与数据驱动】上一轮工程根装配已完成，本轮目标：战斗层跨模块联调。读 F:/Game/aierdengfahuan/teamwork\\Rank-2\\任务书-R7.md 并执行；只写授权范围、既有件不重做、待裁决项只登记不擅改；真跑三段门禁并 grep SCRIPT ERROR；完成后写 DONE-R7.md，并按本任务单 id 在 command_center\\ai\\2\\outbox\\ 写回执。默认不刺探、零付费、不自行 git push。",
+  "priority": "normal",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 02:49:07",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-024906-801-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
+}

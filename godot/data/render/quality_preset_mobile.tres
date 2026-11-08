@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QualityPreset" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/quality_preset.gd" id="1_qp"]
+
+[resource]
+script = ExtResource("1_qp")
+low_resolution_size = Vector2i(480, 270)
+integer_upscale_factor = 2
+resident_chunk_count = 4
+volumetric_fog_enabled = false
+glow_enabled = false
+dust_particle_cap = 0
+wet_reflection_enabled = false
+shadow_map_size = 1024
+target_frame_time_ms = 33.33
+memory_limit_mb = 512

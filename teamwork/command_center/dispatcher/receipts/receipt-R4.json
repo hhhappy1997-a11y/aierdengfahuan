@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-013419-323-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "引用 Rank-2/DONE-R4.md 实际结论：R4（M5 Boss 骨架 + 遗留口径收敛）4 项交付件齐——boss_controller.gd（数据驱动二阶段 + 2~3 招式）、combat_event_bus.gd（I-2 改挂 GameEvents autoload）、combat_data_validator._ready() 实跑、R4-口径与阻塞登记.md（res://data/schema vs schemas 路径待裁决登记），另 DONE-R4.md 与本回执；R2/R3 及更早产出保留未改。本轮执行实例独立真跑 Godot_v4.7.2-stable_win64.exe 三段门禁（独立系统临时工程、用完即删）：--version/--headless --import(main+flat)/24 个 --check-only --script/--headless --quit 全部 EXIT=0（SEG2_TOTAL=24 SEG2_FAIL=0）；全量日志 280 行 grep 'SCRIPT ERROR' 专项 0 命中（RC=1）、Parse Error 0；宽口径 4 条 ERROR: 全部为 CombatDataValidator 的 E-8 既有数据表自洽校验 FAIL（检查项 491/错误 3），非脚本错误，待 HOST 裁决。段3 实跑复现 validator._ready()、Boss P1→P2（phase_thresholds=0.5、48 帧过渡、3 招加权 total=5.60、pose p1_/p2_）、I-2 经 /root/GameEvents 收到 3 条单 String 信号、I-4 set_pose 调用 1182 次；战斗数值全部留 3 份 .tres，逻辑 .gd 仅既有 2 处 MIN_DAMAGE 常量，I-1/I-2/I-3/I-4 均按 00-协作契约.md 核对符合。未完成项与阻塞见 DONE-R4.md §4 与 §6.5：E-8 三组抗性溢出、schema 单复数路径、既有 PlayerStateMachine signal 声明去留、M5 阶段精灵表/rootmotion/Q1~Q7 均只如实登记待裁决、不擅改；未写总线（超出唯一可写范围）；零付费、零外部依赖、未自行 git 操作。详见 DONE-R4.md §6 本实例独立真跑复核。"
+}

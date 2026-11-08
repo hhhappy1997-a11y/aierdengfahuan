@@ -1,0 +1,174 @@
+[gd_resource type="Resource" script_class="GraceNetwork" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/rpg/grace_network.gd" id="1_net"]
+[ext_resource type="Script" path="res://scripts/rpg/grace_node.gd" id="2_gnode"]
+
+[sub_resource type="Resource" id="GraceNode_01"]
+script = ExtResource("2_gnode")
+grace_id = "grace_limgrave_gatefront"
+display_name = "关卡前"
+area_id = "area_limgrave"
+scene_path = "res://scenes/areas/Limgrave.tscn"
+spawn_marker = "spawn_marker_gatefront"
+lit_flag = "grace.limgrave_gatefront.lit"
+unlocked_flag = "grace.limgrave_gatefront.unlocked"
+requires_flags = {}
+neighbors = ["grace_limgrave_chapel", "grace_weeping_shore", "grace_bellvault_entry", "grace_siofra_well"]
+is_dungeon = false
+discover_radius = 12.0
+
+[sub_resource type="Resource" id="GraceNode_02"]
+script = ExtResource("2_gnode")
+grace_id = "grace_limgrave_chapel"
+display_name = "巡礼教堂"
+area_id = "area_limgrave"
+scene_path = "res://scenes/areas/Limgrave.tscn"
+spawn_marker = "spawn_marker_chapel"
+lit_flag = "grace.limgrave_chapel.lit"
+unlocked_flag = "grace.limgrave_chapel.unlocked"
+requires_flags = {}
+neighbors = ["grace_limgrave_gatefront", "grace_stormveil_gate"]
+is_dungeon = false
+discover_radius = 12.0
+
+[sub_resource type="Resource" id="GraceNode_03"]
+script = ExtResource("2_gnode")
+grace_id = "grace_weeping_shore"
+display_name = "啜泣海岸"
+area_id = "area_weeping_peninsula"
+scene_path = "res://scenes/areas/WeepingShore.tscn"
+spawn_marker = "spawn_marker_weeping_shore"
+lit_flag = "grace.weeping_shore.lit"
+unlocked_flag = "grace.weeping_shore.unlocked"
+requires_flags = {
+"world.limgrave_bridge_01.crossed": true
+}
+neighbors = ["grace_limgrave_gatefront", "grace_sunless_tomb_entry"]
+is_dungeon = false
+discover_radius = 12.0
+
+[sub_resource type="Resource" id="GraceNode_04"]
+script = ExtResource("2_gnode")
+grace_id = "grace_stormveil_gate"
+display_name = "史东薇尔城门"
+area_id = "area_stormveil_outskirts"
+scene_path = "res://scenes/areas/StormveilGate.tscn"
+spawn_marker = "spawn_marker_stormveil_gate"
+lit_flag = "grace.stormveil_gate.lit"
+unlocked_flag = "grace.stormveil_gate.unlocked"
+requires_flags = {
+"combat.boss_01_margit.defeated": true
+}
+neighbors = ["grace_limgrave_chapel"]
+is_dungeon = false
+discover_radius = 12.0
+
+[sub_resource type="Resource" id="GraceNode_05"]
+script = ExtResource("2_gnode")
+grace_id = "grace_bellvault_entry"
+display_name = "钟窖入口"
+area_id = "dungeon_01_bellvault"
+scene_path = "res://scenes/dungeons/Bellvault.tscn"
+spawn_marker = "spawn_marker_b1_grace"
+lit_flag = "grace.bellvault_entry.lit"
+unlocked_flag = "grace.bellvault_entry.unlocked"
+requires_flags = {
+"dungeon.bellvault.entered": true
+}
+neighbors = ["grace_limgrave_gatefront", "grace_bellvault_deep"]
+is_dungeon = true
+discover_radius = 12.0
+
+[sub_resource type="Resource" id="GraceNode_06"]
+script = ExtResource("2_gnode")
+grace_id = "grace_bellvault_deep"
+display_name = "钟窖井底"
+area_id = "dungeon_01_bellvault"
+scene_path = "res://scenes/dungeons/Bellvault.tscn"
+spawn_marker = "spawn_marker_b3_well"
+lit_flag = "grace.bellvault_deep.lit"
+unlocked_flag = "grace.bellvault_deep.unlocked"
+requires_flags = {
+"dungeon.bellvault.shortcut_opened": true
+}
+neighbors = ["grace_bellvault_entry"]
+is_dungeon = true
+discover_radius = 12.0
+
+[sub_resource type="Resource" id="GraceNode_07"]
+script = ExtResource("2_gnode")
+grace_id = "grace_sunless_tomb_entry"
+display_name = "无日之墓门厅"
+area_id = "dungeon_02_sunless_tomb"
+scene_path = "res://scenes/dungeons/SunlessTomb.tscn"
+spawn_marker = "spawn_marker_sunless_tomb"
+lit_flag = "grace.sunless_tomb_entry.lit"
+unlocked_flag = "grace.sunless_tomb_entry.unlocked"
+requires_flags = {
+"dungeon.sunless_tomb.entered": true
+}
+neighbors = ["grace_weeping_shore"]
+is_dungeon = true
+discover_radius = 12.0
+
+[sub_resource type="Resource" id="GraceNode_08"]
+script = ExtResource("2_gnode")
+grace_id = "grace_siofra_well"
+display_name = "希芙拉河井底"
+area_id = "underground_01_siofra_well"
+scene_path = "res://scenes/areas/SiofraWell.tscn"
+spawn_marker = "spawn_marker_siofra_well"
+lit_flag = "grace.siofra_well.lit"
+unlocked_flag = "grace.siofra_well.unlocked"
+requires_flags = {
+"world.siofra_well_lift_01.unlocked": true
+}
+neighbors = ["grace_limgrave_gatefront"]
+is_dungeon = false
+discover_radius = 12.0
+
+[resource]
+script = ExtResource("1_net")
+network_id = "network_01_lands_between"
+nodes = [SubResource("GraceNode_01"), SubResource("GraceNode_02"), SubResource("GraceNode_03"), SubResource("GraceNode_04"), SubResource("GraceNode_05"), SubResource("GraceNode_06"), SubResource("GraceNode_07"), SubResource("GraceNode_08")]
+edges = [{
+"from": "grace_limgrave_gatefront",
+"to": "grace_limgrave_chapel",
+"requires_flags": {}
+}, {
+"from": "grace_limgrave_gatefront",
+"to": "grace_weeping_shore",
+"requires_flags": {
+"world.limgrave_bridge_01.crossed": true
+}
+}, {
+"from": "grace_limgrave_chapel",
+"to": "grace_stormveil_gate",
+"requires_flags": {
+"combat.boss_01_margit.defeated": true
+}
+}, {
+"from": "grace_limgrave_gatefront",
+"to": "grace_bellvault_entry",
+"requires_flags": {
+"dungeon.bellvault.entered": true
+}
+}, {
+"from": "grace_bellvault_entry",
+"to": "grace_bellvault_deep",
+"requires_flags": {
+"dungeon.bellvault.shortcut_opened": true
+}
+}, {
+"from": "grace_weeping_shore",
+"to": "grace_sunless_tomb_entry",
+"requires_flags": {
+"dungeon.sunless_tomb.entered": true
+}
+}, {
+"from": "grace_limgrave_gatefront",
+"to": "grace_siofra_well",
+"requires_flags": {
+"world.siofra_well_lift_01.unlocked": true
+}
+}]
