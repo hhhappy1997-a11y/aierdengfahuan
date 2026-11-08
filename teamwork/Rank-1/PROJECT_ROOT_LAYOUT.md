@@ -151,3 +151,64 @@ WARNING 消失（G3' 实证 EXIT=0、全日志 `SCRIPT ERROR / ERROR / WARNING /
 4. R2/R3/R4 遗留待裁决（延续，未擅自改）：4 号 A8 `@3x` vs 本工位 `@2x` 冻结值、负坐标 chunk id 命名、
    `GameEvents` 最终归属、`canvas_items` vs `canvas_textures` 合法键、`config_version`「实测填写」口径、
    `HybridSpriteRig` 类名与 GDExtension 全局类同名风险、`128bit` 确切含义。
+
+---
+
+## 8. 落位步骤补充（R6 边界收口，纯追加，不改既有 §1~§7）
+
+> 本轮 R6 为边界收口：只核对目录树、补齐落位步骤说明、登记待裁决项、真跑门禁；
+> **落位本身需 HOST 授权，本轮未执行**，未把 `project_root\` 拷到 `teamwork\` 外、未伪造已落位。
+> 四项待裁决项依据与建议见 `R6-待裁决登记.md`，真跑实际输出结论见 `DONE-R6.md` §2。
+
+### 8.1 目录树核对结论（R6 实测）
+
+对 `F:\Game\aierdengfahuan\teamwork\Rank-1\project_root\` 只读核对：
+
+- 实体文件 **17 个**（其中 `.gd` 11 个），与 §2 映射表 17 件**逐件一致**：`project.godot` 1、`scripts/` 11（core 3 / render 2 / ui 1 / world 3 / build 2）、`scenes/` 2、`data/render/` 3；无遗漏、无多余实体文件。
+- 目录含 1 个 §2 表未列的空目录 `scenes/world/chunks/`，对应 §3 预留的 3 号 `res://scenes/world/chunks/chunk_limgrave_<x>_<y>.tscn` 真实 chunk 场景路径，与文档一致，非多余文件。
+- 真跑三段门禁后引擎生成的 `.godot\` 缓存与 11 个 `.gd.uid` 已清理，交付树恢复 17 件原样。
+
+### 8.2 落位前逐件校验清单（供 HOST / 主 AI 执行拷贝前核对）
+
+拷贝源 `Rank-1\project_root\`，目标 `F:\Game\aierdengfahuan\`（工程根）。落位前逐件确认下列 17 个相对路径均存在且非空：
+
+```
+project.godot
+scripts/core/scene_router.gd
+scripts/core/quality_preset.gd
+scripts/core/render_profiles.gd
+scripts/render/camera_rig.gd
+scripts/render/hybrid_2d3d_animated_sprite.gd
+scripts/ui/performance_hud.gd
+scripts/world/chunk_streaming.gd
+scripts/world/chunk_streaming_r4.gd
+scripts/world/chunk_streaming_r5.gd
+scripts/build_main.gd
+scripts/build_courtyard.gd
+scenes/Main.tscn
+scenes/courtyard.tscn
+data/render/quality_preset_desktop.tres
+data/render/quality_preset_mobile.tres
+data/render/render_profiles.tres
+```
+
+校验建议（只读）：`find Rank-1\project_root -type f | wc -l` 应为 `17`；`find ... -name '*.gd' | wc -l` 应为 `11`。
+拷贝时保持 `res://` 相对目录结构；`scenes/world/chunks/` 空目录一并带过去，供 3 号后续落真实 chunk 场景。
+
+### 8.3 落位后门禁复核步骤
+
+`<godot>` = `D:/Godot/Godot_v4.7.2-stable_win64.exe`；`<工程根>` = `F:/Game/aierdengfahuan`。
+
+1. `<godot> --headless --path <工程根> --import`
+2. 对工程内全部 `.gd` 循环：`<godot> --headless --path <工程根> --check-only --script res://<f>.gd`（逐条记录 EXIT）
+3. `<godot> --headless --path <工程根> --quit`
+4. 合并三段日志后 `grep -n "SCRIPT ERROR"`，判据：**NONE 为通过**（运行时 SCRIPT ERROR 不改退出码，必须 grep）。
+5. 若需规避 `--quit` 单帧快速退出的 `ObjectDB leaked` WARNING，第三段可用 `--quit-after 10`（见 §5）。
+
+**复核口径提醒（R6 真跑实证）**：在 3 号 3 个 autoload 真实实现（`world_state.gd` / `game_events.gd` / `save_system.gd`）与真实 chunk 场景落位前，G1 / G3 会出现 `Attempt to open script ... File not found` / `Failed to create/instantiate an autoload` 等 `ERROR` 与 `scene_missing` `WARNING` —— 属**跨工位依赖未到位**，不是 `SCRIPT ERROR`、不是本工位交付件缺陷。R6 对 `project_root\` 直接真跑的结论即三段 EXIT 全 0、`SCRIPT ERROR` = NONE、11 个 `.gd` 静态检查全过，同时如实登记上述依赖缺失（逐字见 `DONE-R6.md` §2）。3 号依赖到位后这些 ERROR / WARNING 应消失，可作为接入成功的回归判据。
+
+### 8.4 落位权限与收尾
+
+- 落位动作写 `teamwork\` 外的工程根，超出 Rank-1 唯一可写范围，**须 HOST 授权、由主 AI 执行**；Rank-1 本轮未执行、未伪造已落位。
+- 落位后由主 AI 统一 `git commit` + `push`（契约 §9.1）；执行 AI 不自行 git。
+- 3 号 / 4 号跨工位依赖补齐见 §3、§6 第 2~3 步；R5 件接入装配层的裁决见 §7-2 与 `R6-待裁决登记.md` §4。

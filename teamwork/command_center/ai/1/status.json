@@ -1,7 +1,7 @@
 {
   "ai": 1,
-  "state": "working",
-  "current_task": "cmd-20261109-020321-541-A1",
-  "completed": 6,
-  "last_seen": "2026-11-09 02:03:22"
+  "state": "idle",
+  "current_task": "",
+  "completed": 8,
+  "last_seen": "2026-11-09 02:13:24"
 }
