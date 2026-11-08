@@ -142,3 +142,56 @@ F:\Game\aierdengfahuan\teamwork\Rank-3\接口契约.md
 | 零外部依赖、无付费 / 云服务项 | ✅ 全部规格走 Godot 4 内置 + 1/2/4 号已有产出 |
 | 不写探针 / 测量 / preflight 脚本 | ✅ 本工位无 `.py` / `_probe.gd` / `_preflight` 类文件 |
 | 跨模块冲突只记录不越界 | ✅ 全部集中在 §5，未改任何其它文件夹 |
+
+---
+
+## 7. R2 交付清单（2026-11-09 追加；§1~§6 首轮内容原样保留，本轮只追加本节）
+
+> 本节对应 `任务书-R2.md` §2 的 `README.md（追加「R2 交付清单」章节）` 一项。R2 主体交付件在上一轮已落盘，本轮为**收尾补齐**：只新建完成标志、补本章节、写中枢回执，**已有交付件一律不重做**。完整真跑命令 / 退出码 / 结论见 `DONE-R2.md`。
+
+### 7.1 本轮实际新建 / 更新的文件
+
+| # | 文件 | 动作 | 说明 |
+|---|---|---|---|
+| 1 | `Rank-3\DONE-R2.md` | 新建 | 完成标志：实际交付清单 / 自检结果（含真跑输出结论）/ 未完成项与阻塞；HOST 监测只认此文件 |
+| 2 | `Rank-3\README.md` §7 | 追加 | 本节；首轮 §1~§6 未改一字 |
+| 3 | `command_center\ai\3\outbox\receipt_R2_A3.json` | 新建 | 中枢回执，`task_id=cmd-20261109-002446-441-A3`、`status=done`，引用 DONE-R2.md 实际结论 |
+
+### 7.2 已存在、本轮核对不重做的 R2 可落地件（18 `.gd` + 5 `.tres`）
+
+| 类别 | 文件 | 任务书 §2 对应 |
+|---|---|---|
+| 7 个对话 / 任务 / 世界 Resource 类 | `dialogue_line.gd`、`dialogue_choice.gd`、`quest_stage.gd`、`quest_data.gd`（类名 `QuestData`）、`grace_node.gd`、`grace_network.gd`、`spawn_request.gd` | 7 个 Resource 类 `.gd` |
+| 附加 Resource 类（`.tres` 加载所必需） | `dialogue_gate.gd`、`dialogue_node.gd`、`dialogue_graph.gd`、`interactable_spec.gd`、`dungeon_definition.gd`、`world_baseline.gd` | 与 `RPG系统设计.md` §1 / §6 一致 |
+| I-1 权威实现 | `world_state.gd` | `get_flag / set_flag` + SaveDelta 合并 / 回放 / 迁移 / 原子写 |
+| I-1 落盘 | `save_delta_writer.gd` | Delta 写入时机、检查点落盘、I-2 击杀 flag 写入 |
+| I-2 信号总线 | `game_events.gd` | `GameEvents` autoload，击杀信号参数单个 `String` |
+| M4 运行逻辑 | `dialogue_runner.gd`、`quest_state_machine.gd` | 条件门控、任务信号 + 状态机、赐福「交谈 / 回忆」复用 |
+| 数据资源 | `grace_network.tres`、`dungeon_01_bellvault.tres`、`world_baseline.tres`、`spawn_bellvault_elite_01.tres` | 4 份合法 Godot 4 `.tres` |
+| R1 已有、本轮一并导入验证 | `dialogue_and_quest.tres`（`load_steps=51`） | 孤立子资源复核对象 |
+
+**对照 `任务书-R2.md` §2**：7 类 Resource `.gd` ✓、`world_state.gd` ✓、`save_delta_writer.gd` ✓、`game_events.gd` ✓、`dialogue_runner.gd` / `quest_state_machine.gd` ✓、4 份 `.tres` ✓、`README.md` §7 ✓（本轮补）、`DONE-R2.md` ✓（本轮补）—— **8 类固定交付全部齐备**。
+
+### 7.3 真跑结论（详表见 `DONE-R2.md` §2）
+
+引擎 `D:\Godot\Godot_v4.7.2-stable_win64.exe`，`--version` 实测 `4.7.2.stable.official.ed1daf0bf`（EXIT=0）。在系统临时目录建最小验证工程（用完即删、不在 teamwork 内、不提交），真跑三段门禁：
+
+| 段 | 命令 | 退出码 | 结论 |
+|---|---|---|---|
+| G1 | `--headless --import` | `0` | 18 个全局类全部注册，无 Parse Error |
+| G2 | `--check-only --script` × 18 个 `.gd` | 18 条全 `0` | 全部静态解析通过 |
+| G3 | `--headless --quit` | `0` | 首次因临时工程未定义主场景失败（如实记录），补最小空场景后重跑通过；5 份 `.tres` 经 `WorldState._ready()` 实际 `ResourceLoader.load`，无警告 / 无加载失败 |
+
+全量日志 `grep -Ei "SCRIPT ERROR|Parse Error|error:|ERROR|Failed loading|WARNING"` → **NONE**；孤立 sub_resource = **0**（`dialogue_and_quest.tres` 43 个定义全被引用）；flag 三段式 **40/40 合规**（0 个两段式）；`SpawnRequest` **17 字段**与 `接口契约.md` §3 逐字一致。**三段门禁真跑通过**，R1 §4「工程根未建立、无法真跑」的旧结论按 §6 作废。
+
+### 7.4 仍未完成项（非阻塞，如实登记）
+
+1. 工程根 `F:\Game\aierdengfahuan\` 未建立：交付件为工位内文本件，建工程根时拷贝（任务书 §1 / §5 明确不建立）。
+2. 跨模块联调未做：1 号 autoload 实注册、2 号击杀信号实发、4 号资产清单、背包结算（A9）均待真工程落地。
+3. `存档与flag规范.md` §4.4 为 R1 旧措辞（按 `seq` 升序 / `inventory` grants-consumed 累加 / `spawns` epoch 清空），与 R2 落地口径（`timestamp` 升序 / 数量快照后写覆盖 / 集合只增不减）不一致；**实现以本轮 5 条口径为准**，文档措辞待裁决 / 后续同步，本轮按「不重做已有文件」未改该文档，详见 `DONE-R2.md` §3。
+4. M6 的 8 赐福数据表与第二座地牢留待 R3（`任务书-R2.md` §6）。
+5. `stable-audio` 为 gated 模型不可用，音效改本地合成 / `loop_audio.py`；本轮不涉及音效，未申请、未列付费项。
+6. `任务书-R3.md` 排队包本轮不执行、保留不改。
+7. 手感 / 审美试玩由用户兜底。
+
+> 本轮未写群聊总线 / 进度台账、未自行 git commit / push、零付费、默认不刺探（开工只读一次总线）。

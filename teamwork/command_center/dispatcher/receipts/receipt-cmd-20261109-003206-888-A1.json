@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-003206-888-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "R3 已完成。实际交付：project.godot(仅补齐 R3 口径注释、不重做 R2 配置)、build_main.gd、render_profiles.tres(+必要附加脚本 render_profiles.gd)、BUILD.md、DONE-R3.md；R2 全部产出保留不重做。真跑引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe（--version 实测 4.7.2.stable.official.ed1daf0bf）：三段门禁 --headless --import(EXIT=0，全局类 QualityPreset/RenderProfiles/HybridSpriteRig 注册成功)、--check-only --script 8 个 .gd(8 条均 EXIT=0)、--headless --quit(EXIT=0)；额外实跑 build_main.gd 生成 res://scenes/Main.tscn(nodes=16，pack→instantiate 节点数比对 16=16 通过才 ResourceSaver.save)，并再 --headless --quit 打开该 16 节点主场景(EXIT=0)。grep SCRIPT ERROR=NONE、grep parse error|error|failed=NONE；28 条 chunk scene_missing WARNING 为 R2 既有 chunk_streaming.gd 降级设计、非 SCRIPT ERROR、不影响退出码。首轮真跑曾因验证工程 stub 的 printf 反斜杠被 MSYS 转成 / 出现 SCRIPT ERROR、以及 probe.free() 未递归释放导致 RID/ObjectDB leak，均已修正(改用 heredoc 写 stub、build_main.gd 增加 _free_tree 递归释放)并清缓存全量复跑通过。未完成项与阻塞：工程根未建立、3号 autoload/chunk 场景与 4号 import.json 未到位、移动端 chunk 半径运行时降级未实现、exe/apk 导出模板与 Android SDK 路径待登记、GLB 实例化跳过分支待 M0 验证；口径登记 canvas_items/canvas_textures 冲突、config_version 实测含义、按用户指令未写群聊总线。完整结论详见 Rank-1/DONE-R3.md 与 Rank-1/BUILD.md。"
+}

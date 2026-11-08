@@ -1,8 +1,21 @@
-; Godot 4 工程配置（Rank-1 / R2 交付件，工位内文本件）
+; Godot 4 工程配置（Rank-1 交付件，工位内文本件；R2 建立 / R3 口径补齐，功能键值不重做）
 ; 供建立工程根时拷贝到 F:\Game\aierdengfahuan\project.godot
-; config_version 依据：本机引擎 D:\Godot\Godot_v4.7.2-stable_win64.exe --version
-;   实测 4.7.2.stable.official.ed1daf0bf；Godot 4.x 工程配置格式版本为 5（整数，
-;   非引擎版本号），并经本轮 --headless --import / --headless --quit 真跑验证引擎接受该值。
+;
+; [R3 口径补齐 2026-11-09]
+; - config_version：本机引擎 D:\Godot\Godot_v4.7.2-stable_win64.exe --version
+;   R3 复核实测 4.7.2.stable.official.ed1daf0bf（EXIT=0）。config_version 是 Godot 工程
+;   配置格式版本（整数），Godot 4.x 为 5，不是引擎版本号；本值经三段门禁真跑验证被引擎接受。
+; - 纹理：任务书 R3 字面写 rendering/textures/canvas_items/default_texture_filter=0，
+;   但 Godot 4 合法键为 textures/canvas_textures/default_texture_filter（R1 §5 第 2 项、
+;   R2 §2、契约 §5 均已纠正）。本轮沿用引擎合法键 =0（Nearest）；像素图导入统一
+;   lossless / 关闭 mipmaps / texture_filter=Nearest（项目级 default_texture_filter=0 兜底，
+;   逐图 .import 由 4 号 I-5 import.json 落位）。canvas_items 为历史误写，不写回，见 DONE-R3.md。
+; - 3D：Jolt Physics + 固定 physics_ticks_per_second=60（[physics] 段）。
+; - 输入：[input] 段 15 个 action 完整映射表（移动 / 轻攻击 / 重攻击 / 翻滚 / 防御 /
+;   锁定 / 道具 / 交互 / 菜单 / 调试 HUD / 调试重载 chunk），键鼠与方向键齐备。
+; - 主场景：run/main_scene="res://scenes/Main.tscn"；自 R3 起由 build_main.gd 程序化生成，
+;   手写 场景树骨架.tscn 保留为结构示意（R1 §6：落工程改走构建脚本）。
+;
 ; 5 个 autoload 的归属口径见 00-续派与监测规则.md §6 第 3 条：GameEvents 由 3 号实现、1 号注册。
 ; 跨工位脚本（WorldState / GameEvents / SaveSystem）的最终实现由 3 号提供，1 号只在此登记路径。
 

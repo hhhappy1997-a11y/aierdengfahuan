@@ -116,3 +116,34 @@ F:\Game\aierdengfahuan\teamwork\Rank-2\接口契约.md
 - **本轮产出**：6 个固定文件齐全；8 类 / 129 字段的 Resource 规格；一份字段逐字一致的 Godot 4 `.tres`（2 阶段 / 3 招 / 2 韧性 / 3 异常）；一份零战斗数值硬编码的 GDScript 骨架；9 条校验等式与全部可复算的伤害 / 韧性 / 异常 / 无敌帧极值；M0~M6 交付表；7 项待裁决。
 - **未完成**：工程内 8 个 schema 脚本、动作实例 `.tres`、M1/M5 实体控制器、Godot 编辑器实跑验证；均已在 §4 标注，不冒充完成。
 - **建议下一步**：主 AI 先裁决 Q1（阶段精灵替换）与 Q6（工位路径口径），随后按 §6 第 1 项补 schema 脚本与 `player_actions.tres`，即可进入 M1 实跑。
+
+---
+
+## 8. R2 交付清单（2026-11-09 收尾补记；首轮 §1~§7 原文未改）
+
+> 本章为 R2 轮次补记，**仅追加**，不改首轮任何结论。R2 任务书见 `任务书-R2.md`，完成标志与真跑明细见 `DONE-R2.md`。
+
+### 8.1 本轮实际文件（工位内平铺，中文 UTF-8）
+
+| 类别 | 文件 |
+|---|---|
+| 8 类 Resource 脚本 | `schema_boss_data.gd` / `schema_phase_data.gd` / `schema_move_data.gd` / `schema_poise_config.gd` / `schema_status_buildup.gd` / `schema_enemy_data.gd` / `schema_player_action_data.gd` / `schema_spawn_request.gd` |
+| 附：动作表容器 | `schema_player_action_table.gd`（`PlayerActionTable`，支撑 `player_actions.tres` 的 `script_class`） |
+| 数据表实例 | `player_actions.tres`（8 条）、`enemy_01_limgrave_soldier.tres`、`boss_01_margit.tres`（R1 已交，本轮校验引用） |
+| M1 实体 / 结算 | `enemy_director.gd`、`combat_resolver.gd`、`combat_data_validator.gd` |
+| 收敛更新 | `player_state_machine.gd`（删 `_resolve_world_flag_signature()` 兼容分支，统一双参 `get_flag(key, default)`） |
+| 完成标志 | `DONE-R2.md`（本轮补） |
+
+### 8.2 真跑结论（引擎 `D:\Godot\Godot_v4.7.2-stable_win64.exe`）
+
+- `--version` → `4.7.2.stable.official.ed1daf0bf`，EXIT=0。
+- 系统临时目录建最小工程（用完即删、未落在 teamwork 内）：`--headless --import` EXIT=0（注册 13 个全局类）；13 个 `.gd` 逐个 `--check-only --script` 全部 EXIT=0；补最小 `main.tscn`（声明 3 份 `.tres` 为场景依赖）后 `--headless --quit` EXIT=0。
+- 全日志 grep `SCRIPT ERROR / Parse Error / ERROR / Failed / Cannot`：**0 命中**；退出码全 0。首轮 §4「未在引擎中解析 / 导入 / 运行」的旧结论按 MSG-20261108-2324-HOST 作废。
+- 静态自检：`boss_01_margit.tres` `load_steps=16 = 5 ext + 10 sub + 1` 自洽、3 份 `.tres` 悬空引用 0、字段键越界 0、战斗数值硬编码 0 项（仅 `MIN_DAMAGE=1.0`）。命令 / 退出码 / 明细见 `DONE-R2.md`。
+
+### 8.3 仍未完成 / 待裁决（诚实标注）
+
+- **I-2 `GameEvents` autoload 挂载**：本轮交付件把 `enemy_defeated` / `boss_defeated` 定义在 `PlayerStateMachine` 节点自身（参数单个 `String`、击杀 flag 不双写均符合），未显式挂到 `GameEvents` autoload；按「已有交付件不重做」未改代码，登记待集成收口 / 主 AI 裁决。
+- **`combat_data_validator.gd` 运行时自检**：`_ready()` 的 E-1/E-3/E-4/E-5/E-8/E-9 本轮三段门禁未挂载触发，未实跑；E-8 抗性溢出口径与 Boss 异常数值需复核（详见 `DONE-R2.md` §4）。
+- **M5 `boss_controller.gd` / `PhaseTransition`**：按任务书 §6 本轮不含；`任务书-R3.md` 为排队包，本轮保留不改、不执行。
+- Q1~Q7 跨模块裁决仍归总指挥，见 §5。
