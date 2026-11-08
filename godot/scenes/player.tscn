@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="SpriteFrames" path="res://assets/generated/chars/player_spriteframes.tres" id="1_3vyb7"]
+
+[node name="Player" type="CharacterBody2D" unique_id=554796913]
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=737406580]
+texture_filter = 1
+sprite_frames = ExtResource("1_3vyb7")
+animation = &"idle"
