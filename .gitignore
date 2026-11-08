@@ -1,0 +1,23 @@
+# 归档：主 AI 误跑产物，不入库
+_archived_20261108/
+
+# 用户来件暂存区（只登记台账，不入库）
+teamwork/inbox/
+
+# 构建产物（建议走 GitHub Releases 附件，不直接提交二进制）
+build/
+export/
+*.exe
+*.pck
+*.apk
+*.aab
+
+# Godot 生成目录
+.godot/
+.import/
+
+# 临时文件
+*.tmp
+*.log
+Thumbs.db
+.DS_Store

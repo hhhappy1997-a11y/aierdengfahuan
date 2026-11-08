@@ -1,0 +1,156 @@
+{
+  "schema_version": "1.0",
+  "id": "hd2d_pixel_skeleton_v1",
+  "name": "艾尔登法环同人 HD-2D 像素资产固定 Prompt 骨架",
+  "owner": "4号工位-美术管线与工具链",
+  "frozen": true,
+  "single_slot": {
+    "token": "SUBJECT",
+    "placeholder_notation": "方括号包裹的 SUBJECT",
+    "count": 1,
+    "occurrences_in_positive": 1,
+    "rule": "整份骨架只有一个可替换槽位。调用方只允许把 positive 模板中的唯一占位符替换为主体描述，其余任何字段（negative / style / lighting / palette / lora_triggers / controlnet / layerdiffuse / downsample / seed_lock / sampling）一律不得改写、追加或省略。",
+    "allowed_values": "品类内的主体名，例如 player_tarnished / hollow_soldier / grace_site / stone_ruins；不得写入画风、光照、色彩、镜头、艺术家名等描述，避免污染风格锚点。",
+    "forbidden_in_slot": [
+      "风格词",
+      "光照词",
+      "色号或色彩词",
+      "分辨率或尺寸词",
+      "在世艺术家姓名",
+      "受版权保护的角色名或 IP 名称"
+    ]
+  },
+  "positive": "pixel art sprite sheet, [SUBJECT], single character, full body, front-facing three-quarter view, orthographic, clean 1px dark outline, hard pixel edges, no anti-aliasing, 16-color limited palette, HD-2D game asset, warm golden key light from upper left, cold blue night fog in shadows, volumetric god rays, floating light motes, deep blue and gold-line UI era fantasy, transparent background, centered, feet on ground line, consistent silhouette, flat shading, crisp readable at 32px",
+  "negative": "smooth gradients, anti-aliasing, blurry edges, soft shadows, 3d render, photorealistic, realistic skin texture, high detail face, motion blur, depth of field on character, jpeg artifacts, watermark, text, signature, logo, extra limbs, duplicate characters, cropped feet, off-center, multiple views in one frame, gradient background, saturated distant background, glowing cold fog, paid asset, copyrighted character, living artist style",
+  "style": {
+    "anchor": "HD-2D：像素点阵实体对平滑多层景深；只取构成逻辑，不复刻任何具体作品资产",
+    "pixel_entity": "硬边 1px 轮廓、Nearest、无抗锯齿、有限色板",
+    "smooth_depth": "背景连续色带与去饱和冷雾，禁止像素块感",
+    "character_ratio": "32px 高，3.5~4 头身，Q 版偏写实",
+    "outline_hex": "#0B1226",
+    "max_colors_per_character": 16,
+    "fixed": true,
+    "note": "本对象所有字段逐字复用，禁止按批次微调措辞"
+  },
+  "lighting": {
+    "key_light_hex": "#FFD27A",
+    "key_light_direction": "upper left",
+    "key_light_mid_hex": "#F0A94C",
+    "fill_fog_hex": "#2B3A5C",
+    "deep_shadow_hex": "#0B1226",
+    "rule": "暖金主光只打主体与近景；远景一律冷调去饱和；冷雾区不得发光",
+    "volumetric_light": "暖金径向光束，仅主光方向",
+    "bloom_threshold_hex": "#FFD27A",
+    "fixed": true
+  },
+  "palette": {
+    "id": "hd2d_32_v1",
+    "warm_gold": ["#FFF0C2", "#FFD27A", "#F0A94C", "#C97A2E", "#8A5A22"],
+    "cold_fog": ["#BFD0EA", "#7E96BF", "#4A6089", "#2B3A5C", "#16233F", "#0B1226"],
+    "deep_blue_ui": ["#1F3A63", "#16294A", "#0E1B33", "#080F1F"],
+    "gold_line": ["#FFF0C2", "#E8C479", "#B8944A", "#8A6A32"],
+    "stone_earth": ["#C6BBA4", "#9A8E78", "#6E6453", "#463F35", "#29251F"],
+    "vegetation": ["#A8C09A", "#6C8A70", "#3E5A4C", "#22372F"],
+    "rule": "所有生成图取色必须落在上表；降采样后用 -colors 16 强制收敛",
+    "fixed": true
+  },
+  "lora_triggers": [
+    {
+      "file": "pixel-art-lora.safetensors",
+      "source": "Limbicnation/pixel-art-lora",
+      "trigger": "pixel art, pixel-art style",
+      "strength_model": 0.8,
+      "strength_clip": 0.8,
+      "required": true
+    }
+  ],
+  "controlnet": {
+    "model": "control_v11p_sd15_openpose.pth",
+    "preprocessor": "OpenposePreprocessor",
+    "weight": 0.9,
+    "start_at": 0.0,
+    "end_at": 0.8,
+    "pose_reference": "res://assets/generated/chars/_pose/<action>_<frame>.json",
+    "rule": "同一动作跨角色复用同一份 OpenPose 骨架文件，保证姿态一致",
+    "fixed": true
+  },
+  "ip_adapter": {
+    "model": "ip-adapter_sd15.bin",
+    "clip_vision": "CLIP-ViT-H-14",
+    "style_anchor": "res://assets/generated/_style_anchor/style_anchor.png",
+    "weight": 0.7,
+    "weight_type": "style transfer",
+    "rule": "风格锚点图全项目唯一，任何批次不得替换",
+    "fixed": true
+  },
+  "layerdiffuse": {
+    "enabled": true,
+    "method": "SD15 Attention Injection (transparent)",
+    "weight": 1.0,
+    "output": "RGBA with alpha, non-subject pixels alpha=0",
+    "rule": "直接出透明底；出图后校验 alpha 通道存在且非主体区全透明",
+    "fixed": true
+  },
+  "downsample": {
+    "pipeline": "Lanczos 25% 收敛 -> Point 降至 32x32 -> 16 色量化 -> PNG32",
+    "target_size": [32, 32],
+    "filter_final": "Point",
+    "colors": 16,
+    "dither": "None",
+    "output_format": "PNG32 RGBA",
+    "fixed": true
+  },
+  "sampling": {
+    "steps": 28,
+    "cfg": 7.0,
+    "sampler_name": "euler_ancestral",
+    "scheduler": "normal",
+    "denoise": 0.55,
+    "fixed": true
+  },
+  "seed_lock": {
+    "enabled": true,
+    "base_seed": 20261108,
+    "derivation": "seed = base_seed + category_offset * 10000 + action_offset * 100 + frame_index",
+    "category_offset": {
+      "chars": 1,
+      "decor_layers": 2,
+      "fx": 3,
+      "bg_layers": 4,
+      "props": 5,
+      "ui": 6
+    },
+    "action_offset": {
+      "idle": 1,
+      "walk": 2,
+      "jump": 3,
+      "roll": 4,
+      "attack": 5,
+      "hit": 6,
+      "death": 7
+    },
+    "cross_prompt_reuse": true,
+    "decor_layer_rule": "装饰层必须复用其 base 层的完全相同的 seed，禁止重新抽种子",
+    "note": "同一 seed 跨 prompt 复用是风格一致性第三层约束；seed 实值写进 import.json 的 seed 字段供复核"
+  },
+  "usage_notes": [
+    "1. 调用前读取本 JSON，深拷贝一份，仅替换 positive 中唯一的那一个占位符（见 single_slot）。",
+    "2. 主体描述只允许写「是什么」，不写「长什么样、什么风格、什么光」，风格/光照/调色板由固定字段负责。",
+    "3. 提交 ComfyUI 前，把 lora_triggers 的 trigger 追加到正向提示词末尾；追加内容属于固定骨架的一部分，不算改动骨架。",
+    "4. seed 由 seed_lock.derivation 计算得出，不得随机；装饰层沿用 base 的 seed。",
+    "5. controlnet.pose_reference 指向该动作的统一 OpenPose 骨架；ip_adapter.style_anchor 全项目唯一。",
+    "6. 出图后按 downsample.pipeline 降采样，再用 Aseprite 手工修帧；AI 出的是底稿，不是成品。",
+    "7. 生成图必须标注来源、schema_version、seed 与版本号，便于复现与替换。",
+    "8. 骨架字段一经冻结不得按批次微调；确需改动须提交主 AI 裁决并整体升版本号，禁止局部热改。",
+    "9. 本骨架零外部依赖：只用本地 ComfyUI 已装模型，不调用任何云服务或付费素材服务。"
+  ],
+  "compliance": {
+    "no_paid_assets": true,
+    "no_external_generation_service": true,
+    "no_cloud_comfyui": true,
+    "no_living_artist_style": true,
+    "no_copyrighted_character": true,
+    "ai_output_is_draft_only": true,
+    "human_refine_required": ["chars/player", "chars/boss", "bg_layers/key_scenes"]
+  }
+}
