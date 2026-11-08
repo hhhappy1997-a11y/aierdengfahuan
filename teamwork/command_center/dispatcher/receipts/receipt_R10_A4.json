@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-040336-525-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "R10 规格定型核对完成，详见 teamwork/Rank-4/DONE-R10.md 与 SPEC-VERDICT-CHECK.md。A9：layer=-10 / integer_scale=2 / Nearest 在 scene_integration.md、godot/scripts/render/hd2d_placeholder_attach.gd、godot/scenes/courtyard.tscn 三处逐项一致（内联 python 只读真跑 11/11 True），00-汇总.md §4 A9 记『已定型』；如实登记 hd2d_placeholder.gd:23 导出默认 integer_scale=3 为 R6 冻结件既有默认，被 courtyard.tscn:128 实例值 2 与 attach.gd:45 set() 覆盖为 2，属脚本默认 vs 实例覆盖、非参数冲突；本轮只核对、未改挂载取舍、未反复改口径、既有件一个字节未改。A8：128bit 歧义在 00-汇总.md §4 A8、ART-SPEC-FINAL.md §1/§6、README.md §8.3 #7、DONE-R9.md §3 #12、总线 MSG-0400 仍登记为『待用户确认、暂按 128px 基准画布理解』，不自行改口径（真跑 10/10 True）。自检：Godot 4.7.2 两段占位脚本 --check-only --script 全部 EXIT=0 / SCRIPT ERROR=0 / Parse Error=0 / ERROR=0；内联 python 落位 4/4、独立 10/10、内嵌 16/16、导入口径 24/24 全通过，与 R9 一致、无回归；首次两次自检脚本正则失败如实登记于 DONE-R10.md §2.4、以第 3 次完整一次 stdout 为准。出图 job 只读验收：Rank-4 PNG=0、stdout=0 字节、stderr=25320 字节停在 checkpoint shards 50%(1/2)、mtime 01:21:30 至 04:10:18 共 168.8 分钟无新增、报错/完成关键字 0；未启动第二个 GPU job、未杀/未重启、不宣称已能出图；ComfyUI 路径仍『待用户提供 / 待刺探指令』→ 记阻塞、不臆造。只写 Rank-4 两份 .md 与回执例外，未写 project.godot / scenes / 总线 / 总纲 / 契约 / 其它工位、未自行 git。零付费、ComfyUI 仍主美术路线、qwen-image 仅本地备选。"
+}

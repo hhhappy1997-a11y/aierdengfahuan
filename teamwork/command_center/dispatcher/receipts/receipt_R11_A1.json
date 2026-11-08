@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-040336-519-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "引用 DONE-R11.md 实际结论：R11 三段门禁真跑 ERROR=0 无回归（G1/G3 EXIT=0、52/52 个 .gd --check-only EXIT=0、SCRIPT ERROR=0、Parse Error=0、ERROR=0，仅 1 条 ObjectDB leaked WARNING 非 ERROR）；A3（SaveSystem 保留 Rank-1 装配占位）、A5（chunk flag -→neg 转义、正则与白名单未改）、A9（layer=-10 / integer_scale=2 / Nearest）三项定型只读确认未改动；POST-VERDICT-GATE.md 与 DONE-R11.md 已产出。如实登记：E-8 数值回改（A1）属 Rank-2 跨工位依赖，本路不代改/不刺探/不轮询/不冒充全绿，ERROR=0 仅为三段门禁脚本层实际结果；godot 源文件本轮零改动。本回执为并发保护下的 outbox 补齐与独立复核（本路单独真跑计数与主体一致），不覆盖既有回执。"
+}

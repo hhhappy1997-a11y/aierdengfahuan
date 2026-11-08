@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-040336-521-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "引用 DONE-R10.md 实际结论：已执行 00-汇总.md §4 A1 裁决——两份 boss_01_margit.tres 的三个 max_resistance 由 330/360/320 回改为 400/480/420（仅 3 个数值，两副本数值行逐字节一致、排除 ext_resource 后全字段 DIFF_RC=0；threshold/gain/触发伤害/削韧/N=8/数据表schema.md 口径/combat_data_validator.gd 校验式均未改）。真跑 A：改前 CombatDataValidator._ready() 实跑复现『检查项 491，错误 3』与 4 条 ERROR（E-8 三项 FAIL），改后『检查项 491，错误 0』、ERROR=0、FAIL=0、SCRIPT ERROR=0，4 条 ERROR 全部消失。真跑 B：真实工程根三段门禁复跑 52/52 --check-only EXIT=0、SCRIPT ERROR=0、Parse Error=0、ERROR=0、hides a global=0、Failed to load=0，仅 1 条既有 ObjectDB leaked WARNING，与 R9 基线一致无回归；首轮合并日志曾出现 1 条引擎 user://logs 偶发 ERROR，复跑不再现，已如实登记，不冒充全绿。交付 DONE-R10.md 与 E8-VERDICT-LOG.md 已写；其余待裁决项（A4/A6 文档回改、validator 落位工程根、schema 单复数口径等）只登记不擅改。详见 DONE-R10.md / E8-VERDICT-LOG.md。"
+}

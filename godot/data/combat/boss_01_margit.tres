@@ -47,7 +47,7 @@ trigger_frame = 0
 duration_sec = 0.0
 tick_damage_per_sec = 0.0
 resistance_gain_per_trigger = 25.0
-max_resistance = 330.0
+max_resistance = 400.0
 
 [sub_resource type="Resource" id="Resource_status_poison"]
 script = ExtResource("5_status")
@@ -64,7 +64,7 @@ trigger_frame = 0
 duration_sec = 20.0
 tick_damage_per_sec = 12.0
 resistance_gain_per_trigger = 30.0
-max_resistance = 360.0
+max_resistance = 480.0
 
 [sub_resource type="Resource" id="Resource_status_frost"]
 script = ExtResource("5_status")
@@ -81,7 +81,7 @@ trigger_frame = 0
 duration_sec = 30.0
 tick_damage_per_sec = 0.0
 resistance_gain_per_trigger = 30.0
-max_resistance = 320.0
+max_resistance = 420.0
 
 [sub_resource type="Resource" id="Resource_move_01"]
 script = ExtResource("3_move")

@@ -311,24 +311,31 @@ key   := <模块> "." <对象> "." <状态>
 
 ### 4.4 合并与回放顺序
 
+> **【按 `00-汇总.md` §4 A4 裁决回改】** 本节原 R1 措辞（以 `seq` 升序回放排序、按 `grants`/`consumed` 累加结算、按 `epoch` 清空集合）已按裁决废止，统一回改为 R2 落地（`world_state.gd` 头部 M1~M5）的 5 条口径；§4 其它章节保持原样。
+> 1. **timestamp 升序回放**：`delta.log` 行按 `written_at_unix`（timestamp）升序逐行应用，后写覆盖先写（LWW）；`seq` 仅作候选行筛选，不再是排序 / 冲突裁决键。
+> 2. **inventory 数量快照后写覆盖**：`inventory` 为 `{item_id: count}` 快照，按 item_id 后写覆盖，`count = 0` 时移除该 item；不做 `grants - consumed` 累加结算。
+> 3. **集合类并集只增不减**：`spawns.defeated` 等集合取并集（击杀不可回滚、回放层不清空），`epoch = max(旧, 新)`。
+> 4. **quest_stages 取较大值**：同一 quest 的 `stage_index = max(旧, 新)`，阶段只前进不回退，`stage_id` 随较大者；不按 `seq` 取最大者覆盖。
+> 5. **`.tmp`→`rename` 原子写**：落盘按 §4.5 `delta.json.tmp → flush → DirAccess.rename_absolute → delta.json` 原子替换，任一步失败不删旧文件。
+
 单槽采用 **「一个快照主文件 + 追加日志」**：`delta.json` 是最新完整快照，`delta.log` 是上次快照之后的增量行（每行一个 `{"seq":…, "flags":{…}, …}`）。加载流程严格按序：
 
 1. **读基线** → 构造 `state0`（§4.2）。
 2. **读 `delta.json`** → 校验 `schema_version`（§4.7）、`slot`、`seq` → 覆盖到 `state0` 得到 `state1`。
-3. **读 `delta.log`** → 按 `seq` **升序**逐行回放，仅回放 `seq > delta.json.seq` 的行；损坏或半截的最后一行**丢弃**（日志是尽力而为的补偿，不是权威）。
+3. **读 `delta.log`（timestamp 升序回放）** → 仅取 `seq > delta.json.seq` 的行作候选，再按 `written_at_unix`（timestamp）**升序**排序后逐行应用，后写覆盖先写（LWW）；timestamp 缺失时回落 `seq`。损坏或半截的最后一行**丢弃**（日志是尽力而为的补偿，不是权威）。
 4. **应用 `removals`** → 从 `flags` 删除列出的 key，回落到基线值。
-5. **`quests` 覆盖**：任务 stage 与 flags 以快照为准，日志中同任务取 `seq` 最大者。
-6. **`inventory` 累加**：`grants` 求和、`consumed` 求和，再按 `grants - consumed` 结算；负数夹到 0。
-7. **`spawns` 按 epoch 处理**：日志 `epoch > 快照 epoch` 时清空 `defeated`（赐福休息刷新，§4.6）后再并入。
+5. **`quests` 合并（quest_stages 取较大值）**：同一 `quest_id` 取 `stage_index = max(旧, 新)`（阶段只前进不回退），`stage_id` 随较大者；不按 `seq` 取最大者覆盖。
+6. **`inventory` 数量快照后写覆盖**：`inventory` 为 `{item_id: count}` 快照，按 item_id 后写覆盖，`count = 0` 时移除该 item；不做 `grants - consumed` 累加结算。
+7. **`spawns` 集合并集只增不减**：`defeated` 取集合并集（击杀不可回滚、回放层不清空），`epoch = max(旧, 新)`；赐福休息对普通敌人的刷新属业务层动作（§4.6），与回放合并规则分层处理。
 8. **压缩（compact）**：回放完成后立即把 `state` 写成新 `delta.json`，清空 `delta.log`，并更新 `seq`。
 9. **注入 WorldState**：`_apply_snapshot(state)` → 内存 flag 表就绪 → 发 `delta_committed(seq, "load")`。
 
-**冲突覆盖规则（LWW by seq）**
+**冲突覆盖规则（LWW by timestamp / 写入顺序）**
 
 | 场景 | 规则 |
 |---|---|
-| 同 flag key 在快照与日志都出现 | `seq` 大者胜；`seq` 相同取快照 |
-| 同 flag key 在日志多行出现 | 最后一行（最大 seq）胜 |
+| 同 flag key 在快照与日志都出现 | timestamp 大者胜；timestamp 相同取快照 |
+| 同 flag key 在日志多行出现 | 按 timestamp 升序应用，最后一行（最大 timestamp）胜；timestamp 相同按数组顺序后者胜 |
 | 类型冲突（如 bool vs int） | 迁移完成后以**登记表 §3.3 声明类型**为准；无法转换则丢弃该日志行并 `push_warning` |
 | `removals` 与 `flags` 同时含同 key | `removals` 优先（先删后不加） |
 | `quests.stage_id` 与 `flags["quest.x.stage"]` 不一致 | 以 `flags` 的 int 阶段为准，回写 `stage_id`，并记 `meta.stage_repaired = true` |
