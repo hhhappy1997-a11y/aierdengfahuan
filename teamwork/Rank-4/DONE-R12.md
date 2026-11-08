@@ -191,3 +191,62 @@ READINESS utf8 OK = True | has-json-fence = False
 - **唯一可写范围**：`Rank-4\COMFYUI-READINESS.md`、`Rank-4\DONE-R12.md` + 回执例外 `command_center\ai\4\outbox\`；`comfyui_workflow_pixel.json` **保持不动**；未写 `godot\`、总线 / 总纲 / 契约 / 任务书 / 其它工位；未自行 `git commit` / `git push`。
 - 零付费 / 零外部依赖；付费 API 一律禁用；`128bit` 待用户确认、不自行改口径；**不伪造输出 / 画面 / 截图 / 安装路径、不宣称已出图**。
 - 中文 UTF-8；本文件代码块一律 `text` 标记、行首围栏不标注 json；所有独立 JSON 真跑 `json.load` 通过、回执为合法 JSON。
+
+---
+
+## 6. 并发实例复核补记（本实例独立真跑 · 只追加、不改既有内容）
+
+> 开工时 `COMFYUI-READINESS.md` 已由并发实例先写；核对过程中 `DONE-R12.md` 亦由并发实例先写，二者均完整（①交付清单 ②自检实际输出 ③未完成项与阻塞）。按并发保护「不覆盖、不重做、不重复写第二份回执」，本实例仅做独立只读复核并追加本段留痕，**未改动上列既有文件的任何既有内容、未写第二份回执**。
+
+### 6.1 独立真跑实际输出（与 §2 结论一致）
+
+```text
+[GET /system_stats]  HTTP_CODE=200 BYTES=1172
+  comfyui_version=0.33.2 | argv 不含绝对路径
+  vram_total=17175150592 vram_free=8959269586 torch_vram_total=33554432 torch_vram_free=22256338
+[GET /object_info]   BYTES=4625272 node_count=2724
+  ckpt_len=15 pixelXL_in=True XL_named=3
+  lora_len=34 15V_named=['PixelArtRedmond15V-PixelArt-PIXARFK.safetensors'] xl_named=3
+  cn_len=19 sd15_count=18
+  width_type=INT width_opts={'default':512,'min':16,'max':16384,'step':8,...}
+  height_type=INT height_opts={'default':512,'min':16,'max':16384,'step':8,...}
+  workflow_nodes_all_exist=True
+[本地 JSON 解析]
+  独立件 Rank-4/*.json            PASS=11 FAIL=0
+  落位件 godot/assets/generated  PASS=4  FAIL=0
+  workflow bytes=2529 sha256=98d6d722972137898f391591f8f5d38f265cf25df2ff988b3f2c0723aca82ddd
+  node_count=9 SUBJECT_occurrences=1 has_LoraLoader=False has_ControlNetLoader=False
+  EmptyLatentImage={'width':512,'height':512,'batch_size':1}
+  ImageScale=128x128 nearest-exact | ImageQuantize=colors 256 dither none
+  内嵌字段(.md 围栏,以 {/[ 开头) 候选=21 严格JSON_PASS=17 示意文本_FAIL=4
+    FAIL 位于 COMFYUI-WORKFLOW.md / DONE-R4.md / R4-验收记录.md（非严格 JSON 的枚举·示意块）
+[PNG 只读计数] Rank-4=0 | godot/assets/generated=0
+```
+
+- 复核结论：SDXL ckpt 与 SD1.5 系扩展件不兼容、`/object_info` 无「SDXL 需 1024」依据、512 骨架 sha256 未变、GPU 未空闲（~7.65 GiB 被旧 job 占）、真实 PNG=0 —— 与 §2 / §3 及 `COMFYUI-READINESS.md` 全部一致。4 项内嵌 FAIL 为示意文本块（本实例扫描口径），非解析错误、不伪造。
+
+### 6.2 只读核对（Glob 实际结果）
+
+```text
+command_center/ai/4/outbox/*      : No files found（空）
+Rank-4/**/*.png                   : No files found
+godot/**/*.png                    : No files found
+Rank-4/asset_proof*               : 仅 asset_proof_stdout.txt（内容为空）；未见 asset_proof_stderr.log
+godot/scripts/render/*.gd         : hd2d_placeholder.gd / hd2d_placeholder_attach.gd 等 5 个 .gd 均在
+D:/Godot/Godot_v4.7.2-stable_win64.exe : 存在
+```
+
+### 6.3 回执核实（不重复写第二份）
+
+```text
+dispatcher/receipts/receipt_cmd-20261109-044100-997-A4.json : 存在
+task_id=cmd-20261109-044100-997-A4 | ai=4 | status=done
+result 引用 DONE-R12.md 实际结论=True | json.load OK
+```
+
+- 回执已由并发实例投递、经中枢回收到 `dispatcher/receipts/`（与 `DONE-R11.md` §2.7 既定行为一致），字段与派单 id 完全一致、合法 JSON。按并发保护「不重复写第二份回执」，本实例**未再写**；outbox 为空属回收后正常状态，不伪造「outbox 稳定留存」。
+
+### 6.4 未实测项（如实登记）
+
+- 两段占位 `.gd` 引擎门禁 `--check-only --script`：**未实测**。原因：`任务书-R12.md`（本轮唯一执行依据）§交付 / §边界 / §完成标志均未要求该门禁，用户清单亦标注「若任务书要求」；本轮为兼容性核验与就绪报告，按最小交付不擅自扩大动作。仅只读核对两段 `.gd` 与 Godot exe 存在（§6.2）。
+- `asset_proof_stderr.log`：只读 Glob 未见该文件（仅 `asset_proof_stdout.txt` 空文件），如实登记、不臆造日志内容。
