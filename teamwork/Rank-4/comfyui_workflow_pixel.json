@@ -1,0 +1,79 @@
+{
+  "prompt": {
+    "1": {
+      "class_type": "CheckpointLoaderSimple",
+      "inputs": {
+        "ckpt_name": "pixelArtDiffusionXL_spriteShaper.safetensors"
+      }
+    },
+    "2": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "pixel art sprite sheet, [SUBJECT], single character, full body, front-facing three-quarter view, orthographic, clean 1px dark outline, hard pixel edges, no anti-aliasing, 16-color limited palette, HD-2D game asset, warm golden key light from upper left, cold blue night fog in shadows, volumetric god rays, floating light motes, deep blue and gold-line UI era fantasy, transparent background, centered, feet on ground line, consistent silhouette, flat shading, crisp readable at 32px",
+        "clip": ["1", 1]
+      }
+    },
+    "3": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "smooth gradients, anti-aliasing, blurry edges, soft shadows, 3d render, photorealistic, realistic skin texture, high detail face, motion blur, depth of field on character, jpeg artifacts, watermark, text, signature, logo, extra limbs, duplicate characters, cropped feet, off-center, multiple views in one frame, gradient background, saturated distant background, glowing cold fog, paid asset, copyrighted character, living artist style",
+        "clip": ["1", 1]
+      }
+    },
+    "4": {
+      "class_type": "EmptyLatentImage",
+      "inputs": {
+        "width": 512,
+        "height": 512,
+        "batch_size": 1
+      }
+    },
+    "5": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": ["1", 0],
+        "seed": 20261108,
+        "steps": 28,
+        "cfg": 7.0,
+        "sampler_name": "euler_ancestral",
+        "scheduler": "normal",
+        "positive": ["2", 0],
+        "negative": ["3", 0],
+        "latent_image": ["4", 0],
+        "denoise": 1.0
+      }
+    },
+    "6": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": ["5", 0],
+        "vae": ["1", 2]
+      }
+    },
+    "7": {
+      "class_type": "ImageScale",
+      "inputs": {
+        "image": ["6", 0],
+        "upscale_method": "nearest-exact",
+        "width": 128,
+        "height": 128,
+        "crop": "disabled"
+      }
+    },
+    "8": {
+      "class_type": "ImageQuantize",
+      "inputs": {
+        "image": ["7", 0],
+        "colors": 256,
+        "dither": "none"
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": ["8", 0],
+        "filename_prefix": "aierdengfahuan_hd2d_r11"
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-042711-618",
+  "from": "总指挥",
+  "target": "4",
+  "task": "[ROUND=R11] 【R11 ComfyUI 主路线落地 · Rank-4】04:24 已定位 `http://127.0.0.1:8188`（v0.33.2、2724 节点、含 ImageQuantize）。读 F:/Game/aierdengfahuan/teamwork\\Rank-4\\任务书-R11.md 并执行：基于真实 /object_info 生成可调用的 API 工作流骨架、更新 import.json 的 pipeline、写 COMFYUI-WORKFLOW.md。**本轮不实际出图、不启动第二个 GPU job**；所有节点必须只读核对、JSON 必须真跑解析。完成后写 DONE-R11.md，并按本任务单 id 在 command_center\\ai\\4\\outbox\\ 写回执。默认不刺探、零付费、不自行 git push。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}

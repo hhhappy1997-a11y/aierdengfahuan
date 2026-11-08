@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-042711-618-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "R11 完成（引用 teamwork/Rank-4/DONE-R11.md 实际结论）：① comfyui_workflow_pixel.json 落地 9 节点 API 工作流骨架（CheckpointLoaderSimple→CLIPTextEncode 正/负→EmptyLatentImage→KSampler→VAEDecode→ImageScale 128px→ImageQuantize ≤256 色→SaveImage），节点名与必需输入键 100% 取自真实 GET /object_info（2724 节点），8 类节点全命中、无缺失无替换，ALL_NODES_OK=True；② COMFYUI-WORKFLOW.md 接入说明（端点/版本、128bit 暂按 128px、固定 Prompt 骨架只换唯一 [SUBJECT]、seed=20261108 锁定、qwen-image 本地备选与程序化 _draw() 兜底三层关系、安装目录未确认原因）；③ 两份 import.json 新增 pipeline 指向 comfyui_local_api_workflow、逐键一致 True、32 键，fallback_route=procedural_draw_placeholder 保留，pipeline_tier=D 未改。自检真跑：4 份 JSON 内联 json.load 通过，连线索引/枚举值/数值边界全 True，positive 与 negative 逐字一致且 [SUBJECT] 全文件仅 1 处，ImageScale=128x128、colors=256。本轮未 POST /prompt、未启动第二个 GPU job、未出图、无 PNG；ComfyUI 安装目录因进程命令行查询被安全策略阻止而未确认、未绕过。详见 DONE-R11.md。"
+}

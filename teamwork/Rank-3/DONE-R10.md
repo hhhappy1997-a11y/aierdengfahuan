@@ -179,3 +179,60 @@ R8_NORM_SUMMARY pass=18 fail=0
 
 > **完成回执**：`teamwork\command_center\ai\3\outbox\cmd-20261109-040336-523-A3.json`（已按任务单 hint 写入 outbox；调度中枢实时回收，同 id 同内容副本见 `teamwork\command_center\dispatcher\receipts\cmd-20261109-040336-523-A3.json`，mtime `04:11:01`，消费后 outbox 为空属正常回收状态，完成标志已生效）
 > `{"task_id":"cmd-20261109-040336-523-A3","ai":3,"status":"done","result":"引用 DONE-R10.md 实际结论：A4 已回改 §4.4 为 R2 落地 5 条口径并注明裁决依据、§4 其它章节原样；A5 复核两份 chunk_world_bridge.gd diff 完全一致；真跑 W7_SUMMARY pass=45 fail=0 / R8_NORM_SUMMARY pass=18 fail=0、六段 EXIT=0、G2_FAIL=0、SCRIPT_ERROR/ERROR=0，无回归；详见 Rank-3/DONE-R10.md"}`
+
+---
+
+## ④ 并发实例追加复核（本实例 · 派单 `cmd-20261109-040336-523-A3`）
+
+> 开工时 `DONE-R10.md`、`存档与flag规范.md` §4.4 回改、归档回执 `command_center/dispatcher/receipts/cmd-20261109-040336-523-A3.json` 均已由并发实例先写。按用户并发保护「只补缺口 / 追加复核，不覆盖、不重做；§4.4 已被并发回改到位则核对一致即可，不回退再改」，本实例**未覆盖、未重做、未回退再改**，仅追加下列复核并留痕；上方 ①②③ 段逐字保留。
+
+### 4.1 §4.4 现状核对（一致，不回退再改）
+实读 `存档与flag规范.md:312~343`：`:314` 引用块「【按 `00-汇总.md` §4 A4 裁决回改】」；`:315~319` 5 条口径（timestamp 升序回放 / inventory 数量快照后写覆盖 / 集合类并集只增不减 / quest_stages 取较大值 / `.tmp`→`rename` 原子写）；步 3（`:325`）/ 5（`:327`）/ 6（`:328`）/ 7（`:329`）与规则表标题（`:333`「冲突覆盖规则（LWW by timestamp / 写入顺序）」）、两行（`:337`/`:338`）均为 timestamp 口径；§4.5 / §4.6 等其它章节及步 8（`:330`）、规则表第 5/6 行（`:341`/`:342`）保留原样。**与 `00-汇总.md` §4 A4 裁决 5 条口径逐条一致，核对通过，不回退再改。**
+
+### 4.2 A5 双副本实际比对（只核对不擅改）
+```
+diff 工位版 / 工程根版 chunk_world_bridge.gd   → DIFF_EXIT=0（逐字一致）
+sha256sum 两份 = 0ba0759c2094c0fab892be68c645cfd6f7283a94fe032222615ccf5beb8633d1
+两份各自 grep：:37 NEG_TOKEN="neg"、:65 sanitize_flag_segment()、:70 out += NEG_TOKEN、
+              :91~92 chunk_limgrave_-1_-1 → world.chunk_limgrave_neg1_neg1.loaded（行号一致）
+```
+两份均含 `-`→`neg` 归一、逐字一致，与 `00-汇总.md` §4 A5「采用 R8 已落地方案」一致，均已落地。
+
+### 4.3 本实例亲自真跑（引擎 `D:/Godot/Godot_v4.7.2-stable_win64.exe` = `4.7.2.stable.official.ed1daf0bf`，`--path godot`；日志置于系统临时目录 `r10_verify_A3`、已收尾删除）
+```
+G0_EXIT=0  4.7.2.stable.official.ed1daf0bf
+G1_EXIT=0  G1_LINES=16   (--headless --import)
+G2_TOTAL=52 G2_FAIL=0    (全工程 52 个 .gd 逐个 --headless --check-only --script；
+                          scripts/rpg/ 24 个 = G2[24]~[47] 全 EXIT=0)
+G3_EXIT=0  G3_LINES=4    (--headless --quit)
+W7_EXIT=0  W7_LINES=70   (--quit-after 5 res://scripts/rpg/r7_wiring_test.tscn)
+R8_EXIT=0  R8_LINES=27   (--script res://scripts/rpg/r8_neg_chunk_test.gd)
+68:W7_SUMMARY pass=45 fail=0
+24:W7_PASS T2_SD_TS_ORDER | timestamp ascending beats seq order
+25:W7_PASS T2_SD_UNION | defeated union=["e1", "e2"] epoch=2
+27:W7_PASS T2_DELTA_WRITTEN | delta.json parsed after dungeon_enter commit
+21:R8_NORM_SUMMARY pass=18 fail=0
+3 :R8_NORM_KEY_chunk_limgrave_-1_-1 -> world.chunk_limgrave_neg1_neg1.loaded
+12:R8_NORM_POS_REGRESSION | pos=world.chunk_limgrave_0_0.loaded (R7 baseline)
+ALL_LINES=274
+SCRIPT_ERROR=0  Parse_Error=0  ERROR_HITS=0  Failed_loading=0  WARNING_HITS=9
+```
+9 条 WARNING 逐条归因（不冒充全绿）：3 条 `ObjectDB instances were leaked at exit`（G3/W7/R8 headless 退出噪音）、2 条 `[ChunkManager] 未找到 ChunkRoot`（Rank-1 autoload 跨工位降级）、1 条 `I-1: 非法 flag key ... chunk.chunk_limgrave_0_0.loaded`（W7 联调预期拒绝）、3 条 `at: push_warning ... variant_utility.cpp:1033`（上述警告的 backtrace 说明行）；**ERROR=0 / SCRIPT ERROR=0**。
+
+### 4.4 复核结论
+- 与 ② 并发实例结论一致（W7 45/0、R8 18/0、六段 EXIT=0、ERROR=0）；本实例 G2 覆盖**全工程 52 个 `.gd`**（并发实例为 rpg 24 个），更严格、无新增失败。
+- `W7_SUMMARY pass=45 fail=0` / `R8_NORM_SUMMARY pass=18 fail=0` 与 R7/R8/R9 基线逐字一致 → **§4.4 纯文档措辞回改未引入回归**。
+- 回执：归档回执 `dispatcher/receipts/cmd-20261109-040336-523-A3.json` 已存在且内容正确（`task_id`/`ai`=3/`status`=done/`result` 引用本 DONE 实际结论），outbox 消费后为空属正常回收状态；本实例按用户「两步都做」在 outbox **补写**同结论 `receipt_R10_A3.json`（status=done 为真实结论，不覆盖任何既有件）。
+- ③ 的待裁决 / 阻塞项全部沿用，本轮无硬阻塞。
+
+### 4.5 回执交付核验（收尾实际输出）
+```
+=== outbox 现状 ===
+total 0（消费后为空，mtime 04:33）
+=== dispatcher/receipts/receipt_R10_A3.json（本实例补写件）===
+1140 字节，mtime 04:33；python json.load 通过：
+  keys=['ai','result','status','task_id']  task_id=cmd-20261109-040336-523-A3  ai=3  status=done  result_chars=648
+=== dispatcher/receipts/cmd-20261109-040336-523-A3.json（并发实例先写件）===
+1827 字节，mtime 04:11；同样 json.load 通过、4 字段正确
+```
+本实例补写的 `receipt_R10_A3.json` 已被调度中枢实时消费并归档，完成标志已生效；outbox 为空属正常回收状态，**不重做、不覆盖**。

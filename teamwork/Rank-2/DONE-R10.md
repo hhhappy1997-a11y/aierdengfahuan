@@ -329,3 +329,91 @@ total 0 （空目录）
 
 > 完成标志：按任务单 `cmd-20261109-040336-521-A2` 在 `teamwork\command_center\ai\2\outbox\` 写
 > `status=done` 回执，`result` 引用本文实际结论；中枢已收并记 `done`。
+
+---
+
+## 5. 并发实例复核补记（本实例 · 只追加 / 不覆盖 / 不重做）
+
+> 本实例由 HOST 全闭环自动化启动后，发现 `DONE-R10.md`（本文 §0~§4）、`E8-VERDICT-LOG.md`、
+> 两份 `boss_01_margit.tres` 数值（已为 `400/480/420`）、以及归档回执
+> `dispatcher\receipts\cmd-20261109-040336-521-A2.json` / `ledger.jsonl:35 status=done`
+> **已被并发实例先写**。按本轮「并发保护」硬约束：只补缺口 / 追加复核，不覆盖、不重做，
+> 数值核对一致即可、不回退再改。以下为本实例**亲自实际执行**的复核输出，非引用旧结论、未伪造。
+
+### 5.1 数值与副本复核（实际输出）
+
+```
+=== 工位稿 / 运行件 max_resistance ===
+50:max_resistance = 400.0   67:max_resistance = 480.0   84:max_resistance = 420.0  （两份相同）
+=== 三数值行两份逐字节 diff ===       VAL_DIFF_RC=0
+=== 排除 ext_resource 后全字段 diff === DIFF_RC=0
+=== 全文件 cmp ===                     differ: byte 119, line 3 ; CMP_RC=1
+=== 差异原文 === 仅 5 条 ext_resource path：
+  工位稿 res://data/schemas/*.gd  ←→  运行件 res://scripts/combat/*.gd（R6 装配既有差异、非数值、改前即存在）
+```
+
+结论与 §1.3 一致：三数值行逐字节一致、全字段（排除 ext_resource）一致；全文件差异仅为既有 5 条路径，不伪造「全文件逐字节相同」。
+
+### 5.2 严禁改动项复核（实际 grep，均保持原值）
+
+```
+39:threshold = 180.0   49:gain = 25.0    56:threshold = 210.0   66:gain = 30.0
+73:threshold = 160.0   83:gain = 30.0
+42/43/44: trigger_damage_ratio = 0.12 / trigger_damage_flat = 0.0 / trigger_poise_damage = 25.0
+59/60/61: 0.0 / 40.0 / 0.0        76/77/78: 0.08 / 0.0 / 40.0
+96/120/144: poise_damage = 22.0 / 45.0 / 70.0    147:status_buildup_frost = 35.0
+validator:17   @export var resistance_sample_triggers: int = 8            （N=8 未改）
+validator:212  var limit: float = threshold + gain * float(resistance_sample_triggers)
+validator:213  _ok(limit <= buildup.max_resistance, "E-8 抗性不溢出 -> %s" ... )（校验式未改）
+数据表schema.md:427  §9 E-8 口径 `threshold + resistance_gain_per_trigger × 8 <= max_resistance`（未写未改）
+```
+
+### 5.3 真跑 A 复核：`CombatDataValidator._ready()` 改前 / 改后（本实例实际 stdout）
+
+系统临时最小工程 `C:\Users\62668\AppData\Local\Temp\r10_recheck_validator\`（沿用 R5 既有口径，
+不落 teamwork / 工程根、收尾删除）：复制 8 个 `class_name` 脚本 + 工位 `combat_data_validator.gd`
++ 3 份 `.tres`，`gate\validator_runner.gd` 挂载 validator 并 `add_child()` 触发 `_ready()`，
+`main.tscn` 为主场景；改前 / 改后用同一工程，仅替换临时副本的 3 个 `max_resistance`。
+三份 `.tres` 的 11 条 `ext_resource` 全部指向已复制的 `res://scripts/combat/*.gd`，无悬空。
+
+| 段 | 改前 `330/360/320` | 改后 `400/480/420` |
+|---|---|---|
+| `--import` / `--quit` | `IMPORT_RC=0`(29 行) / `QUIT_RC=0` | `IMPORT_RC=0`(16 行) / `QUIT_RC=0` |
+| 检查项汇总 | `E-1/E-3/E-4/E-5/E-8/E-9 检查项 491，错误 3` | `检查项 491，错误 0` |
+| E-8 FAIL | 3 条（bleed / poison / frost） | 0 |
+| `ERROR:` 行数 | **4**（3 条 FAIL + 1 条「数据表自洽校验失败，错误 3 项」） | **0** |
+| `FAIL` / `SCRIPT ERROR` / `Parse Error` | 3 / 0 / 0 | 0 / 0 / 0 |
+| `_ready()` 触发标记 | `[R10-RECHECK] CombatDataValidator._ready() 已触发，挂载 3 份 .tres` | 同左 |
+
+结论：`4 条 ERROR → 0`、E-8 三项 FAIL 全部消失；491 项全量跑完 + 触发标记证明 `_ready()` 确实执行
+（非未加载假绿）。与 §2.2 / `E8-VERDICT-LOG.md` §7 并发实例结论一致，且为本实例独立复跑。
+
+### 5.4 真跑 B 复核：真实工程根三段门禁（本实例实际 stdout）
+
+工程根 `F:/Game/aierdengfahuan/godot`，引擎 `4.7.2.stable.official.ed1daf0bf`（`G0_RC=0`）：
+
+```
+G1 --headless --import              G1_RC=0            (16 行)
+G2 --check-only --script 全量 .gd   G2_SCRIPTS=52 G2_FAIL=0
+G3 --headless --quit                G3_RC=0
+--- 合并日志 ALL_LINES=125，grep 统计 ---
+SCRIPT ERROR: 0    Parse Error: 0    ERROR: 行数: 0    WARNING 行数: 1
+hides a global: 0    Failed to load: 0
+--- ERROR/WARNING 原文 ---
+124:WARNING: 2 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+```
+
+结论：`52/52 --check-only EXIT=0`、`SCRIPT ERROR=0`、`Parse Error=0`、`ERROR=0`，仅 1 条既有
+`ObjectDB leaked` WARNING（非 ERROR、ChunkManager 在途加载时序），与 R9 FINAL 基线一致、无回归。
+本实例未复现 §2.3 首轮那 1 条偶发 `user://logs` ERROR，如实记录、不冒充、也不否认其历史登记。
+
+### 5.5 本实例补的缺口 / 未动项 / 未完成项
+
+- **补缺口**：`command_center\ai\2\outbox\` 在本实例开工时为空（并发回执已被中枢即时消费归档，
+  见 §4.1），按本任务单「完成标志 2」在 outbox 补写 `receipt_R10_A2.json`（`status=done`，
+  `result` 引用本文实际结论），不覆盖并发件、不重做 DONE 主体。
+- **未动**：本文 §0~§4 全部既有内容、`E8-VERDICT-LOG.md`、两份 `.tres`（数值已正确，不回退再改）、
+  `project.godot` / `scenes\` / 其它工位 / 总线 / 总纲 / 契约 / 台账 / `00-汇总.md`；未自行 git。
+- **未完成项**：与 §3 一致（A4/A6 文档回改、validator 落位工程根、`schema` 单复数口径、
+  历史 signal / Q1、手感与运行期可见性验收、apk / ComfyUI / 出图 / 仓库推送）—— 只登记不擅改，
+  无新增阻塞。

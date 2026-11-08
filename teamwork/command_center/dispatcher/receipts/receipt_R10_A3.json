@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-040336-523-A3",
+  "ai": 3,
+  "status": "done",
+  "result": "引用 DONE-R10.md 里的实际结论：A4 已按 00-汇总.md §4 A4 裁决把 存档与flag规范.md §4.4 的 R1 旧措辞（seq 升序 / grants-consumed 累加 / epoch 清空）回改为 R2 落地 5 条口径（timestamp 升序 / inventory 数量快照后写覆盖 / 集合并集只增不减 / quest_stages 取较大值 / .tmp→rename 原子写），§4 其它章节原样；A5 复核两份 chunk_world_bridge.gd diff EXIT=0、sha256 一致、均含 '-'→'neg' 归一；本实例追加复核亲自真跑三段门禁 + W7_SUMMARY + R8_NORM：G0/G1/G2/G3/W7/R8 六段 EXIT=0，G2_TOTAL=52 G2_FAIL=0（覆盖 scripts/rpg/ 24 个），W7_SUMMARY pass=45 fail=0、R8_NORM_SUMMARY pass=18 fail=0，ALL_LINES=274，SCRIPT_ERROR=0 / Parse_Error=0 / ERROR=0 / WARNING=9（全归因，不冒充全绿），与 R7/R8/R9 基线逐字一致，口径回改未引入回归；详见 teamwork/Rank-3/DONE-R10.md ①②③④。并发保护：DONE 与归档回执已由并发实例先写，本实例只追加复核、不覆盖、不重做、不回退再改。"
+}

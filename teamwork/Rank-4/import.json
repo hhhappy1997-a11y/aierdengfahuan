@@ -44,6 +44,12 @@
     "srgb": "disabled_or_as_configured_by_engine"
   },
   "pipeline_tier": "D",
+  "pipeline": {
+    "primary_route": "comfyui_local_api_workflow",
+    "comfyui_endpoint": "http://127.0.0.1:8188",
+    "comfyui_version": "0.33.2",
+    "workflow_json": "comfyui_workflow_pixel.json"
+  },
   "fallback_route": "procedural_draw_placeholder",
   "prompt_skeleton": "hd2d_pixel_skeleton_v1",
   "human_refine": "not_required",
