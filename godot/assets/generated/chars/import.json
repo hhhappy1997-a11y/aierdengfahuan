@@ -1,7 +1,7 @@
 {
   "frame_width": 128,
   "frame_height": 128,
-  "columns": 7,
+  "columns": 8,
   "rows": 1,
   "anchor": [
     0.5,
@@ -23,32 +23,32 @@
       "loop": true
     },
     {
-      "name": "roll",
+      "name": "run",
       "start_frame": 2,
       "end_frame": 2,
       "fps": 1,
-      "loop": false
+      "loop": true
     },
     {
-      "name": "attack_light",
+      "name": "roll",
       "start_frame": 3,
       "end_frame": 3,
       "fps": 1,
       "loop": false
     },
     {
-      "name": "attack_heavy",
+      "name": "attack_light",
       "start_frame": 4,
       "end_frame": 4,
       "fps": 1,
       "loop": false
     },
     {
-      "name": "run",
+      "name": "attack_heavy",
       "start_frame": 5,
       "end_frame": 5,
       "fps": 1,
-      "loop": true
+      "loop": false
     },
     {
       "name": "hitstun",
@@ -56,16 +56,24 @@
       "end_frame": 6,
       "fps": 1,
       "loop": false
+    },
+    {
+      "name": "death",
+      "start_frame": 7,
+      "end_frame": 7,
+      "fps": 1,
+      "loop": false
     }
   ],
   "pose_names": [
     "idle",
     "walk",
+    "run",
     "roll",
     "attack_light",
     "attack_heavy",
-    "run",
-    "hitstun"
+    "hitstun",
+    "death"
   ],
   "palette": "hd2d_index_256_v1",
   "base_canvas_px": 128,
@@ -83,7 +91,7 @@
   "generated_by": "ComfyUI 0.33.2 + pixelArtDiffusionXL_spriteShaper + ImageQuantize(256) + local alpha/crop",
   "source_file": "player_idle_rgba.png",
   "zero_external_dependency": true,
-  "notes": "4 帧 RGBA 精灵表：ComfyUI 0.33.2 + pixelArtDiffusionXL_spriteShaper + ImageQuantize(256) 真跑，本地 Pillow 按四角/主色背景分离 + 8 连通域最大块裁切 + 底部对齐；未缩放，硬像素边保持。attack_heavy 未纳入。 整表再做一次全局 256 色量化（保留 alpha），确保全项目共用一份 ≤256 色索引调色板。 07:31 扩为 7 帧：attack_heavy 重生成通过、新增 run/hitstun；death 两次重试不合格剔除。hitstun 原图为绿色背景，按主色分离后残留绿意像素数见台账；整表重新全局 256 色量化并保留 alpha。",
+  "notes": "4 帧 RGBA 精灵表：ComfyUI 0.33.2 + pixelArtDiffusionXL_spriteShaper + ImageQuantize(256) 真跑，本地 Pillow 按四角/主色背景分离 + 8 连通域最大块裁切 + 底部对齐；未缩放，硬像素边保持。attack_heavy 未纳入。 整表再做一次全局 256 色量化（保留 alpha），确保全项目共用一份 ≤256 色索引调色板。 07:31 扩为 7 帧：attack_heavy 重生成通过、新增 run/hitstun；death 两次重试不合格剔除。hitstun 原图为绿色背景，按主色分离后残留绿意像素数见台账；整表重新全局 256 色量化并保留 alpha。 07:35 收口为 8 帧：death 改构图通过、hitstun 绿边清零；rejected 清空，历史记录转入 resolved_history。整表重新全局 256 色量化并保留 alpha。",
   "sprite_sheet": "player_spritesheet.png",
   "frames": [
     {
@@ -91,49 +99,64 @@
       "pose": "idle",
       "file": "player_idle_single.png",
       "solid_px": 3386,
-      "colors": 143
+      "colors": 143,
+      "greenish_px": 0
     },
     {
       "index": 1,
       "pose": "walk",
       "file": "player_walk.png",
       "solid_px": 3550,
-      "colors": 148
+      "colors": 148,
+      "greenish_px": 0
     },
     {
       "index": 2,
-      "pose": "roll",
-      "file": "player_roll.png",
-      "solid_px": 5249,
-      "colors": 125
-    },
-    {
-      "index": 3,
-      "pose": "attack_light",
-      "file": "player_attack_light.png",
-      "solid_px": 1965,
-      "colors": 141
-    },
-    {
-      "index": 4,
-      "pose": "attack_heavy",
-      "file": "player_attack_heavy.png",
-      "solid_px": 4042,
-      "colors": 154
-    },
-    {
-      "index": 5,
       "pose": "run",
       "file": "player_run.png",
       "solid_px": 5159,
-      "colors": 154
+      "colors": 154,
+      "greenish_px": 0
+    },
+    {
+      "index": 3,
+      "pose": "roll",
+      "file": "player_roll.png",
+      "solid_px": 5249,
+      "colors": 125,
+      "greenish_px": 0
+    },
+    {
+      "index": 4,
+      "pose": "attack_light",
+      "file": "player_attack_light.png",
+      "solid_px": 1965,
+      "colors": 141,
+      "greenish_px": 0
+    },
+    {
+      "index": 5,
+      "pose": "attack_heavy",
+      "file": "player_attack_heavy.png",
+      "solid_px": 4042,
+      "colors": 154,
+      "greenish_px": 0
     },
     {
       "index": 6,
       "pose": "hitstun",
       "file": "player_hitstun.png",
       "solid_px": 5506,
-      "colors": 100
+      "colors": 100,
+      "greenish_px": 0
+    },
+    {
+      "index": 7,
+      "pose": "death",
+      "file": "player_death.png",
+      "solid_px": 2244,
+      "colors": 138,
+      "greenish_px": 0
     }
   ],
   "seeds_by_pose": {
@@ -143,20 +166,35 @@
     "attack_light": 20261112,
     "attack_heavy": 20261120,
     "run": 20261121,
-    "hitstun": 20261122
+    "hitstun": 20261122,
+    "death": 20261130
   },
-  "rejected": [
+  "rejected": [],
+  "palette_scope": "shared_sheet_256",
+  "unique_opaque_rgb": 250,
+  "global_quantize": "Pillow MEDIANCUT 256, dither=NONE, alpha preserved",
+  "quality_gate": "实心像素 5%~45% / bbox 不占满 / 最大连通块占比>0.8 / 每帧<=256色 / 绿幕残留=0；不合格自动换 seed 重试",
+  "resolved_history": [
+    {
+      "pose": "attack_heavy",
+      "note": "07:18 首轮质检不通过（深色装饰背景），07:31 重生成通过"
+    },
     {
       "pose": "death",
-      "attempts": [
-        20261123,
-        20262123
-      ],
-      "reason": "两次真跑均 success 但主体与背景无法分离（80.3% / 74.8% 实心、bbox 占满），质检不通过；原始 PNG 已移入 rejected/"
+      "note": "07:31 两次重试均不通过（主体与背景无法分离），07:35 改构图（禁地面/深色区、角色只占中间三分之一）后一次通过"
+    },
+    {
+      "pose": "hitstun",
+      "note": "原图为绿幕，07:35 对残留 176 个偏绿像素做局部去色，复核为 0"
+    },
+    {
+      "pose": "all",
+      "note": "07:35 核对发现 idle/walk/attack_light/attack_heavy 另有 80/151/107/427 个鲜绿杂色像素（如 (47,197,76)），统一局部去色后为 0"
     }
   ],
-  "palette_scope": "shared_sheet_256",
-  "unique_opaque_rgb": 247,
-  "global_quantize": "Pillow MEDIANCUT 256, dither=NONE, alpha preserved",
-  "quality_gate": "实心像素 5%~45% / bbox 不占满 / 最大连通块占比>0.8 / 每帧<=256色；不合格自动换 seed 重试 1 次"
+  "green_cleanup": {
+    "applied_to": "all 8 frames",
+    "rule": "g > r+25 && g > b+25 -> g=(r+b)//2, alpha kept",
+    "remaining_green_px_after_quantize": 0
+  }
 }
