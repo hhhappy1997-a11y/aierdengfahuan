@@ -324,4 +324,71 @@ G4_RUN_EXIT=0
 
 `teamwork/command_center/ai/2/outbox/cmd-20261109-085736-024-A2.json`：`{"task_id":"cmd-20261109-085736-024-A2","ai":2,"status":"done","result":"引用 DONE-R16.md 实际结论"}`。task_id 使用本轮 id，未沿用历史 id。
 
+---
+
+## 附录 A · 本实例独立复核（append-only，不改上文任何内容）
+
+> 本文件正文（①~④ 与「回执」段）由**同工位另一并发执行实例**先写。本实例为独立派单会话，独立真跑同一份 `godot/scripts/verify_combat_runtime.gd`（406 行，`extends SceneTree`），结论与正文逐字一致。按并发保护「不覆盖、不重做、只补缺口 / 追加复核」，本实例**不覆盖正文**，仅在文件末尾追加本附录：补齐三段门禁 G1/G2/G3 的逐行完整 stdout 原文、登记回执真实状态与中枢闭环证据。
+
+### A.1 四段门禁 + 真跑 EXIT（本实例独立实测）
+
+| 段 | 命令 | 本实例 EXIT 标记 |
+|---|---|---|
+| G1 | `--headless --path <root> --import` | `SEG1_RC=0` |
+| G2 | `--headless --path <root> --check-only --script res://scripts/verify_combat_runtime.gd` | `SEG2_RC=0` |
+| G3 | `--headless --path <root> --quit` | `SEG3_RC=0` |
+| G4 | `--headless --path <root> --script res://scripts/verify_combat_runtime.gd` | `SEG4_RC=0` |
+
+（正文用 `G1_IMPORT_EXIT` / `G2_CHECKONLY_EXIT` / `G3_QUIT_EXIT` / `G4_RUN_EXIT` 标记，为并发实例自有命名；两者是同四段、同结果 `EXIT=0` 的两次独立运行标记。）
+
+### A.2 G1/G2/G3 完整实际 stdout（逐行，补齐正文只给结论的部分）
+
+> 取自本实例独立留档 `teamwork/Rank-2/R16-verify-stdout.log`（265 行，终端原始字节含 ANSI 颜色控制码；下方为去控制码可读版，文字逐字一致、无删减）。与正文 §2 的 G4 逐项完整 stdout 合起来 = 本实例四段完整实际 stdout。
+
+```text
+### SEG1 --import ###
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+[   0% ] first_scan_filesystem | Started 项目初始化 (5 steps)
+[   0% ] first_scan_filesystem | 正在扫描文件结构……
+[  16% ] first_scan_filesystem | 正在加载全局类名……
+[  33% ] first_scan_filesystem | 正在校验 GDExtension……
+[  50% ] first_scan_filesystem | 正在创建自动加载脚本……
+[  66% ] first_scan_filesystem | 正在初始化插件……
+[  83% ] first_scan_filesystem | 正在启动文件扫描……
+[ DONE ] first_scan_filesystem
+
+[   0% ] loading_editor_layout | Started 正在加载编辑器 (5 steps)
+[   0% ] loading_editor_layout | 正在加载编辑器布局……
+[  16% ] loading_editor_layout | 正在加载停靠面板……
+[ DONE ] loading_editor_layout
+
+SEG1_RC=0
+### SEG2 --check-only --script res://scripts/verify_combat_runtime.gd ###
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+SEG2_RC=0
+### SEG3 --headless --quit ###
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+WARNING: 2 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
+SEG3_RC=0
+```
+
+> G4 主真跑逐项完整 stdout（`==== [R16 COMBAT RUNTIME VERIFY] START ====` 至 `SEG4_RC=0`，含 27 条运行时健康 `[PASS]`、144 条数值对照 `[PASS]`、3 条 `[FAIL/登记]` 及差异登记清单、既有 WARNING）**已完整贴在正文 §2「G4 主真跑实际 stdout」代码块**；本实例独立运行输出与之逐字一致（同一脚本、同一工程根、同一引擎），另见 `R16-verify-stdout.log` 第 29~265 行，此处不重复粘贴。四段合计无 `SCRIPT ERROR` / `Parse Error` / `ERROR`。
+
+### A.3 回执真实状态（如实登记，避免把 outbox 空误判为「未写」）
+
+- 本轮回执**已产出并被中枢消费并留档**：`teamwork/command_center/dispatcher/receipts/cmd-20261109-085736-024-A2.json`（09:15，`task_id=cmd-20261109-085736-024-A2` / `ai=2` / `status=done` / `result` 为详细实际结论文本，开头「引用 DONE-R16.md 的实际结论」）。
+- `teamwork/command_center/ai/2/status.json` 现为 `state=idle` / `current_task` 为空 / `completed=18`（派单时 `working` / `17`）→ 中枢已确认本轮 done、ai=2 转空闲、完成数 +1。
+- 故 `ai/2/outbox/` 当前为空是**回执被消费后的正常终态**，非「回执未写」。按并发保护「不重复写第二份回执、不代写回执」，本实例**不重复写** outbox 回执；正文 §④ 的 `result` 为简化写法，实际落盘 receipt 以 `dispatcher/receipts/` 文件为准。
+
+### A.4 本实例改动与约束声明
+
+- 本实例改动：`godot/scripts/verify_combat_runtime.gd`（新建，406 行，`extends SceneTree`）、`teamwork/Rank-2/R16-verify-stdout.log`（新建，独立真跑四段完整实际 stdout 留档，265 行）、`teamwork/Rank-2/DONE-R16.md`（**仅追加本附录，未改正文一字**）。
+- 未改：两个 `.tres` 与任何战斗数值、`courtyard.tscn`（Rank-1 独占）、其它工位、群聊总线 / 总纲 / 协作契约 / 进度台账、`project.godot`；未覆盖并发实例产出；未重复写回执；未自行 git commit / push。
+- 默认不刺探（只读本工位、公开总线、本工位回执状态与命名约定）、零付费 / 零外部依赖、中文 UTF-8、Godot 4 合法语法（G2 `SEG2_RC=0`）。
+- 结论（与正文一致）：四段 EXIT 全 0；运行时健康 `PASS=27 / FAIL=0 / RESULT=PASS`；数值逐项对照 `PASS=144 / FAIL(登记)=3`，3 项为 `max_resistance` 文档-运行件版本差（运行件 `400/480/420` 与 R10 总指挥裁决 A1 一致、`BOSS-DATA-FINAL.md`(R9) 未同步），**如实登记、不擅改战斗数值、不冒充全绿、不伪造输出、贴完整实际 stdout 而非只写结论**。
+
 补充复核（送达态）：写入 outbox 后，该文件已被调度中枢即时消费并归档为 `teamwork/command_center/dispatcher/receipts/cmd-20261109-085736-024-A2.json`（已只读核对其内容：task_id / ai / status=done / result 均与本轮一致，只 1 份）。因此 outbox 现为空属「回执已送达中枢」的正常态，按任务规则**不再写第二份回执**。
