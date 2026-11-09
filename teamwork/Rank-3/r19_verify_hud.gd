@@ -5,10 +5,15 @@ extends SceneTree
 ##   SaveDeltaWriter 已正式注册为 autoload，故 ⑫ 的登记期望由「降级=injected」反转为
 ##   「autoload 源、不降级」，并新增 ⑭ autoload 存在性 / ⑮ autoload commit 顺序 /
 ##   ⑯ 取不到 writer 时回退注入 committer 三条断言。①~⑬ 其余覆盖与编号保持不变。
+## R21 复用（cmd-20261109-115818-643-A3，[ROUND=R21]）：
+##   grace_fast_travel() 与 travel_to() 统一「/root/SaveDeltaWriter 优先，注入 committer
+##   仅在取不到时兜底」，两入口共用 _commit_before_travel()。①~⑯ 既有覆盖与编号逐字保留，
+##   追加 ⑰ grace_fast_travel autoload 优先级 / ⑱ 其 commit 顺序 /
+##   ⑲ 两入口登记字段与顺序一致性 / ⑳ grace_fast_travel 取不到 writer 回退注入 committer。
 ## 只读：CACHE_MODE_IGNORE 强制从磁盘重读 hud.tscn / grace_network.tres → instantiate()，
 ##   不 pack / 不 save / 不改 hud.tscn 结构 / 不碰 courtyard.tscn / 不写任何工程文件。
 ##
-## 验证项（①~⑬ 既有 + ⑭⑮⑯ R20 新增）：
+## 验证项（①~⑯ 既有 + ⑰⑱⑲⑳ R21 新增）：
 ##   ① hud.tscn 脚本仍挂 res://scripts/hud.gd；② 4 个信号存在且可连接（R17 不破坏）；
 ##   ③ 新方法 open_grace_menu / travel_to / get_commit_status 可寻址；
 ##   ④ grace_network.tres 运行期读取 8 节点 / 7 边（不硬编码）；
@@ -16,7 +21,9 @@ extends SceneTree
 ##   ⑥ R17 flag 增量刷新回归：set_flag 经 flag_changed 不触发 hud_refreshed（计数不变）；
 ##   ⑦ travel_to()：先 commit 后发 travel_requested 信号（autoload writer.committed 记录顺序）；
 ##   ⑧ autoload 已注册时 travel_to 走 autoload 源、如实登记（不降级）可经 get_commit_status 读回；
-##   ⑭ autoload 存在性；⑮ autoload commit 顺序；⑯ 取不到 writer 回退注入 committer。
+##   ⑭ autoload 存在性；⑮ autoload commit 顺序；⑯ 取不到 writer 回退注入 committer；
+##   ⑰⑱ grace_fast_travel 的 autoload 优先级与 commit 顺序；⑲ 两入口口径一致性；
+##   ⑳ grace_fast_travel 取不到 writer 回退注入 committer。
 ## 中文 UTF-8 · Godot 4.7.2 全静态类型 · 零付费 · 零外部依赖。
 
 const HUD_PATH: String = "res://scenes/hud.tscn"
@@ -298,6 +305,83 @@ func _verify_after_ready() -> void:
 		"writer_removed=%s order=%s degraded=%s source=%s" % [str(w2 != null), str(_order), str(st2.get("degraded")), str(st2.get("source"))])
 	if w2 != null:
 		get_root().add_child(w2)
+
+	# ===== R21 新增断言（cmd-20261109-115818-643-A3）：两落盘编排入口口径一致性 =====
+	# R20 如实登记 grace_fast_travel() 走「注入 committer 优先」旧口径；R21 起它直接
+	#   调用 _commit_before_travel()，与 travel_to() 共用同一实现（_delegate_commit()
+	#   亦保留为转调该实现的兼容薄委托），优先 /root/SaveDeltaWriter、注入 committer
+	#   仅在取不到时兜底。以下 4 条复用本载体既有 _order / get_commit_status() 观测，
+	#   不新建探针脚本、不改任何工程文件。
+	print("[R21] ==== 追加 ⑰⑱⑲⑳：两落盘编排入口 autoload 优先级 / commit 顺序一致性 ====")
+
+	# ⑰ grace_fast_travel() 正常 autoload 态：走 autoload 源、不降级（与 ⑫ travel_to 对齐）
+	_order.clear()
+	_committed_reason = ""
+	_signal_ids.clear()
+	hud.call("grace_fast_travel", TARGET_ID)
+	var st_g: Dictionary = hud.call("get_commit_status")
+	var g_autoload_ok: bool = bool(st_g.get("degraded")) == false \
+		and str(st_g.get("source")) == "autoload" \
+		and str(st_g.get("reason")) == "grace_fast_travel" \
+		and bool(st_g.get("ok")) == true \
+		and bool(st_g.get("writer_registered_as_autoload")) == true \
+		and bool(st_g.get("writer_root_exists")) == true
+	_check("⑰ grace_fast_travel_autoload_priority", g_autoload_ok,
+		"degraded=%s source=%s reason=%s ok=%s writer_registered=%s writer_root_exists=%s" % [
+		str(st_g.get("degraded")), str(st_g.get("source")), str(st_g.get("reason")),
+		str(st_g.get("ok")), str(st_g.get("writer_registered_as_autoload")), str(st_g.get("writer_root_exists"))])
+
+	# ⑱ grace_fast_travel() commit 顺序：commit → travel_confirmed → travel_requested
+	var g_order_ok: bool = _order.size() == 3 and _order[0] == "commit" \
+		and _order[1] == "signal:travel_confirmed" and _order[2] == "signal:travel_requested" \
+		and _committed_reason == "grace_fast_travel"
+	_check("⑱ grace_fast_travel_commit_before_signal_order", g_order_ok,
+		"order=%s committed_reason=%s" % [str(_order), _committed_reason])
+
+	# ⑲ 两入口一致性：同一 writer 态下分别调 travel_to / grace_fast_travel，
+	#    对比登记字段(source/degraded/ok/reason)与调用顺序，逐项必须一致。
+	_order.clear()
+	_committed_reason = ""
+	_signal_ids.clear()
+	hud.call("travel_to", TARGET_ID)
+	var st_t2: Dictionary = hud.call("get_commit_status")
+	var t_order2: Array = _order.duplicate()
+	_order.clear()
+	_committed_reason = ""
+	_signal_ids.clear()
+	hud.call("grace_fast_travel", TARGET_ID)
+	var st_g2: Dictionary = hud.call("get_commit_status")
+	var g_order2: Array = _order.duplicate()
+	var consistent: bool = t_order2 == g_order2 \
+		and t_order2.size() == 3 and t_order2[0] == "commit" \
+		and str(st_t2.get("source")) == str(st_g2.get("source")) \
+		and bool(st_t2.get("degraded")) == bool(st_g2.get("degraded")) \
+		and bool(st_t2.get("ok")) == bool(st_g2.get("ok")) \
+		and str(st_t2.get("reason")) == str(st_g2.get("reason"))
+	_check("⑲ two_entries_autoload_and_order_consistent", consistent,
+		"travel_to[order=%s source=%s degraded=%s] grace_fast_travel[order=%s source=%s degraded=%s]" % [
+		str(t_order2), str(st_t2.get("source")), str(st_t2.get("degraded")),
+		str(g_order2), str(st_g2.get("source")), str(st_g2.get("degraded"))])
+
+	# ⑳ grace_fast_travel() 取不到 /root/SaveDeltaWriter 时同样回退注入 committer（与 ⑯ 对齐）
+	_order.clear()
+	_committed_reason = ""
+	_signal_ids.clear()
+	var w3: Node = get_root().get_node_or_null("SaveDeltaWriter")
+	if w3 != null:
+		get_root().remove_child(w3)
+	hud.call("grace_fast_travel", TARGET_ID)
+	var st_g3: Dictionary = hud.call("get_commit_status")
+	var g_fallback_ok: bool = bool(st_g3.get("degraded")) == true \
+		and str(st_g3.get("source")) == "injected" \
+		and bool(st_g3.get("ok")) == true \
+		and _order.size() == 3 and _order[0] == "commit" \
+		and _order[1] == "signal:travel_confirmed" and _order[2] == "signal:travel_requested"
+	_check("⑳ grace_fast_travel_fallback_to_injected", g_fallback_ok,
+		"writer_removed=%s order=%s degraded=%s source=%s" % [
+		str(w3 != null), str(_order), str(st_g3.get("degraded")), str(st_g3.get("source"))])
+	if w3 != null:
+		get_root().add_child(w3)
 
 	var ok: bool = _fail == 0
 	print("[R19] ---- 回读汇总 ----")

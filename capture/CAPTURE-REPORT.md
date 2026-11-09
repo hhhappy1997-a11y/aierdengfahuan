@@ -77,3 +77,75 @@ ViewImage 真看结论：
 - 未做运行期帧时间实测 / 人工试玩 / 逐帧动态验收。
 
 未完成项、阻塞与合规边界详见 `teamwork/Rank-4/DONE-R20.md`。
+
+---
+
+## R21 低分辨率与帧时间（Rank-4 · 2026-11-09 · 派单 `cmd-20261109-115818-662-A4`）
+
+> 本节由 Rank-4 独占追加。延续 R20 如实登记的边界（`--resolution 640x360` 未改变 Movie Maker 录制尺寸），本轮**不改 `project.godot`**（避免与其它三路并发冲突），用零依赖方式真跑多种 CLI 参数组合查清边界、实测 mobile/desktop 帧时间并留证。
+> 引擎 `D:/Godot/Godot_v4.7.2-stable_win64.exe`（`4.7.2.stable.official.ed1daf0bf`），抓帧一律 `--fixed-fps 30 --quit-after 4`，场景 `res://scenes/courtyard.tscn`。
+
+### 1. 边界结论（先说结果）：本轮未达成「引擎级低分辨率输出」
+
+**7 组 CLI 参数组合全部真跑 EXIT=0，Movie Maker stdout 一律 `recording movie in 1280×720 @ 30 FPS`，PNG IHDR 实测一律 1280×720，无一输出 640×360。**
+
+| 组合 | 额外 CLI 参数 | stdout 录制尺寸 | PNG 实测(IHDR) | 首帧字节 |
+|---|---|---|---|---|
+| C1 `r21_lowres_c1_base` | 无（基线） | 1280×720 | 1280×720 | 125346 |
+| C2 `r21_lowres_c2_res640x360` | `--resolution 640x360` | 1280×720 | 1280×720 | 406020 |
+| C3 `r21_lowres_c3_res1920x1080` | `--resolution 1920x1080` | 1280×720 | 1280×720 | 287862 |
+| C4 `r21_lowres_c4_res640_full` | `--resolution 640x360 --fullscreen` | 1280×720 | 1280×720 | 126815 |
+| C5 `r21_lowres_c5_res480x270` | `--resolution 480x270` | 1280×720 | 1280×720 | 491198 |
+| C6 `r21_lowres_c6_res640_max` | `--resolution 640x360 --windowed --maximized` | 1280×720 | 1280×720 | 407063 |
+| FT `r21_lowres_ft_mobile` | 无 + `AIERDENG_FX_PROFILE=mobile` | 1280×720 | 1280×720 | 112772（4 帧全同）|
+
+**根因（引擎 `--help` 全文 `capture/r21_godot_help.txt` 129 行留证）**：Godot 4.7.2 CLI 与尺寸/缩放相关的参数**只有** `--resolution <W>x<H>`、`--position`、`--fullscreen/-f`、`--windowed/-w`、`--maximized/-m`、`--screen`、`--disable-vsync`；**没有任何缩放(scaling)CLI 参数、没有任何命令行覆盖 project settings 的途径**。Movie Maker 输出尺寸由 `project.godot` 的 `window/size/viewport_width=1280` / `viewport_height=720` / `window_width_override=1280` / `window_height_override=720` 决定（R20 已登记）。本轮硬约束禁止写 `project.godot`，也禁止在 `godot/` 下新建 `override.cfg` / 临时工程，故**在授权范围内无法让引擎直接输出 640×360 PNG** —— 这是边界，不是失败，如实写明。
+
+### 2. `--resolution` 确实改变了内部渲染画面，但不改变输出文件尺寸
+
+C2 的 PNG 字节 406020 远大于 C1 基线 125346；PIL 真算（同尺寸 1280×720）：
+
+- `c1_base vs c2_res640x360`：MAD(R,G,B)=(10.455, 8.888, 5.505)，差异像素比例(|L|>16)=**0.228038**，边缘能量 37.037 → 22.346。
+- ViewImage 真看：C1 蓝天 / 左上深蓝 HUD「赐福 · 宁姆格福」/ 右上「画质设置 · 低/中/高」/ 暖金横砖地面（砖缝细密）/ 中央像素骑士 / 地平线暖金 bloom 与体积光亮点、角色脚下倒影亮线，像素细腻；**C2 构图元素完全相同，但砖块像素网格明显变粗、砖缝更块状、HUD 文字与角色轮廓更糊**。
+
+即 `--resolution 640x360` 触发了内部 SubViewport 低分辨率渲染 + 整数放大（与 R20 的 `r20_mobile_lowres` 同类），画面密度确实下降，但 Movie Maker 仍把结果写进 **1280×720** 的 PNG。**「内部低分辨率渲染」≠「输出 640×360 文件」**，本轮不冒充。
+
+### 3. 帧时间真跑（`capture/r21_frame_time.md`，非估算）
+
+引擎 `--print-fps` 直接打印 `Project FPS: N (X mspf)`，X 即运行期每帧毫秒数；Python 基于该 stdout 统计：
+
+| 组 | 档位 | V-Sync | 采样行数 | FPS 均值 | **mspf 均值** |
+|---|---|---|---|---|---|
+| `fps_desktop_vsync` | desktop 四项全开 | 开 | 5 | 59.8 | **16.72 ms** |
+| `fps_mobile_vsync` | mobile 四项全关 | 开 | 4 | 60.0 | **16.66 ms** |
+| `fps_desktop_novsync` | desktop 四项全开 | 关 | 28 | 198.8 | **5.03 ms** |
+| `fps_mobile_novsync` | mobile 四项全关 | 关 | 19 | 291.7 | **3.43 ms** |
+
+- V-Sync 开：stdout 明示 `FPS will likely be capped to the monitor refresh rate`，两组均被 60 Hz 锁死，帧时间几乎无差异 —— 如实登记为 V-Sync 限制，不冒充性能优化。
+- 关 V-Sync 全速：desktop 5.03 ms/帧 vs mobile 3.43 ms/帧，**mobile 帧时间少 31.8%、吞吐 1.47×**，是「四项光效全关 → FX 层零绘制」的真实渲染开销下降。
+- 补充口径 Movie Maker 4 帧录制：CPU render 0.02 / GPU 0.00 ms/帧（四舍五入、样本太短不可判定档位）；Encoding `c1_base` 126.17 vs `ft_mobile` 28.64 ms/帧（组间 28.64~143.47 波动大、受磁盘/画面复杂度影响，不作稳定结论）。
+
+### 4. PIL 后处理 640×360 对照图（明确标注，禁止冒充）
+
+引擎直接输出 640×360 未达成，故仅用 PIL 对**引擎真跑的原始帧** `r21_lowres_c1_base00000000.png`（1280×720）做 2× LANCZOS 降采样：
+
+- `capture/r21_lowres_post_2x_downsample.png` — **640×360**，图上顶部红字醒目标注「**后处理对照 · 非引擎低分辨率渲染**」/ `POST-PROCESS 2x DOWNSAMPLE · NOT ENGINE LOW-RES RENDER`，底部标注源文件与生成方式。
+- `capture/r21_lowres_post_vs_engine.png` — 并排对比（左=引擎真实输出缩略 / 右=后处理降采样），标题红字再次声明右图非引擎渲染。
+
+> **这两张是「后处理对照，非引擎低分辨率渲染」，只是画质参照，绝不代表引擎已输出 640×360、也不冒充 Movie Maker 产物。** 全 `capture/` 下唯一的 640×360 文件就是带标注的 `r21_lowres_post_2x_downsample.png`；所有 `r21_lowres_c*/ft_mobile*` 帧仍为 1280×720。
+
+### 5. 画面差距与回归（如实登记）
+
+- `c1_base(desktop 四项全开) vs ft_mobile(mobile 四项全关)`：MAD=(2.299, 2.133, 1.583)，diff_ratio=**0.042374**，差异集中在天空光尘/bloom 与角色脚下倒影区域（同态同尺寸，PIL 真算）。
+- **47 PASS / 34 PASS 不回退**：`verify_fx_mobile.gd` 真跑 `pass=47 fail=0`、`verify_fx_profile.gd` 真跑 `pass=34 fail=0`（stdout 标签沿用既有 `[R19]` / `[R17]`，未伪装成 R21）。三段门禁 `--headless --import` → `--check-only --script` → `--headless --quit` 及两个 RUN 共 6 项 **EXIT=0**；17 份 `r21_*.log` 的 `SCRIPT ERROR|Parse Error|ERROR` **SUM=0**。
+- 本轮**零改动工程源件**：未写 `project.godot` / `courtyard.tscn` / `quality_settings.*` / `hud.gd` / `verify_frame_data.gd` / `hd2d_fx.*` / `verify_fx_*.gd` / 任何 `.tres` / `.import`。
+
+### 6. 未完成项 / 边界（不冒充全绿）
+
+1. **引擎级 640×360 PNG 输出未达成**：唯一途径需改 `project.godot` 的 viewport/window 尺寸（Rank-3 独占，本轮硬约束禁写），或在 `godot/` 下新建 `override.cfg` / 临时工程（超本轮目录所有权）。按派单要求「重导双产物另以 R21B 补单在工程冻结后执行」，本轮只查清并留证。
+2. 并发实例：本轮真跑期间另有 Rank-4 并发实例用 `r21_lowres_base / res640 / res320 / res1920 / res640win / res640headless` 命名产出抓帧（32 个文件，均无对应 log、均 1280×720），与本实例命名 `c1~c6 / ft_mobile` 互不冲突；本实例**未覆盖、未删除、未冒充**并发产物，如实登记。
+3. 帧时间为主场景 `courtyard.tscn` 非 headless 窗口真跑；未做逐 `_draw()` 拆分 / GPU 时间戳 / 人工试玩逐帧动态验收；Movie Maker 组受固定步长与 4 帧样本限制，差异不作稳定性能结论。
+4. 沿用 R20 长期边界：HD-2D 全绿未达成，四项光效仍是 2D 程序化 `draw_*` 近似（`gl_compatibility` 后端不支持 HDR bloom / 3D 体积光 / SSR），ComfyUI 正式 spritesheet 未接入；本轮不精修光效。
+5. 本轮真跑失败项：**无**（7 组抓帧 + 4 组帧时间 + 6 项门禁全部 EXIT=0）。
+
+未完成项、阻塞与合规边界详见 `teamwork/Rank-4/DONE-R21.md`。

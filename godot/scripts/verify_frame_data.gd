@@ -1,20 +1,21 @@
 extends SceneTree
-## R20 / cmd-20261109-110237-801-A2 · Rank-2 帧数据裁决全链路回归（真跑）
+## R21 / cmd-20261109-115818-641-A2 · Rank-2 CombatDataValidator 类级实例化真跑
 ##
 ## 真读 3 份运行权威 .tres（boss / player_actions / enemy），逐项打印「实际值 / 期望值 / PASS|FAIL」：
 ##   组A：玩家 8 帧动作（8 条 action 的 startup/active/recovery/total/hit 区间）+ 翻滚 E-7 + E-6，
 ##        与 Boss 三招按 pose key「p1_dagger_slash / p1_staff_slam / p2_holy_hammer」的
 ##        47 / 71 / 91 帧与 hit 区间 [18,23)/[30,37)/[42,51) 一并纳入断言，与文档口径逐项核对；
 ##   组B：与 R19 总指挥裁决值「4/9/9=22、无敌[4,13)」逐项核对（本轮为回归，不再改数值）；
-##   组C：按 CombatDataValidator 校验口径（数据表schema.md §9 的 E-1/E-3/E-4/E-5/E-8/E-9）
-##        在同一进程 / 同一份运行权威 .tres 上等价同跑复核，确认 VALIDATOR_ERROR=0 与 E-8 三项
-##        max_resistance 仍为 400 / 480 / 420。
+##   组C：【R21 变更】preload(res://scripts/combat/combat_data_validator.gd).new() 真实实例化
+##        CombatDataValidator 类并调用 validate_all() -> Dictionary（checks/pass/fail/errors），
+##        替换 R20 的「§9 等价校验同跑」；类内实际断言 player_actions.tres 4/9/9=22 帧@60 /
+##        无敌[4,13)、Boss 三招 47/71/91 与 hit 区间、E-8 max_resistance 400/480/420。
+##        组A / 组B 与 612 PASS 口径不回退；组C PASS 由类返回，因新增类级专项断言「可增不可减」。
 ##
-## 【诚实声明 · 不谎报】CombatDataValidator 类（工位件 teamwork/Rank-2/combat_data_validator.gd）
-##   自 R2 起未落位真实工程根（godot/scripts/combat/ 下无该文件），Main.tscn 与 autoload 亦未挂载；
-##   按 R20 公共契约「不新建只读探针/巡检脚本」「是否落位待总指挥裁决」，本脚本不实例化该类、
-##   不新增工程文件、不冒充「已落位运行」。组C 是「同一真跑命令 / 同一进程 / 同一份运行权威
-##   .tres」上按 §9 校验式的等价校验复核（非类级实例化）；如中枢要求类级实例化，需先授权落位。
+## 【R20 缺口已补】CombatDataValidator 类自 R2 起未落位工程根；R21 已新写
+##   godot/scripts/combat/combat_data_validator.gd（class_name CombatDataValidator, extends
+##   RefCounted）。本轮不注册 autoload（project.godot 本轮冻结，无人可写），类由本脚本
+##   preload + .new() 真实实例化调用，不依赖场景树 / _ready / autoload 挂载。
 ##
 ## 三段门禁由外部命令执行：--import / --check-only --script / --quit；
 ## 运行：godot --headless --path godot --script res://scripts/verify_frame_data.gd
@@ -25,6 +26,9 @@ extends SceneTree
 const BOSS_TRES := "res://data/combat/boss_01_margit.tres"
 const PLAYER_TRES := "res://data/combat/player_actions.tres"
 const ENEMY_TRES := "res://data/combat/enemy_01_limgrave_soldier.tres"
+
+# 组C：真实实例化 CombatDataValidator 类（R21 落位 res://scripts/combat/）
+const VALIDATOR_SCRIPT = preload("res://scripts/combat/combat_data_validator.gd")
 
 # 组A 期望值：Boss 三招（按 pose key = phase.pose_prefix + move.pose_name 点名）
 #   47 / 71 / 91 帧与 hit 区间一并纳入（BOSS-DATA-FINAL.md §3.1/§3.2、数据表schema.md §3/E-2、
@@ -55,9 +59,6 @@ const ROLL_EXPECTED := {"startup": 4, "active": 9, "recovery": 9, "inv_start": 4
 # 组B 期望值：R19 总指挥裁决「4/9/9=22 帧@60、无敌[4,13)」
 const DISPATCH_ROLL := {"startup": 4, "active": 9, "recovery": 9, "total": 22, "inv_end": 13, "logic_fps": 60}
 
-# 组C E-8 期望值：R10 裁决 A1 max_resistance（bleed / poison / frost）
-const E8_MAX_RESISTANCE := {"status_01_bleed": 400.0, "status_02_poison": 480.0, "status_03_frost": 420.0}
-
 var _pass_a := 0
 var _fail_a := 0
 var _pass_b := 0
@@ -65,24 +66,18 @@ var _fail_b := 0
 var _pass_c := 0
 var _fail_c := 0
 
-# 组C 采集容器（对应 combat_data_validator.gd 的 _collect_all）
-var _v_moves: Array = []
-var _v_actions: Array = []
-var _v_buildup_hosts: Array = []
-var _v_resources: Array = []
-var _v_boss_moves: Array = []
-var _v_enemy_move_sets: Array = []
-var _v_enemies: Array = []
+# 组C 结果由 CombatDataValidator.validate_all() 返回（checks/pass/fail/errors/e8_max_resistance/status）
+var _validator_result: Dictionary = {}
 
 
 func _initialize() -> void:
-	print("==== [R20 FRAME DATA REGRESSION] START ====")
+	print("==== [R21 VALIDATOR-CLASS VERIFY] START ====")
 	var boss = load(BOSS_TRES)
 	var player = load(PLAYER_TRES)
 	var enemy = load(ENEMY_TRES)
 	if boss == null or player == null or enemy == null:
 		print("[FATAL] load() 失败 | boss_null=%s player_null=%s enemy_null=%s" % [str(boss == null), str(player == null), str(enemy == null)])
-		print("==== [R20 FRAME DATA REGRESSION] RESULT=LOAD_FAILED ====")
+		print("==== [R21 VALIDATOR-CLASS VERIFY] RESULT=LOAD_FAILED ====")
 		quit(1)
 		return
 	print("---- [0] 加载 3 份运行权威 .tres ----")
@@ -92,7 +87,6 @@ func _initialize() -> void:
 
 	var pose_moves := _collect_boss_pose_moves(boss)
 	var actions_by_id := _collect_actions(player)
-	_validator_collect(boss, player, enemy)
 
 	_print_actual(pose_moves, actions_by_id)
 
@@ -105,11 +99,15 @@ func _initialize() -> void:
 	print("---- [4] 组B 与 R19 裁决值「4/9/9=22、无敌[4,13)」逐项核对（回归，不改数值）----")
 	_check_group_b(actions_by_id)
 
-	print("---- [5] 组C CombatDataValidator 校验口径同跑（E-1/E-3/E-4/E-5/E-8/E-9）----")
-	print("[C][声明] CombatDataValidator 类(工位件 combat_data_validator.gd)自 R2 起未落位真实工程根，Main.tscn/autoload 未挂载；本组按 数据表schema.md §9 校验式在同一进程/同一份运行权威 .tres 上等价同跑复核，未实例化该类、未新建探针/巡检脚本、未新增工程文件。")
-	_check_group_c(boss, enemy)
+	print("---- [5] 组C 真实实例化 CombatDataValidator 类并调用 validate_all()（R21 落位）----")
+	var validator = VALIDATOR_SCRIPT.new()
+	_validator_result = validator.validate_all()
+	_pass_c = int(_validator_result.get("pass", 0))
+	_fail_c = int(_validator_result.get("fail", 0))
+	print("[C][类实例] preload=res://scripts/combat/combat_data_validator.gd | 实例有效=%s | validate_all() -> checks=%d pass=%d fail=%d errors=%d status=%s" % [str(is_instance_valid(validator)), int(_validator_result.get("checks", 0)), _pass_c, _fail_c, (_validator_result.get("errors", []) as Array).size(), String(_validator_result.get("status", ""))])
+	print("[C][声明] 组C 由 preload(res://scripts/combat/combat_data_validator.gd).new() 真实实例化 CombatDataValidator 并调用 validate_all() 取得，已替换 R20 的 §9 等价校验同跑；组A/组B 与 612 PASS 口径未回退。")
 
-	print("==== [R20 FRAME DATA REGRESSION] SUMMARY ====")
+	print("==== [R21 VALIDATOR-CLASS VERIFY] SUMMARY ====")
 	var pa := _pass_a
 	var fa := _fail_a
 	var pb := _pass_b
@@ -118,9 +116,9 @@ func _initialize() -> void:
 	var fc := _fail_c
 	print("  组A 文档/帧数据核对 | DOC_PASS=%d DOC_FAIL=%d -> %s" % [pa, fa, "DOC_CONSISTENCY=PASS" if fa == 0 else "DOC_CONSISTENCY=FAIL"])
 	print("  组B R19 裁决值 | VERDICT_PASS=%d VERDICT_FAIL=%d -> %s" % [pb, fb, "MATCH" if fb == 0 else "MISMATCH"])
-	print("  组C CombatDataValidator 校验口径同跑 | VALIDATOR_CHECKS=%d VALIDATOR_PASS=%d VALIDATOR_FAIL=%d -> VALIDATOR_ERROR=%d" % [pc + fc, pc, fc, fc])
+	print("  组C CombatDataValidator.validate_all()（类级真实实例化） | VALIDATOR_CHECKS=%d VALIDATOR_PASS=%d VALIDATOR_FAIL=%d -> VALIDATOR_ERROR=%d" % [int(_validator_result.get("checks", pc + fc)), pc, fc, fc])
 	print("  合计 | PASS_COUNT=%d FAIL_COUNT=%d" % [pa + pb + pc, fa + fb + fc])
-	print("  E-8 max_resistance (bleed/poison/frost) = %s" % _e8_actual_string(boss))
+	print("  E-8 max_resistance (bleed/poison/frost) = %s" % String(_validator_result.get("e8_max_resistance", "N/A")))
 	var verdict := "SEE_ABOVE"
 	if fa == 0 and fb == 0 and fc == 0:
 		verdict = "ALL_MATCH"
@@ -131,8 +129,8 @@ func _initialize() -> void:
 	elif fa > 0:
 		verdict = "FRAME_DATA_MISMATCH"
 	print("  RESULT=%s" % verdict)
-	print("  NOTE: quit(0)=脚本执行/读取成功；PASS/FAIL 由实际值 vs 期望值真实计算，不预设结论；不写 courtyard.tscn / project.godot。")
-	print("==== [R20 FRAME DATA REGRESSION] END ====")
+	print("  NOTE: quit(0)=脚本执行/读取成功；PASS/FAIL 由实际值 vs 期望值真实计算，不预设结论；不写 courtyard.tscn / project.godot / 其它 Rank 独占件；组A/组B 不回退。")
+	print("==== [R21 VALIDATOR-CLASS VERIFY] END ====")
 	quit(0)
 
 
@@ -154,44 +152,6 @@ func _collect_actions(player: Variant) -> Dictionary:
 	for ac in player.get("actions"):
 		out[String(ac.get("id"))] = ac
 	return out
-
-
-# 对应 combat_data_validator.gd::_collect_all（同一份 .tres、同一组资源集合）
-func _validator_collect(boss: Variant, player: Variant, enemy: Variant) -> void:
-	if boss != null:
-		_v_resources.append(boss)
-		if boss.get("poise") != null:
-			_v_resources.append(boss.get("poise"))
-		_v_buildup_hosts.append(boss.get("status_buildups"))
-		for b in boss.get("status_buildups"):
-			_v_resources.append(b)
-		for p in boss.get("phases"):
-			_v_resources.append(p)
-			if p.get("poise_override") != null:
-				_v_resources.append(p.get("poise_override"))
-			for m in p.get("moves"):
-				_v_moves.append(m)
-				_v_boss_moves.append(m)
-				_v_resources.append(m)
-	if enemy != null:
-		_v_enemies.append(enemy)
-		_v_resources.append(enemy)
-		if enemy.get("poise") != null:
-			_v_resources.append(enemy.get("poise"))
-		_v_buildup_hosts.append(enemy.get("status_buildups"))
-		for b in enemy.get("status_buildups"):
-			_v_resources.append(b)
-		var em: Array = []
-		for m in enemy.get("moves"):
-			_v_moves.append(m)
-			em.append(m)
-			_v_resources.append(m)
-		_v_enemy_move_sets.append(em)
-	if player != null:
-		_v_resources.append(player)
-		for a in player.get("actions"):
-			_v_actions.append(a)
-			_v_resources.append(a)
 
 
 # ---------------------------------------------------------------- 实际值快照
@@ -339,124 +299,6 @@ func _check_group_b(actions_by_id: Dictionary) -> void:
 	_check("B", "roll.total", total, int(DISPATCH_ROLL["total"]), src)
 	_check("B", "roll.invulnerable_end_frame(按E-7:4+9=13)", ien, int(DISPATCH_ROLL["inv_end"]), src)
 	_check("B", "roll.logic_fps(@60)", fps, int(DISPATCH_ROLL["logic_fps"]), src)
-
-
-# ---------------------------------------------------------------- 组C：CombatDataValidator 校验口径同跑
-func _check_group_c(boss: Variant, enemy: Variant) -> void:
-	# E-1 阶段阈值 / index / 上下阶段比例自洽
-	var phases = boss.get("phases")
-	var thresholds = boss.get("phase_thresholds")
-	_check("C", "E-1 阈值表长度 = 阶段数-1", thresholds.size(), maxi(0, phases.size() - 1), "schema §9 E-1")
-	for i in range(phases.size()):
-		var p = phases[i]
-		var pid := String(p.get("id"))
-		_check("C", "E-1 phase_index==下标+1 -> %s" % pid, int(p.get("phase_index")), i + 1, "schema §9 E-1")
-		if i < thresholds.size():
-			_check("C", "E-1 threshold==hp_ratio_exit -> %s" % pid, is_equal_approx(float(thresholds[i]), float(p.get("hp_ratio_exit"))), true, "schema §9 E-1")
-		if i + 1 < phases.size():
-			_check("C", "E-1 exit==下一阶段 enter -> %s" % pid, is_equal_approx(float(p.get("hp_ratio_exit")), float(phases[i + 1].get("hp_ratio_enter"))), true, "schema §9 E-1")
-
-	# E-3 取消窗口不越出动作尾部
-	for m in _v_moves:
-		_check("C", "E-3 can_cancel_frames<=recovery -> %s" % String(m.get("id")), int(m.get("can_cancel_frames")) <= int(m.get("recovery_frames")), true, "schema §9 E-3")
-	for a in _v_actions:
-		_check("C", "E-3 cancel_window_frames<=recovery -> %s" % String(a.get("id")), int(a.get("cancel_window_frames")) <= int(a.get("recovery_frames")), true, "schema §9 E-3")
-
-	# E-4 min<=max、attack_range <= max(moves.max_range)
-	for m in _v_moves:
-		_check("C", "E-4 min<=max -> %s" % String(m.get("id")), float(m.get("min_range_px")) <= float(m.get("max_range_px")), true, "schema §9 E-4")
-	_check("C", "E-4 Boss attack_range<=max(moves.max_range)", float(boss.get("attack_range_px")) <= _max_move_range(_v_boss_moves), true, "schema §9 E-4")
-	for i in range(_v_enemy_move_sets.size()):
-		var set_moves: Array = _v_enemy_move_sets[i]
-		if not set_moves.is_empty():
-			_check("C", "E-4 敌人 attack_range<=max(moves.max_range) -> %s" % String(_v_enemies[i].get("id")), float(_v_enemies[i].get("attack_range_px")) <= _max_move_range(set_moves), true, "schema §9 E-4")
-
-	# E-5 lose_radius > aggro_radius（滞回）
-	_check("C", "E-5 Boss lose>aggro", float(boss.get("lose_radius_px")) > float(boss.get("aggro_radius_px")), true, "schema §9 E-5")
-	for e in _v_enemies:
-		_check("C", "E-5 敌人 lose>aggro -> %s" % String(e.get("id")), float(e.get("lose_radius_px")) > float(e.get("aggro_radius_px")), true, "schema §9 E-5")
-
-	# E-8 异常类型不重复、抗性不溢出；并确认 max_resistance 仍为 400/480/420
-	var n := 8  # resistance_sample_triggers（validator @export 默认 8）
-	for host in _v_buildup_hosts:
-		var seen := {}
-		for b in host:
-			var bid := String(b.get("id"))
-			var stype := String(b.get("status_type"))
-			_check("C", "E-8 status_type 不重复 -> %s" % stype, not seen.has(stype), true, "schema §9 E-8")
-			seen[stype] = true
-			var limit := float(b.get("threshold")) + float(b.get("resistance_gain_per_trigger")) * float(n)
-			var limit_str := "E-8 抗性不溢出 -> %s | limit=%s <= max_resistance=%s" % [bid, str(limit), str(float(b.get("max_resistance")))]
-			_check("C", limit_str, limit <= float(b.get("max_resistance")), true, "schema §9 E-8")
-			if E8_MAX_RESISTANCE.has(bid):
-				_check("C", "E-8 max_resistance[%s] 仍为 R10 裁决值" % bid, float(b.get("max_resistance")), float(E8_MAX_RESISTANCE[bid]), "R10 裁决 A1 / 400/480/420")
-
-	# E-9 资源导出字段名 ⊆ schema 字段集合（静默逐项计数 + 汇总打印，避免 400+ 行刷屏）
-	var schema_fields: Array[String] = [
-		"id", "display_name", "max_hp", "base_attack", "base_defense", "phases", "phase_thresholds",
-		"poise", "status_buildups", "aggro_radius_px", "lose_radius_px", "chase_speed_px_per_sec",
-		"attack_range_px", "ai_poll_interval_sec", "rng_seed", "defeated_flag_key", "death_pose_name",
-		"phase_transition_enabled",
-		"phase_index", "hp_ratio_enter", "hp_ratio_exit", "phase_damage_multiplier", "phase_defense",
-		"sprite_frames_path", "pose_prefix", "moves", "poise_override", "status_resistance_multiplier",
-		"transition_pose_name", "transition_frames", "transition_invulnerable", "aggression",
-		"pose_name", "startup_frames", "active_frames", "recovery_frames", "motion_multiplier",
-		"damage_type", "poise_damage", "status_buildup_bleed", "status_buildup_poison",
-		"status_buildup_frost", "hitbox_reach_px", "hitbox_arc_deg", "hitbox_offset_px",
-		"min_range_px", "max_range_px", "weight", "cooldown_sec", "can_cancel_frames", "breaks_guard",
-		"max_poise", "poise_regen_per_sec", "poise_regen_delay_sec", "stance_break_duration_sec",
-		"stance_break_damage_multiplier", "executable", "execute_hp_ratio_threshold",
-		"poise_break_pose_name", "poise_break_frame",
-		"status_type", "threshold", "decay_per_sec", "decay_delay_sec", "trigger_damage_ratio",
-		"trigger_damage_flat", "trigger_poise_damage", "trigger_pose_name", "trigger_frame",
-		"duration_sec", "tick_damage_per_sec", "resistance_gain_per_trigger", "max_resistance",
-		"action_name", "state_name", "pose_frame_offset", "invulnerable_start_frame",
-		"invulnerable_end_frame", "logic_fps", "move_speed_px_per_sec", "state_priority",
-		"can_cancel_into", "stamina_cost", "cancel_window_frames",
-		"request_id", "enemy_id", "spawn_point_id", "position", "facing_degrees", "level",
-		"hp_override", "stance_override", "aggro_radius", "leash_radius", "respawn_policy",
-		"defeated_flag", "loot_table_id", "patrol_route", "is_boss", "spawn_group_id", "metadata",
-		"actions",
-	]
-	var e9_checks := 0
-	var e9_oob: Array[String] = []
-	for res in _v_resources:
-		for prop in res.get_property_list():
-			var usage := int(prop.get("usage", 0))
-			if (usage & PROPERTY_USAGE_SCRIPT_VARIABLE) == 0:
-				continue
-			var fname := String(prop.get("name", ""))
-			if fname == "script":
-				continue
-			e9_checks += 1
-			if schema_fields.has(fname):
-				_pass_c += 1
-			else:
-				_fail_c += 1
-				e9_oob.append(fname)
-	_check("C", "E-9 字段名 ⊆ schema 白名单 | 字段实例=%d 越界=%d" % [e9_checks, e9_oob.size()], e9_oob.size(), 0, "schema §9 E-9")
-	if not e9_oob.is_empty():
-		print("  [组C][E-9] 越界字段名=%s" % str(e9_oob))
-
-
-func _max_move_range(moves: Array) -> float:
-	var result := 0.0
-	for m in moves:
-		var mr := float(m.get("max_range_px"))
-		if mr > result:
-			result = mr
-	return result
-
-
-func _e8_actual_string(boss: Variant) -> String:
-	var parts: Array[String] = []
-	for bid in ["status_01_bleed", "status_02_poison", "status_03_frost"]:
-		for b in boss.get("status_buildups"):
-			if String(b.get("id")) == bid:
-				parts.append(str(float(b.get("max_resistance"))))
-	if parts.size() != 3:
-		return "MISSING"
-	return "%s / %s / %s" % [parts[0], parts[1], parts[2]]
 
 
 # ---------------------------------------------------------------- 工具

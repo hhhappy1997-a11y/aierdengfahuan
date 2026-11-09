@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-115818-662-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "引用 teamwork/Rank-4/DONE-R21.md 实际结论：R21 真跑 7 组 Godot CLI 分辨率/窗口参数组合（--resolution 640x360/1920x1080/480x270、--fullscreen、--windowed --maximized 等），全部 EXIT=0，Movie Maker stdout 一律 'recording movie in 1280x720 @ 30 FPS'、PNG IHDR 实测一律 1280x720，未达成引擎级 640x360 输出。根因：引擎 --help 全文(capture/r21_godot_help.txt,129行)无缩放(scaling)CLI 参数、无命令行覆盖 project settings 的途径，录制尺寸由禁改的 project.godot viewport/window=1280x720 决定；本轮不写 project.godot（避免三路并发冲突），如实写边界、不冒充。--resolution 640x360 仅改变内部渲染像素密度（c1_base vs c2 diff_ratio=0.228038、边缘能量 37.037→22.346、砖块网格变粗），输出文件仍 1280x720。帧时间 --print-fps 真跑数字：V-Sync 开 desktop 16.72 / mobile 16.66 mspf（被 60Hz 锁死）；--disable-vsync desktop 5.03 / mobile 3.43 mspf（mobile 帧时间少 31.8%、吞吐 1.47x）。PIL 2x 降采样生成 640x360 对照图 r21_lowres_post_2x_downsample.png，图上明确标注「后处理对照，非引擎低分辨率渲染」，禁止冒充 Movie Maker 产物。verify_fx_mobile.gd 47 PASS / verify_fx_profile.gd 34 PASS 不回退，三段门禁 6 项 EXIT=0、17 份 r21_*.log 的 SCRIPT ERROR|Parse Error|ERROR SUM=0。零改动工程源件；并发实例另命名产物（r21_lowres_base/res640/...）未冲突、未覆盖。未完成项：引擎级 640x360 PNG 需改 project.godot(Rank-3 独占) 或 R21B 补单；HD-2D 全绿未达成。详见 teamwork/Rank-4/DONE-R21.md 与 capture/CAPTURE-REPORT.md「R21 低分辨率与帧时间」段。"
+}

@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-122557-230-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "引用 DONE-R21B.md 实际结论：R21B 产物对齐完成，--import EXIT=0/ERROR=0，Windows release 导出 EXIT=0，Android debug 导出 EXIT=0，启动验证 --headless --quit-after 10 EXIT=0；apksigner verify Verifies、v2+v3=true（带 idsig 时 v4 亦 true）、包名 com.aierdengfahuan.game、versionName 1.0.0；exe 109127680→109127680 B、pck 785756→993736 B(+207980)、apk 29024306→29239499 B(+215193)、idsig 234930→234930 B；无阻塞，详见 teamwork/Rank-4/DONE-R21B.md。"
+}

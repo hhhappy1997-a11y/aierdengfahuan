@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-115818-643-A3",
+  "ai": 3,
+  "status": "done",
+  "result": "引用 DONE-R21.md 实际结论：① hud.gd 已统一 grace_fast_travel() 与 travel_to() 优先取 /root/SaveDeltaWriter、注入 committer 仅兜底，顺序 commit→travel_confirmed→travel_requested，赐福菜单 8 节点/7 边与 R20 16 断言无一回退；② r19_verify_hud.gd 追加 ⑰⑱⑲⑳ 四条断言后真跑 SUMMARY pass=20 fail=0 ok=true（R20 既有 16 PASS + R21 新增 4 PASS），R17 回归 pass=11 fail=0 ok=true，合计 31 PASS/0 FAIL；③ 三段门禁 G1 import / G2 check-only×3 / G3 quit 每段 EXIT=0，grep SCRIPT ERROR / Parse Error / ERROR 全为 0；④ 两个入口口径一致性成立，无其它入口走旧口径，不影响既有存档读档（§4.4 十字段 / schema_version=3 / 三段式 flag 均未改）；并发写入、文案边界与未完成项已在 DONE-R21.md 如实登记；未碰 project.godot / courtyard.tscn / quality_settings.* / verify_frame_data.gd / hd2d_fx.*，未自行 git 提交。"
+}

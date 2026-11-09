@@ -1,6 +1,8 @@
 extends CanvasLayer
 
 ## R16 · HUD ↔ WorldState / 赐福网络 数据绑定（Rank-3，cmd-20261109-085736-027-A3）。
+## R21 · 统一存档快旅口径（Rank-3，cmd-20261109-115818-643-A3）：
+##   grace_fast_travel() 与 travel_to() 统一优先取 /root/SaveDeltaWriter，注入 committer 仅兜底。
 ## 挂载点：res://scenes/hud.tscn 根节点 Hud（CanvasLayer），与场景根节点类型一致。
 ##
 ## I-1 边界（SAVE-SPEC-FINAL.md §3 / HUD-BINDING.md §2.4）：
@@ -33,7 +35,8 @@ const DIM: Color = Color(0.45, 0.42, 0.34, 1.0)               # 未点亮运行�
 # 对齐 chunk_world_bridge.gd:43 const REASON_FAST_TRAVEL
 const REASON_FAST_TRAVEL: String = "grace_fast_travel"
 # R19/R20：SaveDeltaWriter 的 autoload 注册键与 /root 路径。R20 起已正式注册为 autoload，
-# 供 travel_to() 优先解析真实节点、供 get_commit_status() 如实读回注册态。
+# R21 起供 travel_to() / grace_fast_travel() 两入口统一优先解析真实节点、
+# 供 get_commit_status() 如实读回注册态。
 const WRITER_AUTOLOAD_KEY: String = "autoload/SaveDeltaWriter"
 const WRITER_ROOT_PATH: String = "/root/SaveDeltaWriter"
 
@@ -53,7 +56,7 @@ var fast_travel_committer: Callable = Callable()  # 可注入：func(reason: Str
 var grace_node_count: int = 0                 # open_grace_menu() 运行期从 .tres 读到的 nodes.size()
 var grace_edge_count: int = 0                 # open_grace_menu() 运行期从 .tres 读到的 edges.size()
 var menu_open: bool = false                   # 菜单是否已打开（仅内存态，不改 hud.tscn 结构）
-var commit_degraded: bool = false             # 最近一次 travel_to 是否走了「非 autoload」降级
+var commit_degraded: bool = false             # 最近一次落盘（travel_to / grace_fast_travel 共用）是否走了「非 autoload」降级
 var last_commit_source: String = "none"       # "autoload" / "injected" / "none"（如实登记）
 var last_commit_reason: String = ""           # 最近一次 commit 的 reason
 var last_commit_ok: bool = false              # 最近一次是否真的先落盘
@@ -296,9 +299,10 @@ func set_fast_travel_committer(c: Callable) -> void:
 
 ## 赐福快速传送编排接口。不可颠倒的顺序（任务书 / §2.4）：
 ##   1 校验目标 unlocked + 当前赐福沿 edges 的 requires_flags 全部满足（只读 get_flag(k, false)）；
-##   2 先落盘：委托 SaveDeltaWriter.commit(reason) 原子写（HUD 不自己 commit、不构造 SaveDelta）；
+##   2 先落盘：与 travel_to() 统一走 _commit_before_travel(reason)，优先取 /root/SaveDeltaWriter
+##      原子写，注入 committer 仅在取不到该节点时兜底（HUD 不自己 commit、不构造 SaveDelta）；
 ##   3 后发信号：travel_confirmed / GameEvents.travel_requested → 1 号 SceneRouter 换场景。
-## committer 未注入且 /root/SaveDeltaWriter 未注册时：不自行落盘，只发信号，
+## /root/SaveDeltaWriter 与注入 committer 都取不到时：不自行落盘，只发信号，
 ##   由既有链路 ChunkWorldBridge._on_travel_requested → commit("grace_fast_travel") 兜底（如实登记）。
 func grace_fast_travel(target_grace_id: String, reason: String = REASON_FAST_TRAVEL) -> void:
 	# 1 校验
@@ -317,8 +321,8 @@ func grace_fast_travel(target_grace_id: String, reason: String = REASON_FAST_TRA
 		if not get_reachable_targets(current_id).has(target_grace_id):
 			push_warning("[HUD] grace_fast_travel: 沿 edges 的 requires_flags 未全部满足：%s→%s" % [current_id, target_grace_id])
 			return
-	# 2 先落盘（委托，HUD 不 commit）
-	if not _delegate_commit(reason):
+	# 2 先落盘（与 travel_to() 统一入口 _commit_before_travel：优先 /root/SaveDeltaWriter，注入 committer 仅取不到时兜底）
+	if not _commit_before_travel(reason):
 		push_warning("[HUD] grace_fast_travel: 未找到 SaveDeltaWriter / 未注入 committer，落盘交既有 travel_requested 订阅链路兜底")
 	# 3 后发信号
 	travel_confirmed.emit(target_grace_id)
@@ -332,17 +336,12 @@ func request_rest(grace_id: String) -> void:
 	rest_requested.emit(grace_id)
 
 
-## 把强制落盘委托给 3 号内部件，HUD 只编排顺序、不实现 commit（I-1）。
-## 优先用可注入 Callable；否则解析 /root/SaveDeltaWriter 并 call("commit", reason)。
+## R21（cmd-20261109-115818-643-A3）：两入口统一口径后的兼容封装。
+## 保留此私有方法名以免破坏历史调用；实际落盘统一委托 _commit_before_travel(reason)，
+## 即优先取 /root/SaveDeltaWriter、注入 committer 仅在取不到该节点时兜底，并如实登记降级态。
+## 本方法内不再有「注入 committer 优先」的旧口径。
 func _delegate_commit(reason: String) -> bool:
-	if fast_travel_committer.is_valid():
-		fast_travel_committer.call(reason)
-		return true
-	var writer: Node = get_node_or_null("/root/SaveDeltaWriter")
-	if writer != null and writer.has_method("commit"):
-		writer.call("commit", reason)
-		return true
-	return false
+	return _commit_before_travel(reason)
 
 # ==========================================================================
 # 6) 私有小工具（数据取自 .tres，避免硬编码 / 避免 null 传播）
@@ -398,6 +397,8 @@ func _array_of(v: Variant) -> Array:
 #     优先取 /root/SaveDeltaWriter 完成 commit；仅当取不到该节点时才回退注入 committer
 #     并如实登记降级。get_commit_status() 可把 degraded / source / reason / ok /
 #     writer_registered_as_autoload 读回，绝不伪造落盘与 autoload 状态。
+#   - R21：grace_fast_travel() 亦统一走 _commit_before_travel()，与 travel_to() 同口径
+#     （优先 /root/SaveDeltaWriter、注入 committer 仅兜底），顺序同为 commit → confirmed → requested。
 
 ## 打开赐福菜单：运行期强制从磁盘重读 .tres（load_grace_network 内 CACHE_MODE_IGNORE），
 ## 统计实际节点 / 边数，重建菜单快照并返回（调用方据此渲染 UI，不改 hud.tscn 结构）。
