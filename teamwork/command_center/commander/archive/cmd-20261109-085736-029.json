@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-085736-029",
+  "from": "总指挥",
+  "target": "4",
+  "task": "[ROUND=R16] 【R16 · Rank-4 实现 HD-2D 光效独立场景】按 `Rank-4/HD2D-FX-PLAN.md` 实现**独立可挂载**的 `godot/scenes/hd2d_fx.tscn` + `godot/scripts/hd2d_fx.gd`（CanvasLayer 分层：倒影/体积光/光尘/bloom 的程序化 `_draw()` 近似，桌面四项全开、移动四项全关的性能开关）。**不写 courtyard.tscn**（Rank-1 独占），SceneTree 构建脚本真跑 + 回读校验节点结构、三段门禁。完成写 `Rank-4/DONE-R16.md` 与回执。零付费、零外部素材、不伪造输出。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}

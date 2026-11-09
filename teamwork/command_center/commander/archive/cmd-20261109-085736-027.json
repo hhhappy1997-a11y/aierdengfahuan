@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-085736-027",
+  "from": "总指挥",
+  "target": "3",
+  "task": "[ROUND=R16] 【R16 · Rank-3 实现 hud.gd】按 `Rank-3/HUD-BINDING.md` 实现独立脚本 `godot/scripts/hud.gd`（`extends CanvasLayer` 或 Control，含 4 信号与 16 方法草案里可落地的部分：`get_flag(key,default)` 绑定 TitleLabel、`flag_changed` 增量刷新、`grace_fast_travel` 先 commit 后发信号。**不写 `godot/scenes/courtyard.tscn`**（Rank-1 独占）；可以改 `godot/scenes/hud.tscn` 挂脚本，需 `--check-only` 真跑验证。完成写 `Rank-3/DONE-R16.md` 与回执。零付费、不伪造输出。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}

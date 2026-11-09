@@ -141,3 +141,51 @@ courtyard.tscn bytes = 5230 mtime = 2026-11-09 08:28:32 sha256[:16] = d70ae5b769
 **`status=done` 指方案交付闭环，不代表画面已实现 / 已验收 —— 本轮只给方案、未实现。** 未完成项与阻塞见 §3。
 
 > 证据：`HD2D-FX-PLAN.md`（25437 B，UTF-8）、回执 `cmd-20261109-083628-786-A4.json`（2179 B，UTF-8，outbox → receipts）、§2.2 / §2.3 / §2.4 真跑校验 stdout。
+
+---
+
+## 5. 追加复核补记（本实例 · 并发保护分支；只追加，不改动上文任何结论）
+
+> 上文 §0~§4 与「结论」均由并发实例先写。本实例按派单「并发保护」判定为「已由并发实例完成，本次仅复核」：**未重做方案、未覆盖既有结论、未重复写第二份回执**，仅追加复核证据并补齐派单点名的一处缺口。
+
+### 5.1 并发判定与独立复核证据（本实例只读 / 真跑）
+
+- 开工只读检查 `HD2D-FX-PLAN.md` / `DONE-R15.md` / `command_center/ai/4/outbox/*` / `dispatcher/receipts/cmd-20261109-083628-786-A4.json` 起初均不存在；本实例准备写入时 `Write` 返回「文件尚未被读取」→ 复查确认方案与 DONE 已被并发实例先写、回执已被中枢消费移入 receipts。
+- 独立复核（非引用上文自述）：
+  - `Read` 回执本体 `command_center/dispatcher/receipts/cmd-20261109-083628-786-A4.json`：合法 JSON、四字段齐备，`task_id=cmd-20261109-083628-786-A4` ✓ / `ai=4` / `status=done` / `result` 引用 `DONE-R15.md` 实际结论且含「只交付方案、未实现」。
+  - `Glob command_center/ai/4/outbox/*` → `No files found`（中枢实时消费，与 §2.2 容错说明一致）；`Glob **/dispatcher/receipts/cmd-20261109-083628-786-A4.json` → 命中 1 个文件。
+  - 只读 `wc -c` / `sha256sum` 实际 stdout（EXIT=0）：
+
+```text
+HD2D-FX-PLAN.md                            bytes=25437  sha256[:16]=fe22d2689f5d767f
+DONE-R15.md                                bytes=14420  sha256[:16]=b02db5b31820f005
+receipts/cmd-20261109-083628-786-A4.json   bytes=2179   sha256[:16]=8154cb68211ed7a9
+```
+
+  与 §2.3 登记的 25437 / `fe22d2689f5d767f`、2179 / `8154cb68211ed7a9` 逐项吻合；两文件 `Read` 中文正常显示，UTF-8 可解码。
+  - 派单主交付核对：方案 §3.1~§3.4 逐项给出体积光 / 光尘 / 湿地倒影 / bloom 的 Godot 原语 / 参数 / 叠加顺序（§2.1 层序总表），§6 #7 明确不宣称实现后处理，§0 / §7 明确只给方案、不改运行中脚本、不碰 `courtyard.tscn` —— 交付完整。
+
+### 5.2 补缺口：后台出图 job 只读观察结论（派单点名项）
+
+上文 §3 #10 仅把「出图长期阻塞」登记为既有长期项，**未记载本轮对该后台 job 的只读观察**；按派单「③ 未完成项与阻塞（如实，含后台出图 job 只读观察结论）」补记（只读，**未启动第二个 GPU 出图 job、未重启、未杀现有 job**）：
+
+- `Read Rank-4/asset_proof_stdout.txt`：近乎空（1 行）。
+- `Read Rank-4/asset_proof_stderr.log`：`[load] text_encoder (nf4)` / `[load] transformer (nf4) from Qwen/Qwen-Image-2.1`、权重 `0/750 → …`、`Loading checkpoint shards: 50%|█████ | 1/2 [05:35<05:35, 335.95s/it]`，停在权重 / shard 加载阶段。
+- 两日志 grep `(?i)\.png|saved|output|保存`（本实例真跑，实际输出）：
+
+```text
+asset_proof_stdout.txt : No matches found
+asset_proof_stderr.log : No matches found
+```
+
+- **结论**：该后台 `qwen-image --quant nf4` job 两份日志内**无 PNG 产出记录**，长期阻塞延续，如实记阻塞；本轮 R15 写方案文档、不涉及出图、不需要 GPU，按派单「无 PNG 则如实记阻塞并继续本轮交付」执行，不启动第二个 GPU job、不重启 / 不杀现有 job。
+- 如实区分：R15 复核时 `godot/assets/generated/` 与 `capture/` 下存在若干 PNG（文件名含 r11/r14 等轮次标记），**不属于上述两份后台日志的输出**，产出方不在本轮核对范围、不臆断来源、不据此宣称该后台 job 已出图；`ART-SPEC-FINAL.md §3.3`「工程根真实 PNG = 0」为 **R9 时点**结论，与 R15 现状存在时点差异，本补记不照搬该旧数值。
+
+### 5.3 真跑 / 引擎输出（如实，不伪造）
+
+- 本实例本轮**未运行任何 Godot 引擎命令**、未写探针 / 测量 / preflight 脚本 → **无引擎门禁输出，无 `SCRIPT ERROR` / `Parse Error` / `ERROR` 引擎 grep 结果可贴**；不伪造、不谎报全绿。派单「本轮主交付是文档方案、不强制三段门禁」按此执行。
+- 上文所有 stdout 均为只读核对 / 文本校验的真跑输出，本实例已独立复验其中字节数 / 哈希与回执四字段（§5.1）。
+
+### 5.4 补记后判定
+
+交付清单 3 项、DONE 三段、回执一份（`task_id` 正确、只一份）齐备；本段只**追加**后台出图 job 观察与复核证据，**不改动上文 §0~§4 与「结论」任何既有结论**，`status=done` 口径不变（指方案交付闭环，非画面已实现 / 已验收）。

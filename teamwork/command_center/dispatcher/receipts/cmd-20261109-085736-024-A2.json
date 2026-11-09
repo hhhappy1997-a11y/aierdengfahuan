@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-085736-024-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "引用 DONE-R16.md 的实际结论：[ROUND=R16] 写 godot/scripts/verify_combat_runtime.gd（extends SceneTree）并真跑。引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe，工程根 F:/Game/aierdengfahuan/godot。四段门禁 EXIT 全 0：G1 --import=0、G2 --check-only --script=0、G3 --headless --quit=0、G4 --script 主真跑=0；grep SCRIPT ERROR/Parse Error/ERROR 无匹配（0 条）。G4 主真跑：运行时健康(load/资源类型/字段数/引用无悬空/字段可读) PASS=27 FAIL=0 RESULT=PASS；数值逐项对照(基准 BOSS-DATA-FINAL.md R9) PASS=144 FAIL/登记=3。load_steps 核对：boss 声明16=1+ext5+sub10、player 声明11=1+ext2+sub8，7 个 ext 脚本全可 load()，ExtResource()/SubResource() 引用悬空=0；二阶段 phases.size=2（P1.moves=2/P2.moves=3）、三招 MoveData×3 各字段与派生 total(47/71/91)、player 8 动作数值字段均能被引擎读取并逐项 PASS/FAIL 打印。3 条 [FAIL/登记] 为 status[0..2].max_resistance 运行件 400/480/420 与 R9 文档 330/360/320 的版本差（R10 总指挥裁决 A1 已授权 400/480/420，运行权威件与裁决一致，非数值错误），按硬约束如实登记、未擅改任何数值/场景/文档。WARNING（ObjectDB leaked ×2、ChunkManager 未找到 ChunkRoot ×1）非 ERROR、EXIT 仍 0，如实登记。并发保护：verify_combat_runtime.gd 由并发实例先写，本次复核采用未覆盖，只补真跑结论/DONE/回执。完整实际 stdout 见 teamwork/Rank-2/R16-verify-run.log。未碰 courtyard.tscn、未改战斗数值、未自行 git commit/push。无阻塞。"
+}

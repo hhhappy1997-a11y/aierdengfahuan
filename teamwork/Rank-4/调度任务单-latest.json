@@ -1,11 +1,11 @@
 {
-  "id": "cmd-20261109-083628-786-A4",
-  "command_id": "cmd-20261109-083628-786",
+  "id": "cmd-20261109-085736-029-A4",
+  "command_id": "cmd-20261109-085736-029",
   "ai": 4,
   "from": "总指挥",
-  "task": "[ROUND=R15] 【R15 · Rank-4 HD-2D 光效替代方案】写 `Rank-4/HD2D-FX-PLAN.md`：在 `gl_compatibility` 后端不支持 Environment glow 的前提下，给出体积光、光尘、湿地倒影、bloom 的**程序化 CanvasLayer 近似方案**（各用什么 Godot 原语 / 参数 / 叠加顺序，参考 `ART-SPEC-FINAL.md` 的 10 步 `_draw()` 占位方案），只给方案不改运行中脚本、不碰 courtyard.tscn。完成写 `Rank-4/DONE-R15.md` 与回执。零付费、零外部素材。",
+  "task": "[ROUND=R16] 【R16 · Rank-4 实现 HD-2D 光效独立场景】按 `Rank-4/HD2D-FX-PLAN.md` 实现**独立可挂载**的 `godot/scenes/hd2d_fx.tscn` + `godot/scripts/hd2d_fx.gd`（CanvasLayer 分层：倒影/体积光/光尘/bloom 的程序化 `_draw()` 近似，桌面四项全开、移动四项全关的性能开关）。**不写 courtyard.tscn**（Rank-1 独占），SceneTree 构建脚本真跑 + 回读校验节点结构、三段门禁。完成写 `Rank-4/DONE-R16.md` 与回执。零付费、零外部素材、不伪造输出。",
   "priority": "normal",
   "note": "GUI 下达",
-  "issued_at": "2026-11-09 08:36:29",
-  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-083628-786-A4\",\"ai\":4,\"status\":\"done\",\"result\":\"...\"}"
+  "issued_at": "2026-11-09 08:57:36",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-085736-029-A4\",\"ai\":4,\"status\":\"done\",\"result\":\"...\"}"
 }

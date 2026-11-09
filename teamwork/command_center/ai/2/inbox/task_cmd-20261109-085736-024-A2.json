@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-085736-024-A2",
+  "command_id": "cmd-20261109-085736-024",
+  "ai": 2,
+  "from": "总指挥",
+  "task": "[ROUND=R16] 【R16 · Rank-2 战斗运行期扩展】写 `godot/scripts/verify_combat_runtime.gd`（`extends SceneTree`），真跑加载 `godot/data/combat/boss_01_margit.tres` 与 `player_actions.tres`，核对 `load_steps`/ext 引用、二阶段与三招的数值字段能被引擎读取，并打印实际 stdout 与 PASS/FAIL；不碰 courtyard.tscn、不改战斗数值、只写脚本与 `Rank-2/DONE-R16.md`、回执。",
+  "priority": "normal",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 08:57:36",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-085736-024-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
+}

@@ -1,10 +1,13 @@
 [gd_scene format=3]
 
-[ext_resource type="Material" path="res://assets/generated/terrain/ground_material.tres" id="1_2x0px"]
+[ext_resource type="Material" path="res://assets/generated/terrain/ground_tile_mat_plate.tres" id="1_k5tdy"]
 [ext_resource type="Script" path="res://scripts/render/hybrid_2d3d_animated_sprite.gd" id="1_ypt7w"]
 [ext_resource type="SpriteFrames" path="res://assets/generated/chars/player_spriteframes.tres" id="2_e34af"]
+[ext_resource type="Material" path="res://assets/generated/terrain/ground_tile_mat_low.tres" id="2_p30c5"]
 [ext_resource type="Script" path="res://scripts/render/hd2d_placeholder.gd" id="2_w844m"]
+[ext_resource type="Material" path="res://assets/generated/terrain/ground_tile_mat_high.tres" id="3_tihrx"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="4_6e1c7"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="5_l1iq4"]
 
 [sub_resource type="Environment" id="Environment_e34af"]
 background_mode = 1
@@ -49,7 +52,7 @@ size = Vector2i(640, 360)
 render_target_update_mode = 4
 
 [node name="Camera3D" type="Camera3D" parent="SubViewportContainer/SubViewport" unique_id=2074348766]
-transform = Transform3D(1, 0, 0, 0, 0.8660254, 0.5, 0, -0.5, 0.8660254, 0, 9.6, 14.4)
+transform = Transform3D(1, 0, 0, 0, 0.9396926, 0.34202012, 0, -0.34202012, 0.9396926, 0, 8, 15)
 current = true
 fov = 40.0
 near = 0.1
@@ -67,17 +70,17 @@ environment = SubResource("Environment_e34af")
 [node name="Terrain" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1636525606]
 
 [node name="GroundPlate" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=468563102]
-material_override = ExtResource("1_2x0px")
+material_override = ExtResource("1_k5tdy")
 mesh = SubResource("PlaneMesh_15qxa")
 
 [node name="TerraceLow" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=1792765888]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.3, -6)
-material_override = ExtResource("1_2x0px")
+material_override = ExtResource("2_p30c5")
 mesh = SubResource("BoxMesh_6e1c7")
 
 [node name="TerraceHigh" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=760291856]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0.6, -8)
-material_override = ExtResource("1_2x0px")
+material_override = ExtResource("3_tihrx")
 mesh = SubResource("BoxMesh_k5tdy")
 
 [node name="CliffRim" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=186070195]
@@ -98,6 +101,7 @@ visible = false
 script = ExtResource("1_ypt7w")
 
 [node name="PixelSprite" type="AnimatedSprite3D" parent="SubViewportContainer/SubViewport/Player/Hybrid2D3DAnimatedSprite" unique_id=532282728]
+transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, 0, 0, 0)
 centered = false
 offset = Vector2(-16, -48)
 pixel_size = 0.03125
@@ -113,6 +117,7 @@ layer = 10
 visible = false
 
 [node name="Hud" type="CanvasLayer" parent="SubViewportContainer/SubViewport/FXLayer" unique_id=1276405765 instance=ExtResource("4_6e1c7")]
+script = ExtResource("5_l1iq4")
 
 [node name="HD2DPlaceholderLayer" type="CanvasLayer" parent="." unique_id=1016476096]
 layer = -10

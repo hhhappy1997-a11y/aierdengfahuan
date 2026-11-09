@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/hd2d_fx.gd" id="1_joxd1"]
+
+[node name="HD2DFX" type="CanvasLayer" unique_id=80156914]
+layer = 10
+
+[node name="FXReflection" type="Node2D" parent="." unique_id=665929974]
+texture_filter = 1
+script = ExtResource("1_joxd1")
+
+[node name="FXGodRays" type="Node2D" parent="." unique_id=861575665]
+texture_filter = 1
+script = ExtResource("1_joxd1")
+
+[node name="FXMotes" type="Node2D" parent="." unique_id=2139348949]
+texture_filter = 1
+script = ExtResource("1_joxd1")
+
+[node name="FXBloom" type="Node2D" parent="." unique_id=1977446241]
+texture_filter = 1
+script = ExtResource("1_joxd1")

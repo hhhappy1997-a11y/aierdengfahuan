@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-085736-022-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "R16 构图/UV 调优主任务闭环，详见 teamwork/Rank-1/DONE-R16.md。真源核对 id=cmd-20261109-085736-022-A1 且含 [ROUND=R16]。交付：godot/scripts/tune_r16.gd（extends SceneTree 幂等）、godot/scenes/courtyard.tscn（23 节点不变）、三份分档材质副本 ground_tile_mat_plate/low/high.tres（uv1_scale 16/3/2）、_archived_20261108/courtyard.tscn.bak-pre-r16、capture/r1600000000~000005.png（6 帧 1280×720）+ r16.wav、DONE-R16.md。真跑实际结论：--script 调优自检最终 EXIT=0（首次因运行时材质被 pack 内嵌为 SubResource 导致 verify_ok=false/EXIT=1，已定位并修正 _ensure_mat 改用普通 load 缓存对象，失败日志 r16_tune_first_fail.log 如实留档）；节点数 pack 前 23 / pack 后 23 / CACHE_MODE_IGNORE 磁盘回读 23，OK=true，相机 rot_x -30→-20 度且 origin(0,8,15)、pixel_size 0.03125→0.05、三处 ExtResource 挂载 path_ok/uv_ok 全 true；幂等重跑 ALREADY_TUNED=true 跳过场景写入、场景 sha256 字节不变、备份未覆盖。三段门禁 --import / --check-only --script / --quit 真实 EXIT 0/0/0，grep 'SCRIPT ERROR|Parse Error|ERROR' 全日志 0 条。Movie Maker 抓帧 EXIT=0，stdout 贴于 DONE-R16.md §2.6。画面定性：天空带与远景重新露出、砖块分档后大小一致、角色放大生效，但地面仍占约 3/4、角色占比仍偏小、无体积光/光尘/倒影/bloom、背景冷蓝、BoxMesh 薄侧面纹理拉伸、HUD 仍静态，不宣称 HD-2D 全绿达标或运行期观感已验收（DONE-R16.md §2.7 / §3）。未完成项与阻塞见 DONE-R16.md §3。零付费、默认不刺探、不伪造输出、不自行 git commit/push；开工与写入前两次并发复核均显示 DONE/outbox/receipts 未被并发实例先写，本实例只写一份回执。"
+}

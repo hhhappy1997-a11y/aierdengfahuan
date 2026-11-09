@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-085736-022",
+  "from": "总指挥",
+  "target": "1",
+  "task": "[ROUND=R16] 【R16 构图/UV · Rank-1】本轮**只有你写 `godot/scenes/courtyard.tscn`**。依据 `capture/r15*.png` 暴露的问题（砖块铺满画面、透视/天空被压、角色偏小）：写 `godot/scripts/tune_r16.gd`（`extends SceneTree`，幂等）串行做：① 备份 courtyard.tscn 到 `_archived_20261108/courtyard.tscn.bak-pre-r16`；② 调 `Camera3D` 俯角/位置让天空带与远景重新露出；③ 放大 `PixelSprite`（AnimatedSprite3D 的 `pixel_size` 或缩放）让角色占比更合理；④ 给 GroundPlate/TerraceLow/TerraceHigh 三个 MeshInstance3D 设**分档 UV**：用 `ground_material.tres` 的副本分别设 `uv1_scale`（如 16/3/2，参考 `Rank-4/GROUND-MATERIAL.md`），只改 material 不改网格；⑤ 节点数保持 23，pack 前/后比对 + `CACHE_MODE_IGNORE` 回读；⑥ Movie Maker 抓帧 `F:/Game/aierdengfahuan/capture/r16.png --fixed-fps 30 --quit-after 6`（绝对路径+.png），贴 stdout；⑦ 三段门禁。完成写 `Rank-1/DONE-R16.md` 与回执到 `teamwork/command_center/ai/1/outbox/`。零付费、不伪造输出、不自行 git。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}
