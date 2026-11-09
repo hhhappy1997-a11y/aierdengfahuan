@@ -12,6 +12,15 @@ class_name EncounterDirector
 ##   _physics_process 走固定 60 拍，与 PlayerActionData.logic_fps 对齐；
 ##   _unhandled_input 在 gui_input/Control 之后接收，避免与 HUD 抢输入。
 ## 降级：任一复用件缺失时 push_warning 并继续可测，不崩溃、不伪造信号。
+##
+## v0.2.0 P1 · 本轮 [ROUND=R24] 扩展（保持 v0.1.0 的 20 条断言与 debug_* 签名不变）：
+##   ① 赐福休息真正重置 Boss —— 采用「重新实例化 Boss 子节点替换」：全新实例
+##      天然 _defeated=false / _hp=max_hp / 阶段 1 / 冷却与招式帧清空；只复制
+##      Boss 节点公开 @export 配置，不改 BossController 既有件、不碰私有状态字段。
+##   ② 接 EncounterRulesV020 规则层（BossData.ai_poll_interval_sec 注入），
+##      每帧 tick_frame、落地招式走 should_allow_move 放行门、retry_count 可观测。
+##   ③ 重复挑战计数 rematch_count、胜负快照 wins/losses/outcome_history 进 get_snapshot()。
+##   边界与取舍详见 teamwork/Rank-2/DONE-R24.md。
 
 signal encounter_finished(won: bool)
 signal grace_rested(rest_count: int)
@@ -43,6 +52,14 @@ var _grace_rests: int = 0
 var _last_attack_id: String = ""
 var _connected_boss: Node = null
 
+# ---- v0.2.0 新增状态（既有字段与取值口径不变） ----
+var _rules: EncounterRulesV020 = null
+var _rematch_count: int = 0            # 成功重置 Boss 并重复挑战的次数
+var _wins: int = 0
+var _losses: int = 0
+var _outcome_history: Array[int] = []  # 每次结算的 1/0 快照序列
+var _suppressed_moves: int = 0         # 运行时被规则层抑制的落地招式次数
+
 
 func _ready() -> void:
 	_table = load(player_table_path) as Resource
@@ -52,22 +69,17 @@ func _ready() -> void:
 	_boss = get_node_or_null(boss_path)
 	_resolver = get_node_or_null(resolver_path)
 	_label = get_node_or_null(hud_label_path) as Label
+	# v0.2.0：规则层用 BossData.ai_poll_interval_sec 注入（数据驱动，不硬编码帧数）。
+	_rules = EncounterRulesV020.new(
+		_boss_data.ai_poll_interval_sec if _boss_data != null else 0.0,
+		float(PlayerActionState.LOGIC_FPS))
 
 	if _boss == null:
 		push_warning("[Encounter] Boss 节点缺失，Boss 侧逻辑降级为不可用")
 	else:
 		# BossController 自带 _physics_process；关掉它，统一由本导演按固定拍驱动，
 		# 避免同一帧被推进两次导致招式帧与冷却错乱。
-		_boss.set_physics_process(false)
-		if _boss.has_method("set_boss_position"):
-			_boss.call("set_boss_position", Vector3.ZERO)
-		if _boss.has_method("set_target_position"):
-			_boss.call("set_target_position", Vector3.ZERO)
-		if _boss.has_signal("move_landed"):
-			var cb: Callable = Callable(self, "_on_boss_move_landed")
-			if not _boss.is_connected("move_landed", cb):
-				_boss.connect("move_landed", cb)
-			_connected_boss = _boss
+		_bind_boss(_boss)
 	if _boss_data == null:
 		push_warning("[Encounter] boss_data 未加载，防御/掉落数值走 0 降级")
 	_update_hud()
@@ -104,6 +116,8 @@ func _step(delta: float) -> void:
 	_state.tick()
 	_try_player_hit()
 	if simulate_boss and _boss != null and _boss.has_method("advance"):
+		if _rules != null:
+			_rules.tick_frame(delta)
 		_boss.call("advance", delta)
 		if _boss.has_method("get_hp_ratio") and float(_boss.call("get_hp_ratio")) <= 0.0:
 			_finish(true)
@@ -149,6 +163,13 @@ func _compute_damage(action: PlayerActionData) -> float:
 func _on_boss_move_landed(_defeat_id: String, _move: Variant, _attacker: Variant) -> void:
 	if _outcome >= 0 or _state == null:
 		return
+	# v0.2.0：仅当携带 MoveData（BossController 真实落地）时接入数据驱动规则层；
+	# debug_boss_hit() 传 null，完全走 v0.1.0 既有结算，保证 20 条断言不回退。
+	if _move is MoveData and _rules != null:
+		var mv: MoveData = _move
+		if not report_boss_move(mv.id, mv.cooldown_sec):
+			_suppressed_moves += 1
+			return
 	if _state.is_invulnerable():
 		_dodges += 1
 		return
@@ -160,6 +181,11 @@ func _on_boss_move_landed(_defeat_id: String, _move: Variant, _attacker: Variant
 
 func _finish(won: bool) -> void:
 	_outcome = 1 if won else 0
+	if won:
+		_wins += 1
+	else:
+		_losses += 1
+	_outcome_history.append(_outcome)
 	encounter_finished.emit(won)
 	# 胜利不重复 commit：BossController._die → CombatEventBus → GameEvents
 	# → SaveDeltaWriter._on_boss_defeated 已完成 I-2 落盘；只有败北补一次。
@@ -176,9 +202,96 @@ func _grace_rest() -> void:
 	_last_attack_id = ""
 	_outcome = -1
 	_grace_rests += 1
+	# v0.2.0：赐福休息真正重置 Boss（HP 回满 / 阶段回 1 / 清除击败态）。
+	if _respawn_boss():
+		_rematch_count += 1
+	if _rules != null:
+		_rules.reset_for_rematch()
 	_commit("grace_rest")
 	grace_rested.emit(_grace_rests)
 	_update_hud()
+
+
+## v0.2.0：赐福休息真正重置 Boss —— 采用「重新实例化 Boss 子节点替换」。
+## 不改 BossController 既有件；全新实例天然 _defeated=false / _hp=max_hp /
+## 阶段 1 / 冷却字典与招式帧清空。只复制公开 @export 配置，不碰任何私有状态字段。
+## 返回是否成功重建（Boss 缺失 / 无父节点 / 无脚本时降级返回 false，不崩）。
+func _respawn_boss() -> bool:
+	if _boss == null or not is_instance_valid(_boss):
+		return false
+	var old: Node = _boss
+	var parent: Node = old.get_parent()
+	var boss_script: Script = old.get_script() as Script
+	if parent == null or boss_script == null:
+		push_warning("[Encounter] Boss 父节点或脚本缺失，跳过重建，仅重置玩家侧")
+		return false
+	# 先复制公开 @export 配置（含数据表与依赖路径），再释放旧实例。
+	var boss_name: String = str(old.name)
+	var cfg: Dictionary = {}
+	for key: String in ["boss_data", "sprite_path", "event_bus_path", "world_state_path"]:
+		cfg[key] = old.get(key)
+	# 断开旧信号连接，避免旧实例释放后 _exit_tree 误判悬空 Callable。
+	if old.has_signal("move_landed"):
+		var cb_old: Callable = Callable(self, "_on_boss_move_landed")
+		if old.is_connected("move_landed", cb_old):
+			old.disconnect("move_landed", cb_old)
+	_connected_boss = null
+	# 节点类型必须在 free() 之前取，避免 use-after-free。
+	var is_3d: bool = old is Node3D
+	parent.remove_child(old)
+	old.free()
+	# 新实例沿用旧节点的引擎类型（encounter_v010.tscn 的 Boss 为 Node3D）；
+	# 非 3D 时降级为 Node —— BossController extends Node，逻辑不依赖 Node3D。
+	var fresh: Node = Node3D.new() if is_3d else Node.new()
+	fresh.name = boss_name
+	fresh.set_script(boss_script)
+	for key: String in cfg.keys():
+		fresh.set(key, cfg[key])
+	parent.add_child(fresh)
+	# --script / SceneTree 模式 add_child 不 flush _ready；is_node_ready() 为假时
+	# 显式补一次。真实运行时 add_child 已触发 _ready，跳过，避免重复初始化。
+	if not fresh.is_node_ready():
+		fresh.call("_ready")
+	# 回填 --script 模式下 /root/... 绝对路径不可解析的依赖（不改既有件文件）。
+	_inject_boss_deps(fresh)
+	_boss = fresh
+	_bind_boss(fresh)
+	return true
+
+
+## 仅 --script / SceneTree 验证模式需要：BossController._ready 里
+## world_state_path = ^"/root/WorldState" 绝对路径在该模式不可解析。
+## 从 Engine.get_main_loop().root 与场景兄弟节点回填等价引用，业务代码零改动。
+func _inject_boss_deps(node: Node) -> void:
+	var loop: MainLoop = Engine.get_main_loop()
+	if not loop is SceneTree:
+		return
+	var tree_root: Node = (loop as SceneTree).root
+	if tree_root == null:
+		return
+	var ws: Node = tree_root.get_node_or_null("WorldState")
+	if ws != null:
+		node.set("_world_state", ws)
+	var parent: Node = node.get_parent()
+	if parent != null:
+		var bus: Node = parent.get_node_or_null("CombatEventBus")
+		if bus != null:
+			node.set("_event_bus", bus)
+
+
+## 统一装配 Boss 节点（_ready 与赐福重建共用）：关掉自带物理推进、
+## 摆位归零、连接 move_landed，保证导演按固定拍唯一驱动。
+func _bind_boss(node: Node) -> void:
+	node.set_physics_process(false)
+	if node.has_method("set_boss_position"):
+		node.call("set_boss_position", Vector3.ZERO)
+	if node.has_method("set_target_position"):
+		node.call("set_target_position", Vector3.ZERO)
+	if node.has_signal("move_landed"):
+		var cb: Callable = Callable(self, "_on_boss_move_landed")
+		if not node.is_connected("move_landed", cb):
+			node.connect("move_landed", cb)
+		_connected_boss = node
 
 
 func _commit(reason: String) -> void:
@@ -218,6 +331,7 @@ func _update_hud() -> void:
 
 
 # ---- 集成层只读 / 驱动接口（供 HUD、自测与运行日志；非探针，不含数值口径） ----
+# v0.1.0 的 debug_* 签名逐字保持不变；v0.2.0 只新增非 debug 的 report_boss_move。
 
 func debug_request_action(pose_name: String) -> bool:
 	return _request_action(pose_name)
@@ -242,7 +356,17 @@ func debug_grace_rest() -> void:
 	_grace_rest()
 
 
+## v0.2.0：把一次 Boss 招式交给数据驱动规则层，返回是否放行（连续同名返回 false）。
+## fps<=0 时规则层用自身构造帧率（PlayerActionState.LOGIC_FPS），导演层不硬编码帧数。
+func report_boss_move(move_id: String, cooldown_sec: float, fps: float = -1.0) -> bool:
+	if _rules == null:
+		return true
+	return _rules.should_allow_move(_rules.last_move_id, move_id, cooldown_sec, fps)
+
+
 func get_snapshot() -> Dictionary:
+	var ratio: float = float(_boss.call("get_hp_ratio")) if _boss != null and _boss.has_method("get_hp_ratio") else -1.0
+	var phase: int = int(_boss.call("get_phase_index")) if _boss != null and _boss.has_method("get_phase_index") else -1
 	return {
 		"player_hp": _player_hp,
 		"outcome": _outcome,
@@ -252,5 +376,15 @@ func get_snapshot() -> Dictionary:
 		"grace_rests": _grace_rests,
 		"frame": _state.get_frame() if _state != null else -1,
 		"pose": _state.get_current_pose() if _state != null else "idle",
-		"boss_hp_ratio": float(_boss.call("get_hp_ratio")) if _boss != null and _boss.has_method("get_hp_ratio") else -1.0,
+		"boss_hp_ratio": ratio,
+		# ---- v0.2.0 追加（既有 10 个键名与取值口径不变） ----
+		"rematch_count": _rematch_count,
+		"wins": _wins,
+		"losses": _losses,
+		"outcome_history": _outcome_history.duplicate(),
+		"retry_count": _rules.retry_count if _rules != null else 0,
+		"last_move_id": _rules.last_move_id if _rules != null else "",
+		"suppressed_moves": _suppressed_moves,
+		"boss_phase": phase,
+		"boss_defeated": ratio <= 0.0 and _boss != null,
 	}

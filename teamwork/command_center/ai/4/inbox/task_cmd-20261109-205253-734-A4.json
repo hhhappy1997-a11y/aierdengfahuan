@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-205253-734-A4",
+  "command_id": "cmd-20261109-205253-734",
+  "ai": 4,
+  "from": "总指挥",
+  "task": "[ROUND=R24] 【R24 · Rank-4 L4 泄漏与节点数曲线（v0.2.0）】① 新写 godot/scripts/combat/perf_encounter_v020.gd（extends SceneTree）：对 res://scenes/encounter_v010.tscn 反复 instantiate → add_child → free 共 20 轮，每轮记录 Performance.get_monitor(Performance.OBJECT_NODE_COUNT) 与 OS.get_static_memory_usage()，输出逐轮曲线与「节点数是否回落到基线 / 是否台阶式上涨」的判定；注意 --script 模式下 add_child 不 flush _ready，若需初始化按项目既有惯例显式 call(\"_ready\")；不伪造数字，采集失败如实写原因。② 真跑三段门禁 grep SCRIPT ERROR=0，输出 L4 结论到 teamwork/Rank-4/L4-REPORT-V020.md。③ 本轮只做性能采集，不录屏（15 秒录屏与目视回看在 R24B 工程冻结后补单执行）；独占 godot/scripts/combat/perf_encounter_v020.gd、capture/ 与 teamwork/Rank-4/；不改 courtyard.tscn / encounter_director.gd / project.godot / 美术资源。\n【公共契约】直接改、直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe 三段门禁 --headless --import → --check-only --script → --headless --quit，grep SCRIPT ERROR=0；零付费、零外部依赖、一次只跑一个 GPU 任务；不伪造产物、不谎报成功、不自行 git（总指挥收尾）。美术锚点 v1 未确认，本轮一律不重做素材、不改任何 PNG/tres 美术资源。完成后写 teamwork/Rank-4/DONE-R24.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/4/outbox/<id>.json（不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":4,\"status\":\"done\",\"result\":\"引用 DONE-R24.md 实际结论\"}。\n【目录所有权】godot/scenes/courtyard.tscn 与新增 build_courtyard_v020.gd 归 Rank-1；encounter_director.gd / encounter_rules_v020.gd / verify_encounter_v020.gd 归 Rank-2；README.md 与 teamwork/Rank-3/ 归 Rank-3；perf_encounter_v020.gd 与 capture/ 及 teamwork/Rank-4/ 归 Rank-4；project.godot、encounter_v010.tscn、既有战斗件、全部美术资源本轮任何人都不得写。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 20:52:54",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-205253-734-A4\",\"ai\":4,\"status\":\"done\",\"result\":\"...\"}"
+}

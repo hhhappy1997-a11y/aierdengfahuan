@@ -308,3 +308,73 @@ D:/Godot/Godot_v4.7.2-stable_win64.exe \
 零付费、未引入付费素材生成服务、一次只跑一个 GPU/编码任务；未写 `project.godot`；未自行 `git commit`；
 产物按 `.gitignore`（`build/`、`*.exe`、`*.pck`、`*.apk`、`*.log`）排除不入库。
 完整交付与未完成项见 `teamwork/Rank-1/DONE-R23B.md`，逐帧目视详见 `capture/R23-FINAL-REVIEW.md`。
+
+---
+
+## R24 v0.2.0 实机录屏（R24B · Rank-4 独占追加 · 2026-11-09 · 补单 `cmd-20261109-211247-261-A4`）
+
+> 本节由 **Rank-4 独占追加**。四路 R24 已全部 done、工程冻结，本轮只补 15 秒实机录屏与总指挥目视回看证据；
+> 不改任何 `godot/` 工程文件、不改美术资源、不自行 git。完整目视回看见 `capture/V020-RUNTIME-REVIEW.md`，
+> 交付清单见 `teamwork/Rank-4/DONE-R24B.md`。
+> **结论：450 帧 = 15 s 真实完整画面 + MP4 真实产出；三帧真看战斗 HUD 可见可读、夜景/视差/赐福/画质面板不回退、行为跨段推进；Boss 仍无可见像素形象（不替 Rank-1 翻案）、HD-2D 全绿未达，如实写「未达」。**
+
+### 1. 录屏命令与实际帧数
+
+复用 `godot/test/presentation.gd`，按 R22/R23 已验证命令形态（末尾位置参数 `res://scenes/courtyard.tscn` 为 R22 已验证必需项）：
+
+```
+D:/Godot/Godot_v4.7.2-stable_win64.exe \
+  --path F:/Game/aierdengfahuan/godot \
+  --write-movie F:/Game/aierdengfahuan/capture/v020_demo.png \
+  --fixed-fps 30 --quit-after 450 \
+  --script res://test/presentation.gd \
+  res://scenes/courtyard.tscn
+```
+
+- **定稿 run2：`CAPTURE_EXIT=0`，450 帧 = `00:00:15:00`（15.000000 s）**，`SEG-A frame=0` / `SEG-B frame=150` / `SEG-C frame=300` / `时间线完成 frame=450`。
+- **首次真跑 run1 偶发短录 285 帧 = 9.5 s**（`285 frames at 30 FPS (movie length: 00:00:09:15)`，停在 `frame=270`、无 SEG-C）：清理 `v020_demo*` 后**串行重跑同一命令**得定稿 450 帧，未改任何工程文件 / 脚本参数。root cause 未逐一追查（R24 新增 `[BossController]` 随机抽招时序 / 首次预热均有可能），`godot/` 运行时脚本经 Grep 诊断无主动 `quit()`，`v020_capture_run1.log` / `v020_capture_run2.log` 两份日志均留证，**如实登记不臆断、不冒充**。
+
+### 2. 产物（真实产出，非伪造）
+
+| 产物 | 实测 |
+|---|---|
+| PNG 序列 | **450 张** `v020_demo00000000.png` ~ `v020_demo00000449.png`，编号连续 `0..449`，IHDR 均 **1280×720**；首/中/尾 md5 `2c90061a…` / `f118adc5…` / `0cb37095…` 全不同（非单帧循环） |
+| WAV | `v020_demo.wav` **5,760,044 B**（Movie Maker 自动音频轨，单独保留） |
+| MP4 | `capture/v020_demo.mp4` **1,488,378 B**，`libx264 / yuv420p / +faststart`，`FFMPEG_EXIT=0`；ffprobe `h264 / yuv420p / 1280×720 / 30/1 / nb_frames=450 / duration=15.000000` |
+| **WAV 是否混入** | **未混入**。ffprobe 音频流计数 = **0**，MP4 仅视频轨；与 R22 `r22_demo.mp4`、R23B `r23_final.mp4` 口径一致，**如实登记、不谎报合并** |
+| 日志 | `v020_capture_run1.log`（偶发短录）/ `v020_capture_run2.log`（定稿）/ `v020_ffmpeg.log` / `v020_gate_g*.log` / `v020_verify_fx_*.log` |
+
+> 录屏（非 headless GPU 渲染）与 ffmpeg 编码**串行**执行，未与其它 GPU 任务并行。
+
+### 3. ViewImage 首 / 中 / 尾三帧目视（真看）
+
+| 帧 | 目视结论 |
+|---|---|
+| 首 `v020_demo00000000.png`（段 A medium/desktop） | 深蓝夜空 + 星点 + 远山剪影 + 冷蓝雾带（分层远景）；密集不规则暖金/青灰石砖透视地面；红发+钴蓝甲+金饰像素骑士 idle、脚下暖金光池；右上暖金光柱+光尘；左上「赐福 · 宁姆格福」、右上「画质设置 · 低/中/高」金线深蓝面板；**底部 y≈660 金色战斗 HUD 逐字可读** |
+| 中 `v020_demo00000225.png`（段 B low/mobile） | 石砖纹理仍清晰、像素网格略粗；角色换 pose 完整可见；**四项光效全关**（光柱/光尘/倒影/bloom 消失、画面更暗）；深蓝夜景底色与分层远景仍在；标题变「赐福 · 巡礼教堂」(暗)；画质面板尺寸一致；底部战斗 HUD 清晰 |
+| 尾 `v020_demo00000449.png`（段 C high/desktop） | 石砖最锐利；角色为红发+格纹头巾+胸前发光青蓝宝石 pose，无破图/重复小人；光柱/光尘/光池回归；标题「赐福 · 希芙拉河井底」暗色未点亮；画质面板可见；底部战斗 HUD 清晰 |
+
+### 4. 逐项判定（未达全绿写未达）
+
+- **底部战斗 HUD：可见可读（达到）** —— 三帧金色文字 `玩家 HP 100/100 ｜ Boss HP 100% ｜ 动作 idle 0/0 ｜ 闪避 0 ｜ 命中 0 ｜ 进行中` 逐字可读，与 Rank-1 R24 登记一致；**但数值整段不推进**（无输入注入，未完成项）。
+- **Boss 可见像素形象：无（未达，不翻案）** —— 三帧均只有中央玩家骑士，无独立大型 Boss 精灵；`Boss HP 100%` 仅为 HUD 文本。与 **Rank-1 R24「无可见形象」一致，本轮不替它翻案**。
+- **深蓝夜景 / 三层视差远景 / 赐福 HUD / 画质面板：均不回退** —— 深蓝渐变夜空+星点+远山剪影+横向雾带分层成立（2D 近似）；赐福标题随 flag 三段变化、画质面板三档尺寸一致不遮挡；相对 R22 亮蓝纯色天空为已升级并保持。
+- **行为跨整段推进：是** —— `SEG=3 / POSE=30 / HUD=5 / 时间线完成 frame=450`，三帧 md5 全不同；段 B 四项全关期间 3D 主体静止（沿用 R22 边界），仅 pose/HUD 事件推进。
+- **与《八方旅人》式 HD-2D 差距：未达全绿** —— 景深/光效仍为 2D `draw_*` 近似（无 3D 深度雾/DOF/体积散射/SSR/HDR bloom），地面高倍平铺重复感与白天感残留，8 pose 各仅 1 帧无逐帧动画，角色为 3D `AnimatedSprite3D` 像素贴图，Boss 无可见形象。本轮只做录屏与目视回看、未精修美术，**不冒充全绿**。
+
+### 5. 门禁与回归（真跑，不回退）
+
+- 三段门禁 `G1 --headless --import` / `G2 --headless --check-only --script res://test/presentation.gd` / `G3 --headless --quit`：**EXIT 0 / 0 / 0**。
+- **9 份 `v020_*.log` 的 `SCRIPT ERROR|Parse Error|ERROR:` 合计 = 0**（逐份全 0，含录屏/ffmpeg/gate/verify 全部日志）→ **SCRIPT ERROR=0 通过**。
+- `verify_fx_mobile.gd` **`pass=47 fail=0 RESULT=PASS`**、`verify_fx_profile.gd` **`pass=34 fail=0 RESULT=PASS`** → **47 / 34 不回退**。
+- 既有非致命 `2 ObjectDB instances were leaked` WARNING（G3 与 verify 日志）非 SCRIPT ERROR、不改退出码，如实登记。
+- 说明：Grep 工具目录 glob 对含 ANSI 控制符的 Godot 日志未匹配，门禁统计以任务明文的命令行 `grep` 完成（逐份计数全 0），Grep 工具对精确单文件交叉一致；如实登记工具行为，不影响结论。
+
+### 6. 未完成项 / 合规
+
+1. HD-2D 全绿未达成；Boss 无可见像素形象（不翻案）；战斗 HUD 数值不推进；段 B 主体静止；左侧固定深蓝尖锐几何形状（R23 已登记既有元素）来源未逐一追查。
+2. run1 偶发短录 285 帧已留证，根因未逐一追查、不臆断；定稿为 run2 450 帧。
+3. WAV 未混入 MP4、单独保留；未做人工试玩逐帧动态验收；Movie Maker 固定步长录屏不等价于实时性能评测。
+4. 零付费、零外部依赖（本机 ffmpeg 可用）、一次只跑一个 GPU/编码任务；只写 `capture/` 与 `teamwork/Rank-4/`（+ 回执 `command_center/ai/4/outbox/`）；**未写 `project.godot` / `courtyard.tscn` / 任何 `.tres` / `.png` 美术资源，未自行 git**。
+
+完整逐帧目视与差距分析见 `capture/V020-RUNTIME-REVIEW.md`；交付清单与未完成项见 `teamwork/Rank-4/DONE-R24B.md`。

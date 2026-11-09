@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-205253-697-A1",
+  "command_id": "cmd-20261109-205253-697",
+  "ai": 1,
+  "from": "总指挥",
+  "task": "[ROUND=R24] 【R24 · Rank-1 把遭遇战接进主场景 courtyard.tscn（v0.2.0 P0）】v0.1.0 的 res://scenes/encounter_v010.tscn（6 节点：EncounterRoot+Boss/CombatEventBus/CombatResolver/HUD/StatusLabel）目前只能独立运行，15 秒录屏里看不到 Boss。本轮把它以实例挂进 godot/scenes/courtyard.tscn：① 唯一可写的既有场景是 courtyard.tscn；新写 godot/scripts/combat/build_courtyard_v020.gd（extends SceneTree，串行备份 → instantiate → 把 encounter_v010.tscn 以 instance 占位挂进合适父节点 → owner 链 → PackedScene.pack() 前后节点数比对 → CACHE_MODE_IGNORE 磁盘回读校验 → ResourceSaver.save）；节点数如实登记（当前 courtyard 为 27，不得冒充）。② HUD 重叠处理：encounter 自带 HUD/StatusLabel 在 (24,20) 会与 courtyard 的赐福 HUD 重叠。用 instance 属性覆盖把战斗状态 Label 移到屏幕底部（例如 y≈660），确保不遮挡赐福 HUD 矩形 x<730,y<220 与右上画质面板 x>760,y<180；不要改 encounter_v010.tscn 源文件。③ 真跑三段门禁 grep SCRIPT ERROR=0；verify_fx_profile.gd 34 PASS / verify_fx_mobile.gd 47 PASS / verify_quality_interaction.gd 19 PASS / verify_encounter_v010.gd 20 PASS 全部不回退。④ Movie Maker 抓帧 capture/v020_courtyard*.png 并用 ViewImage 真看：确认 Boss 与战斗 HUD 出现、原有深蓝夜景/三层视差远景/金线深蓝 HUD/画质面板不回退；如实写差距，未达全绿就写未达。⑤ 不改 project.godot / encounter_v010.tscn / encounter_director.gd / 既有战斗件 / 任何美术资源。\n【公共契约】直接改、直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe 三段门禁 --headless --import → --check-only --script → --headless --quit，grep SCRIPT ERROR=0；零付费、零外部依赖、一次只跑一个 GPU 任务；不伪造产物、不谎报成功、不自行 git（总指挥收尾）。美术锚点 v1 未确认，本轮一律不重做素材、不改任何 PNG/tres 美术资源。完成后写 teamwork/Rank-1/DONE-R24.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/1/outbox/<id>.json（不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":1,\"status\":\"done\",\"result\":\"引用 DONE-R24.md 实际结论\"}。\n【目录所有权】godot/scenes/courtyard.tscn 与新增 build_courtyard_v020.gd 归 Rank-1；encounter_director.gd / encounter_rules_v020.gd / verify_encounter_v020.gd 归 Rank-2；README.md 与 teamwork/Rank-3/ 归 Rank-3；perf_encounter_v020.gd 与 capture/ 及 teamwork/Rank-4/ 归 Rank-4；project.godot、encounter_v010.tscn、既有战斗件、全部美术资源本轮任何人都不得写。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 20:52:54",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-205253-697-A1\",\"ai\":1,\"status\":\"done\",\"result\":\"...\"}"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-205253-730-A3",
+  "command_id": "cmd-20261109-205253-730",
+  "ai": 3,
+  "from": "总指挥",
+  "task": "[ROUND=R24] 【R24 · Rank-3 重复挑战存档口径与回归（v0.2.0）】① 写 teamwork/Rank-3/GRACE-RETRY-V020.md：定义三段式 flag（grace.encounter_01.retried 等）、Boss 永久击败 flag combat.<id>.defeated 与「重复挑战」不冲突的口径、赐福休息的强制落盘点、与 00-协作契约.md §4.4 十字段 / schema_version=3 的关系；口径要能被 R25 直接实现，不写空话。② 更新 F:/Game/aierdengfahuan/README.md 的状态表：新增 v0.2.0 条目（主场景接线 / Boss 重置 / 同招冷却 / L4），并如实登记当前缺口：project.godot 的 run/main_scene 仍指向 scenes/Main.tscn 骨架，完整画面目前只在 courtyard.tscn 与独立场景中可跑，改 main_scene 属 v0.3.0。③ 真跑 R21/R22 的 31 PASS 存档与 HUD 回归不回退 + 三段门禁 grep SCRIPT ERROR=0。④ 只写 README.md 与 teamwork/Rank-3/，不改任何 godot/ 工程文件（避免与 Rank-1/2 并发冲突）。\n【公共契约】直接改、直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe 三段门禁 --headless --import → --check-only --script → --headless --quit，grep SCRIPT ERROR=0；零付费、零外部依赖、一次只跑一个 GPU 任务；不伪造产物、不谎报成功、不自行 git（总指挥收尾）。美术锚点 v1 未确认，本轮一律不重做素材、不改任何 PNG/tres 美术资源。完成后写 teamwork/Rank-3/DONE-R24.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/3/outbox/<id>.json（不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":3,\"status\":\"done\",\"result\":\"引用 DONE-R24.md 实际结论\"}。\n【目录所有权】godot/scenes/courtyard.tscn 与新增 build_courtyard_v020.gd 归 Rank-1；encounter_director.gd / encounter_rules_v020.gd / verify_encounter_v020.gd 归 Rank-2；README.md 与 teamwork/Rank-3/ 归 Rank-3；perf_encounter_v020.gd 与 capture/ 及 teamwork/Rank-4/ 归 Rank-4；project.godot、encounter_v010.tscn、既有战斗件、全部美术资源本轮任何人都不得写。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 20:52:54",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-205253-730-A3\",\"ai\":3,\"status\":\"done\",\"result\":\"...\"}"
+}

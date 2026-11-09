@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-205253-697-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "引用 DONE-R24.md 实际结论：encounter_v010.tscn 已以 instance 占位挂进 courtyard.tscn 根节点，StatusLabel 经 instance 属性覆盖移到屏幕底部 (24,660)-(1224,692)，不遮挡赐福 HUD(x<730,y<220) 与画质面板(x>760,y<180)；节点数如实登记：原始 courtyard 磁盘 27 → 保存后 CACHE_MODE_IGNORE 回读 29（+1 instance 占位 +1 内部覆盖段），运行时 40→46，pack 前后 40→46→46 一致，4 个 instance 引用齐全、原有 3 个未内联；三段门禁 7 日志 SCRIPT ERROR=0、全部 EXIT=0；verify_fx_profile 34 / verify_fx_mobile 47 / verify_quality_interaction 19 / verify_encounter_v010 20 PASS 零回退；Movie Maker 15 帧 ViewImage 真看：战斗 HUD 含『Boss HP 100%』出现、深蓝夜景/三层视差远景/金线深蓝赐福 HUD/画质面板均不回退且无重叠。差距：Boss 仍是 v0.1.0 纯逻辑 Node3D，无可见像素形象（目录所有权禁止改 encounter 源/既有战斗件/美术资源），未达 HD-2D 全绿，已如实写未达。详见 teamwork/Rank-1/DONE-R24.md。"
+}

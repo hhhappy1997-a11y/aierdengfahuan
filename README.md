@@ -6,6 +6,7 @@
 > （`--version` = `4.7.2.stable.official.ed1daf0bf`，R22 实测 `EXIT=0`）。
 > 本文件由 **R22 · cmd-20261109-124640-185-A3（Rank-3）** 更新；资产表字节数均为 `stat -c %s` 对实际落盘文件的实测值，不编造。
 > **R23 · cmd-20261109-133602-490-A3（Rank-3）** 追加 §3.4「R23 素材条目与本机可选素材源合规登记」（口径 / 合规登记，非落盘产物）；§3.1~§3.3 既有实测值与历史结论未改。
+> **R24 · cmd-20261109-205253-730-A3（Rank-3）** 追加「一、已做了什么」**v0.2.0 条目 + R24 回归真跑行**、「二、还差什么」**第 9 项 `main_scene` 缺口登记**；新增 `teamwork/Rank-3/GRACE-RETRY-V020.md`（重复挑战 / Boss 永久击败 / 赐福休息落盘实现口径，供 R25 直接落地）。§3.1~§3.4 既有实测值与历史结论未改。顶部「中枢 done 轮次」表为 **R22 快照**：R24 由 GUI 直接派单、中枢自 19:14 起不可达（见 `00-群聊总线.md`），未据以改写该表，按历史结论保留、**不冒充已进 done 序列**。
 
 ---
 
@@ -36,6 +37,8 @@
 | 场景 | `courtyard.tscn`（**实测 25 节点**）、`player.tscn` / `boss_01_margit.tscn` / `hud.tscn` / `hd2d_fx.tscn` / `quality_settings.tscn`。R15–R21B |
 | 产物 | `build/` 下 exe / pck / apk / apk.idsig（R21B 按最终工程重导，字节数见资产表） |
 | 三段门禁 / 回归 | R21 的 **31 PASS / 0 FAIL**（`r19_verify_hud.gd` 20 + `verify_hud_binding.gd` 11）R22 重跑**不回退**；G1 `--import` / G2 `--check-only --script` / G3 `--quit` 全 `EXIT=0`，12 份 R22 日志 `grep SCRIPT ERROR / Parse Error / ERROR` **全 0** |
+| **v0.2.0 遭遇战迭代**（R24 派单 · 四路并发，**未宣称完成**） | **主场景接线**（Rank-1 `courtyard.tscn` + `build_courtyard_v020.gd`：把 `EncounterRoot` 接进庭院，**不改 `project.godot` 的 `main_scene`**）／**Boss 重置**（Rank-2 `encounter_director.gd`：赐福休息只重置运行时实例，不清 `combat.<id>.defeated`）／**同招冷却**（Rank-2 `encounter_rules_v020.gd`：招式冷却与距离门槛，消除连续同名招式）／**L4 泄漏曲线**（Rank-4 `perf_encounter_v020.gd` + `capture/`：反复进出场景的节点 / 内存对照）。Rank-3 本轮只交付 `teamwork/Rank-3/GRACE-RETRY-V020.md` 存档口径与 `DONE-R24.md`，**未写任何 `godot/` 工程文件**；四项实现归各自 Rank 并发写入，Rank-3 本轮**未代验、不宣称完成** |
+| **R24 回归真跑**（Rank-3） | R21/R22 的 **31 PASS / 0 FAIL**（`r19_verify_hud.gd` 20 + `verify_hud_binding.gd` 11）R24 重跑**不回退**；R22 存档端到端 `r22_save_e2e.gd` **16 PASS / 0 FAIL**（write 7 `pid=18760` + read 9 `pid=11108`，两独立引擎进程）；G1 `--headless --import` / G2 `--check-only --script` ×4 / G3 `--headless --quit` 全 `EXIT=0`，11 份 `R24-*.log` `grep SCRIPT ERROR / Parse Error / ERROR` **全 0**；既有退出 WARNING（`ChunkManager` / `ObjectDB instances leaked`）如实保留、非 ERROR |
 
 ### R22 存档端到端真跑结论（补 R21 §3.2 明确未做项）
 
@@ -66,6 +69,7 @@
 | 6 | 历史待裁决 / 登记项 | 只登记不擅改 | A8（契约两段式示例 vs 严格三段式）、`chunk.<id>.loaded` 归一口径、6 条 `res://scenes/*` 未实机换场景、`chunk_origin` 全 0 —— 交 HOST 裁决 |
 | 7 | 多槽存档 UI / 玩家精确坐标进存档 | 按规范不做 | 规范冻结单槽 `slot_01`、复活锚点以 `meta.last_grace_id` 表达，非缺陷 |
 | 8 | `project.godot` | 工程冻结 | 本轮四路均不写，保证录屏对应稳定工程、产物无需重导 |
+| 9 | **`project.godot` 的 `run/main_scene` 仍指向 `scenes/Main.tscn` 骨架** | **v0.2.0 明确缺口 · 未解决** | 实测 `godot/project.godot:37` 为 `run/main_scene="res://scenes/Main.tscn"`（`Main.tscn` 3,393 B 骨架）；**完整画面目前只在 `godot/scenes/courtyard.tscn` 与 `encounter_v010.tscn` 等独立场景中可跑**（须 F5 指定场景 / `--quit-after <N> res://scenes/...`），从工程默认入口启动**看不到庭院与 Boss**。**改 `main_scene` 属 v0.3.0**，本轮四路均不写 `project.godot`（工程冻结 / 并发保护）；v0.2.0 的「主场景接线」仅指把 `EncounterRoot` 接进 `courtyard.tscn`，**不粉饰为默认入口已接通** |
 
 > 存档端到端真跑在 R21 §3.2 曾登记为「按公共契约不新建只读探针 / 巡检脚本，未冒充本轮重跑」；
 > **R22 本单已补齐**（用本单验证载体 `teamwork/Rank-3/r22_save_e2e.gd`，非只读探针、非进度巡检脚本），故不再列为未完成项。

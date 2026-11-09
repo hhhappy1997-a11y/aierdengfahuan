@@ -12,6 +12,9 @@
 [ext_resource type="Script" path="res://scripts/fx_profile_controller.gd" id="9_tihrx"]
 [ext_resource type="PackedScene" path="res://scenes/quality_settings.tscn" id="10_r20qs"]
 [ext_resource type="Script" path="res://scripts/render/hd2d_parallax.gd" id="11_r23px"]
+[ext_resource type="Script" path="res://scripts/quality_settings.gd" id="13_qlsds"]
+[ext_resource type="PackedScene" path="res://scenes/encounter_v010.tscn" id="14_cachm"]
+[ext_resource type="Script" path="res://scripts/combat/encounter_director.gd" id="15_6h4uj"]
 
 [sub_resource type="Environment" id="Environment_e34af"]
 background_mode = 1
@@ -149,4 +152,15 @@ texture_filter = 1
 script = ExtResource("2_w844m")
 integer_scale = 2
 
-[node name="QualitySettings" parent="." instance=ExtResource("10_r20qs")]
+[node name="QualitySettings" type="CanvasLayer" parent="." unique_id=380823755 instance=ExtResource("10_r20qs")]
+layer = 40
+script = ExtResource("13_qlsds")
+
+[node name="EncounterRoot" type="Node" parent="." unique_id=475925940 instance=ExtResource("14_cachm")]
+script = ExtResource("15_6h4uj")
+
+[node name="StatusLabel" parent="EncounterRoot/HUD" index="0"]
+offset_left = 24.0
+offset_top = 660.0
+offset_right = 1224.0
+offset_bottom = 692.0
