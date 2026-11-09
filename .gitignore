@@ -16,6 +16,9 @@ export/
 .godot/
 .import/
 
+# 录屏序列帧（约 450 张中间产物，只保留 MP4 与关键帧）
+capture/r22_demo*.png
+
 # 临时文件
 *.tmp
 *.log

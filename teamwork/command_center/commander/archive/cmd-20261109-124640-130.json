@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-124640-130",
+  "from": "总指挥",
+  "target": "1",
+  "task": "[ROUND=R22] 【R22 · Rank-1 画质菜单真实交互验收（godogen：用画面判断）】R21 如实登记画质按钮「未发生真实点击」，[R21_QUALITY] 只是 UI 就绪日志。本轮补上可复现的交互证据：① 新写 godot/scripts/verify_quality_interaction.gd（extends SceneTree），真跑加载 courtyard.tscn、找到 QualitySettings 实例的三个 Button，用脚本注入 pressed 信号（如实说明是信号注入而非鼠标点击），依次切 low/medium/high；② 每次切换读回 fx_profile_controller 实际档位与 low_resolution_size / scaling_3d / stretch_shrink，用 Movie Maker 抓帧 capture/r22_quality_*.png（至少 3 张）证明画面档位变化，stdout 打印 [R22_QUALITY] 每档证据；③ 保持 verify_fx_profile.gd 34 PASS / verify_fx_mobile.gd 47 PASS 不回退，三段门禁 grep SCRIPT ERROR=0；④ 写 teamwork/Rank-1/QUALITY-INTERACTION-R22.md（每档真跑 stdout、抓帧文件名与像素/可读性对比、未完成项）；⑤ 不改 project.godot / hud.gd / hd2d_fx.* / verify_frame_data.gd / capture/CAPTURE-REPORT.md（Rank-4 独占）。\n【godogen 运行时纪律】用跑起来的画面判断进度，不用 clean build 判断；结构性事实自己验（能加载、无 SCRIPT ERROR、资产就位）；生成结果先目视检查再接入；新增 class_name 后必跑 --headless --import；三段门禁 --headless --import → --check-only --script → --headless --quit，grep SCRIPT ERROR=0；GDScript 类型标注完整；零付费、不引入任何付费素材生成服务、一次只跑一个 GPU 任务。\n【公共契约】直接改、直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；只写本 Rank 目录与本单指定文件；不伪造产物、不谎报成功、不自行 git 提交（由总指挥收尾）。完成后写 teamwork/Rank-1/DONE-R22.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/1/outbox/<id>.json （不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":1,\"status\":\"done\",\"result\":\"引用 DONE-R22.md 实际结论\"}。\n【本轮目录所有权】本轮四路均不写 project.godot（工程冻结，保证录屏对应稳定工程、产物无需重导）；courtyard.tscn / quality_settings.* 相关归 Rank-1；godot/scripts/combat/ 归 Rank-2；README.md 与 Rank-3 归 Rank-3；godot/test/presentation.gd 与 capture/ 归 Rank-4。",
+  "priority": "high",
+  "note": "GUI 下达"
+}

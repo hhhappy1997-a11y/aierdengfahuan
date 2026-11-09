@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-124640-188-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "R22 实机录屏已交付，实际结论见 teamwork/Rank-4/DONE-R22.md：① 450 帧@30FPS/15 秒真实产出（r22_demo00000000~00000449.png 连续 450 张、均 1280×720；r22_demo.wav 5760044 字节），ffmpeg 本机可用，r22_demo.mp4 真实产出 760956 字节（ffprobe: h264/yuv420p/1280×720/450帧/15.000s，libx264+faststart），未谎报音视频合并。② ViewImage 真看首/中/尾三帧：3D 砖地与像素骑士完整可见，HUD 标题、角色姿态、砖缝粗细、UI 面板尺寸、四项光效开关三段不同，跨段行为推进成立（30 次 set_pose、5 次 HUD flag、2 次画质档位切换 desktop→mobile→desktop，日志 SEG=3/POSE=30/HUD=5/set_quality=2，时间线到 frame=450，非单帧循环）。③ 任务单原 --script 命令真跑虽 EXIT=0/450 帧，但 Movie Maker 只录 2D CanvasLayer、SubViewport 3D 主体缺失，按授权改用等价确定性方式并如实登记 2 个改动点：命令补位置参数主场景 res://scenes/courtyard.tscn 由引擎加载单实例、脚本复用；相机预置由 courtyard.tscn 静态承担、脚本在 _initialize() 只读确认不写入（实测 --script 下写 Camera3D 任何属性含 call_deferred 均破坏 3D 相机注册，7 组对照真跑留证于 capture/）。④ verify_fx_mobile.gd 47 PASS / verify_fx_profile.gd 34 PASS 不回退，16 个 r22_*.log 的 SCRIPT ERROR|Parse Error SUM=0，三段门禁 EXIT=0。⑤ HD-2D 全绿未达成（四项光效为 2D 程序化 draw_* 近似、无平滑景深/大气远景、亮蓝白天调、ComfyUI 正式 spritesheet 未接入），如实写未达；未完成项与阻塞（段 B 主体静止、MP4 仅视频轨、未做人工试玩逐帧验收等）见 DONE-R22.md §6。⑥ 未写 project.godot / courtyard.tscn / quality_settings.* / hud.gd / hd2d_fx.* / verify_frame_data.gd，零付费、无 git 提交、无伪造谎报。目视回看全文见 capture/R22-RUNTIME-REVIEW.md，报告追加见 capture/CAPTURE-REPORT.md「R22 实机录屏」段落。"
+}
