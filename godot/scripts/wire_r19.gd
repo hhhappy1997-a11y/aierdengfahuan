@@ -15,7 +15,9 @@ extends SceneTree
 ##
 ## 幂等：备份已存在则跳过（绝不覆盖 pre-r19 原件）；HD2DFX 已挂 controller 脚本 → 复核模式
 ##       （不写盘、仅 pack 探针 + CACHE_MODE_IGNORE 磁盘回读）。所有赋值均为绝对目标值。
-## 节点数硬门槛：pack 前 24 → pack 后 24（只给实例根加 script 属性覆盖，不增删节点），
+## 节点数动态基线门槛：以 STEP3 CACHE_MODE_IGNORE 磁盘读回的 before_nodes 作为本次复核基线，
+##       断言 pack 前/后节点数相等（只给实例根加 script 属性覆盖，不增删节点）；
+##       并追加下限 before_nodes >= MIN_NODES(24)，防止场景结构被破坏。
 ##       任一不符即 push_error + quit(1) 中止保存（场景零改动、不伪造输出）。
 
 const SCENE_PATH: String = "res://scenes/courtyard.tscn"
@@ -27,13 +29,14 @@ const PRESET_MOBILE: String = "res://data/render/quality_preset_mobile.tres"
 const BACKUP_ABS: String = "F:/Game/aierdengfahuan/_archived_20261108/courtyard.tscn.bak-pre-r19"
 const FX_FULL_PATH: String = "SubViewportContainer/SubViewport/HD2DFX"
 const FX_CHILDREN := ["FXReflection", "FXGodRays", "FXMotes", "FXBloom"]
-const EXPECTED_NODES: int = 24
+const MIN_NODES: int = 24   # 下限：防止场景结构被破坏；不再作为固定相等门槛（动态基线见 _baseline_nodes）
 const EXPECTED_LAYER: int = 10
 const PROFILE_DESKTOP: String = "desktop"
 const PROFILE_MOBILE: String = "mobile"
 
 var _pass_count: int = 0
 var _fail_count: int = 0
+var _baseline_nodes: int = -1   # 动态基线：STEP3 CACHE_MODE_IGNORE 磁盘读回的 before_nodes
 
 
 func _wiring_map() -> Dictionary:
@@ -84,9 +87,10 @@ func _initialize() -> void:
         quit(1)
         return
     var before_nodes: int = src.get_state().get_node_count()
-    print("[R19] STEP3 CACHE_MODE_IGNORE load OK, SceneState node_count(before)=%d" % before_nodes)
-    if before_nodes != EXPECTED_NODES:
-        push_error("[R19] STEP3 pack 前节点数 %d != 24，拒绝继续（场景零改动）" % before_nodes)
+    _baseline_nodes = before_nodes
+    print("[R19] STEP3 CACHE_MODE_IGNORE load OK, SceneState node_count(before)=%d baseline=%d (dynamic)" % [before_nodes, _baseline_nodes])
+    if before_nodes < MIN_NODES:
+        push_error("[R19] STEP3 pack 前节点数 %d < 下限 %d，场景结构可能被破坏，拒绝继续（场景零改动）" % [before_nodes, MIN_NODES])
         quit(1)
         return
 
@@ -135,7 +139,7 @@ func _initialize() -> void:
     _reset_owner(scene_root, scene_root)
     print("[R19] STEP6 scene_file_path / owner 链就绪（跳过实例化节点，不展开）")
 
-    # --- 7) pack 前 / 后节点数比对（硬门槛 24→24，不一致则中止保存） ---
+    # --- 7) pack 前 / 后节点数比对（动态基线：after==before 不增删节点，不一致则中止保存） ---
     var packed: PackedScene = PackedScene.new()
     var pack_err: Error = packed.pack(scene_root)
     if pack_err != OK:
@@ -144,10 +148,9 @@ func _initialize() -> void:
         quit(1)
         return
     var after_nodes: int = packed.get_state().get_node_count()
-    var count_ok: bool = (before_nodes == EXPECTED_NODES) \
-            and (after_nodes == EXPECTED_NODES) and (after_nodes == before_nodes)
-    print("[R19] STEP7 NODE_COUNT before=%d after=%d expected=%d pack_err=%d count_ok=%s" % [
-            before_nodes, after_nodes, EXPECTED_NODES, pack_err, str(count_ok)])
+    var count_ok: bool = (before_nodes >= MIN_NODES) and (after_nodes == before_nodes)
+    print("[R19] STEP7 NODE_COUNT before=%d after=%d baseline=%d min=%d pack_err=%d count_ok=%s" % [
+            before_nodes, after_nodes, _baseline_nodes, MIN_NODES, pack_err, str(count_ok)])
 
     # pack -> instantiate 内存探针：脚本覆盖真的被 pack 保留、节点仍 instance 占位、4 子节点完整
     var probe: Node = packed.instantiate()
@@ -226,8 +229,8 @@ func _verify() -> bool:
     print("[R19_VERIFY] readback class=%s resource_path=%s SceneState_nodes=%d" % [
             ps.get_class(), ps.resource_path, disk_nodes])
     _check("① readback_not_null_and_PackedScene", ps is PackedScene, "class=%s" % ps.get_class())
-    _check("② SceneState_node_count_24", disk_nodes == EXPECTED_NODES,
-            "nodes=%d expected=%d" % [disk_nodes, EXPECTED_NODES])
+    _check("② SceneState_node_count_stable", disk_nodes == _baseline_nodes and disk_nodes >= MIN_NODES,
+            "nodes=%d baseline=%d min=%d" % [disk_nodes, _baseline_nodes, MIN_NODES])
 
     var inst: Node = ps.instantiate()
     var fx: Node = inst.get_node_or_null(FX_FULL_PATH)

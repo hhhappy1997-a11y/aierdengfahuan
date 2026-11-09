@@ -45,6 +45,11 @@ GameEvents="*res://scripts/rpg/game_events.gd"
 SaveSystem="*res://scripts/world/save_system.gd"
 ChunkManager="*res://scripts/world/chunk_streaming.gd"
 SceneRouter="*res://scripts/core/scene_router.gd"
+; R20 裁决 A9（cmd-20261109-110237-805-A3）：正式注册第 6 个 autoload SaveDeltaWriter，
+; 指向 3 号新写的 scripts/save_delta_writer.gd（commit(reason) 强制落盘），
+; 兑现 HUD.travel_to「先 commit 后发信号」。既有 5 项 autoload 与
+; [rendering] textures/vram_compression/import_etc2_astc=true 保持不变。
+SaveDeltaWriter="*res://scripts/save_delta_writer.gd"
 
 [display]
 

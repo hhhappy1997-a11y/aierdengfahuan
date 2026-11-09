@@ -32,7 +32,8 @@ const GOLD: Color = Color(0.83, 0.68, 0.3, 1.0)              # 与 hud.tscn 落�
 const DIM: Color = Color(0.45, 0.42, 0.34, 1.0)               # 未点亮运行期暗色
 # 对齐 chunk_world_bridge.gd:43 const REASON_FAST_TRAVEL
 const REASON_FAST_TRAVEL: String = "grace_fast_travel"
-# R19：SaveDeltaWriter 的 autoload 注册键与 /root 路径（仅用于如实检测，不假设其存在）
+# R19/R20：SaveDeltaWriter 的 autoload 注册键与 /root 路径。R20 起已正式注册为 autoload，
+# 供 travel_to() 优先解析真实节点、供 get_commit_status() 如实读回注册态。
 const WRITER_AUTOLOAD_KEY: String = "autoload/SaveDeltaWriter"
 const WRITER_ROOT_PATH: String = "/root/SaveDeltaWriter"
 
@@ -392,10 +393,11 @@ func _array_of(v: Variant) -> Array:
 # 约束：
 #   - 赐福菜单数据 100% 运行期取自 res://data/rpg/grace_network.tres（8 节点 / 7 边由
 #     _grace_nodes() / _edges() 遍历得到，代码内不硬编码任何赐福名 / 边 / 计数常量）；
-#   - travel_to() 严格「先 commit 原子落盘、后发 travel_requested 信号」；
-#   - 本工程 project.godot [autoload] 未注册 SaveDeltaWriter（实测），故按任务书
-#     「非 autoload 用注入 committer 并如实登记降级」执行：get_commit_status() 可把
-#     degraded / source / reason / ok 读回，绝不以「autoload 可用」冒充。
+#   - travel_to() 严格「先 commit 原子落盘、后发 travel_confirmed / travel_requested 信号」；
+#   - R20（裁决 A9）：project.godot [autoload] 已正式注册 SaveDeltaWriter，travel_to()
+#     优先取 /root/SaveDeltaWriter 完成 commit；仅当取不到该节点时才回退注入 committer
+#     并如实登记降级。get_commit_status() 可把 degraded / source / reason / ok /
+#     writer_registered_as_autoload 读回，绝不伪造落盘与 autoload 状态。
 
 ## 打开赐福菜单：运行期强制从磁盘重读 .tres（load_grace_network 内 CACHE_MODE_IGNORE），
 ## 统计实际节点 / 边数，重建菜单快照并返回（调用方据此渲染 UI，不改 hud.tscn 结构）。
@@ -408,9 +410,10 @@ func open_grace_menu() -> Array[Dictionary]:
 	return _menu.duplicate(true)
 
 
-## 赐福快速传送（R19 编排接口）。不可颠倒的顺序：
+## 赐福快速传送（R19 编排接口 / R20 兑现 autoload）。不可颠倒的顺序：
 ##   1 校验目标（数据取自 .tres，不硬编码）；
-##   2 先落盘：SaveDeltaWriter.commit(reason) 原子写；非 autoload → 注入 committer 降级并登记；
+##   2 先落盘：优先取 /root/SaveDeltaWriter.commit(reason) 原子写；取不到该节点才回退
+##     注入 committer 并如实登记降级（见 _commit_before_travel）；
 ##   3 后发信号：HUD.travel_confirmed（4 信号之一）+ GameEvents.travel_requested。
 func travel_to(grace_id: String) -> void:
 	# 1 校验
@@ -433,32 +436,33 @@ func travel_to(grace_id: String) -> void:
 		bus.emit_signal("travel_requested", grace_id)
 
 
-## 先落盘的唯一入口：优先 SaveDeltaWriter autoload；未注册则降级为注入 committer。
-## 三种来源如实写入 last_commit_source / commit_degraded / commit_log，不伪造已落盘。
+## 先落盘的唯一入口（R20）：优先取 /root/SaveDeltaWriter（已注册 autoload 的真实节点）；
+## 取不到该节点才回退注入 committer。三种来源如实写入 last_commit_source /
+## commit_degraded / commit_log，不伪造已落盘、不伪造 autoload 可用。
 func _commit_before_travel(reason: String) -> bool:
 	last_commit_reason = reason
-	var registered: bool = ProjectSettings.has_setting(WRITER_AUTOLOAD_KEY)
+	# 优先：/root/SaveDeltaWriter 真实节点（R20 已在 project.godot [autoload] 注册）
 	var writer: Node = get_node_or_null(WRITER_ROOT_PATH)
-	if registered and writer != null and writer.has_method("commit"):
+	if writer != null and writer.has_method("commit"):
 		writer.call("commit", reason)
 		commit_degraded = false
 		last_commit_source = "autoload"
 		last_commit_ok = true
 		_log_commit()
 		return true
-	# 降级：SaveDeltaWriter 非 autoload（本工程 project.godot [autoload] 实测无此项）
+	# 回退：取不到 /root/SaveDeltaWriter 才用注入 committer（如实登记降级）
 	commit_degraded = true
 	if fast_travel_committer.is_valid():
 		fast_travel_committer.call(reason)
 		last_commit_source = "injected"
 		last_commit_ok = true
-		push_warning("[HUD] 降级登记：SaveDeltaWriter 未注册为 autoload，改用 set_fast_travel_committer() 注入的 committer 完成 commit(reason=%s)" % reason)
+		push_warning("[HUD] 降级登记：未取到 /root/SaveDeltaWriter，改用 set_fast_travel_committer() 注入的 committer 完成 commit(reason=%s)" % reason)
 		_log_commit()
 		return true
 	# 连注入 committer 都没有：明确登记「未能先落盘」，不冒充原子写已完成
 	last_commit_source = "none"
 	last_commit_ok = false
-	push_warning("[HUD] 降级登记：SaveDeltaWriter 非 autoload 且未注入 committer；本次 travel_to 未能先落盘，仅后发 travel_requested（如实登记）")
+	push_warning("[HUD] 降级登记：未取到 /root/SaveDeltaWriter 且未注入 committer；本次 travel_to 未能先落盘，仅后发 travel_requested（如实登记）")
 	_log_commit()
 	return false
 

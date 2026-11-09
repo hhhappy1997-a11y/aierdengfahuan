@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-113331-243-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "引用 DONE-R20B.md 实际结论：R20B 仅改 godot/scripts/wire_r19.gd，将固定 EXPECTED_NODES=24 相等门槛改为动态基线（STEP3 CACHE_MODE_IGNORE 磁盘读回 before_nodes 为基线、STEP7 断言 after==before 不增删节点），追加下限 before_nodes>=MIN_NODES(24)，_verify ② 改 SceneState_node_count_stable，清除 24→24/!=24/expect=24 等过时文案；17 条既有断言（pack 探针/controller 挂载/6 项接线表/4 子节点脚本/_ready+switch_profile 两档 4/4）逐字保留，未改任何其它工程文件。真跑 EXIT=0、VERIFY_SUMMARY pass=17 fail=0 OK=true、NODE_COUNT before=25 after=25 baseline=25 min=24 count_ok=true、主脚本 SCRIPT ERROR=0；三段门禁 --import/--check-only --script/--quit EXIT 均 0、grep SCRIPT ERROR=0（附加 wire_r19.gd check-only 亦 0）。PASS 17 为本轮本次真跑实测，非 R19 历史结论。未完成项：无。详见 teamwork/Rank-1/DONE-R20B.md。"
+}

@@ -1,0 +1,41 @@
+=== R20 最终态 像素/可读性对比（PIL 真算；R19 与 R20 之间含其它 Rank 并发画质改动，故以 R20 同态 desktop/mobile 对比为有效验收证据）===
+尺寸 r19=(1280, 720) r20_desktop=(1280, 720) r20_mobile=(1280, 720) r20_mobile_lowres=(1280, 720)
+
+--- 全图 MAD(R,G,B) / 差异像素比例(|L|>16) ---
+r19_desktop vs r20_desktop                   MAD=(30.716, 31.377, 28.474) diff_ratio=0.290605
+r20_desktop vs r20_mobile(同态)                MAD=(0.617, 0.435, 0.668) diff_ratio=0.010299
+r20_desktop vs r20_mobile_lowres             MAD=(16.812, 14.353, 10.026) diff_ratio=0.270931
+r20_mobile vs r20_mobile_lowres              MAD=(16.599, 14.319, 9.668) diff_ratio=0.267958
+
+--- r20_desktop vs r20_mobile 分区差异（按最终态地平线 y=180 划分）---
+  天空(0,0,1280,180)                 diff_ratio=0.014353 差异像素=3307
+  地面(0,180,1280,720)               diff_ratio=0.008948 差异像素=6185
+  旧契约HUD矩形(0,0,730,220)            diff_ratio=0.031009 差异像素=4980
+  左上HUD面板(0,0,400,150)             diff_ratio=0.000933 差异像素=56
+
+--- 差异像素包围盒 + 8x6 网格计数（数据驱动定位四项光效消失区域）---
+  差异 bbox=(24, 0, 637, 361) 总差异像素=9492
+  y[  0-120]      0      0    563     20      0      0      0      0
+  y[120-240]     39     76   5013    550      0      0      0      0
+  y[240-360]     55    205   2305    662      0      0      0      0
+  y[360-480]      0      4      0      0      0      0      0      0
+  y[480-600]      0      0      0      0      0      0      0      0
+  y[600-720]      0      0      0      0      0      0      0      0
+
+--- 天空亮点计数（暖金/冷白光尘近似，全天空；含 HUD 金边，仅作辅助）---
+  r19_desktop              bright_dots=16
+  r20_desktop              bright_dots=180
+  r20_mobile               bright_dots=0
+  r20_mobile_lowres        bright_dots=0
+
+--- 可读性：非黑比例(亮度>20) / 相邻像素梯度均值(锐利度,越大越不糊) ---
+  r19_desktop              non_black=1.0 sharpness=7.915
+  r20_desktop              non_black=1.0 sharpness=10.983
+  r20_mobile               non_black=1.0 sharpness=11.108
+  r20_mobile_lowres        non_black=1.0 sharpness=6.921
+
+--- 4 帧序列内部一致性（mobile 四项全关→FX 层零绘制→静态；desktop 光尘动画→帧帧不同）---
+  r19_mobile               帧间一致=False ['c652c9e22941', '6edc0d32c202', '4f46887ef300', '985cdce07737']
+  r20_desktop              帧间一致=False ['2f8735c81540', '4bf905fcfa2b', 'd8922ebb30a7', 'e45d3303b2f6']
+  r20_mobile               帧间一致=True  ['94264be8cc05', '94264be8cc05', '94264be8cc05', '94264be8cc05']
+  r20_mobile_lowres        帧间一致=True  ['72b10a9973fa', '72b10a9973fa', '72b10a9973fa', '72b10a9973fa']

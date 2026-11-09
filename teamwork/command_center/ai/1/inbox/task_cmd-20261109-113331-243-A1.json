@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-113331-243-A1",
+  "command_id": "cmd-20261109-113331-243",
+  "ai": 1,
+  "from": "总指挥",
+  "task": "[ROUND=R20B] 【R20B · Rank-1 总指挥裁决 A10：修复 wire_r19.gd 节点数门槛回归】R20 你在 courtyard.tscn 实例化 QualitySettings 后场景节点数由 24 变 25，godot/scripts/wire_r19.gd 的 const EXPECTED_NODES: int = 24 导致 STEP3 硬门槛 EXIT=1（如实登记的唯一 FAIL）。裁决：该 24 是 R19 历史基线，不得再作为固定值。本轮改为动态基线门槛：① 以 CACHE_MODE_IGNORE 磁盘读回的 before_nodes 作为本次复核基线，断言 pack 前/后节点数相等（不增删节点）；② 追加下限断言 before_nodes >= 24，防止场景结构被破坏；③ 断言标签与 print 文案同步改掉「24→24」的过时口径（例如 _check(\"② SceneState_node_count_stable\")），不得保留会误导的写死字样；④ pack 探针、controller 脚本挂载、6 项接线表、4 子节点脚本、_ready/switch_profile 两档 4/4 等所有既有断言逐字保留，一条都不许删或放宽；⑤ 只改 godot/scripts/wire_r19.gd，不改 courtyard.tscn / quality_settings / project.godot / hud.gd 等任何其它工程文件。真跑：D:/Godot/Godot_v4.7.2-stable_win64.exe --headless --path F:/Game/aierdengfahuan/godot --script res://scripts/wire_r19.gd，必须 EXIT=0、VERIFY_SUMMARY fail=0，并打印 NODE_COUNT before/after 与动态基线；再跑三段门禁 --import / --check-only --script / --quit，grep SCRIPT ERROR=0。如实登记 PASS 数字，不得冒充 R19 的 17 PASS 历史结论，也不得伪造输出。\n【公共契约】直接改、直接真跑，不新建只读探针/巡检脚本；零付费零外部依赖；不谎报成功。完成后写 teamwork/Rank-1/DONE-R20B.md（改动点 / 真跑 stdout 关键行 / PASS 数字 / 未完成项），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/1/outbox/<id>.json：{\"task_id\":\"<id>\",\"ai\":1,\"status\":\"done\",\"result\":\"引用 DONE-R20B.md 实际结论\"}。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 11:33:31",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-113331-243-A1\",\"ai\":1,\"status\":\"done\",\"result\":\"...\"}"
+}

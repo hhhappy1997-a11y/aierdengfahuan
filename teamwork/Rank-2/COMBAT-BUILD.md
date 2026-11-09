@@ -140,7 +140,7 @@ grep -nEi "SCRIPT ERROR|Parse Error|ERROR:|Failed|Cannot|dangling|悬空|Invalid
 | 逻辑代码里出现战斗数值字面量（如 `3500` / `420` / `2.1` / `1.65` / `1.55` / `20261108` / `620` / `260` / `168` 等） | `MIN_DAMAGE = 1` 类**下限常量** | 全仓 `.gd` 的 `const` **仅 2 处**：`combat_resolver.gd:20`、`player_state_machine.gd:42` 的 `const MIN_DAMAGE: float = 1.0`；4 个逻辑脚本**去注释后代码体**特征数值命中 **0** → **PASS** |
 | 把数值写进 `schema/*.gd`（除 `@export` 默认值 / 类型外） | — | R3 8 个脚本 `func` 定义数 0，仅 `@export` 字段声明 + 默认值 → **PASS** |
 | 在 `.tres` 里写脚本 / 表达式逻辑 | — | 3 份 `.tres` 数值全部是资源字段值（带数值字段行：boss 125 / player_actions 153 / enemy 34 行），无内联逻辑 → **PASS** |
-| 双源不一致（`total_frames` 单列字段、无敌区间与 active 不对齐） | — | 由表字段派生；`action_04_roll` 无敌 `[4,16)` == `[startup, startup+active)` `[4,16)`（E-7 对齐） → **PASS** |
+| 双源不一致（`total_frames` 单列字段、无敌区间与 active 不对齐） | — | 由表字段派生；`action_04_roll` 无敌 `[4,13)` == `[startup, startup+active)` `[4,13)`（`4/9/9=22`、E-7 对齐；R19 裁决 / R20 回归同步） → **PASS** |
 
 > 结论：**数值全部留在表里**；调平衡只改 `.tres` 的上述字段，不改任何 `.gd`（「改数值不改代码」核心验收达成）。
 

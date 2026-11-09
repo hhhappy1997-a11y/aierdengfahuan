@@ -102,7 +102,7 @@ F:\Game\aierdengfahuan\teamwork\Rank-2\接口契约.md
 ## 6. 可做的更新方向或增量内容（按价值排序，全部零外部依赖、不引入付费素材 / 外部生成服务）
 
 1. **补 8 个 `res://data/schemas/*.gd` Resource 类脚本 + `player_actions.tres`**：把本轮 schema 与 8 条动作数值变成工程内可直接 `@export` 挂载的资源，M1 立刻可跑；这是解锁后续所有实跑验证的前提。
-2. **落地 M1 实体三件套**：`enemy_director.gd`（含 I-3 `spawn_from_request` + 滞回追击 + 加权抽取）、`combat_resolver.gd`（伤害 / 削韧 / 异常结算）、`enemy_01_limgrave_soldier.tres`；随后在 Godot 里按设计文档 §2.3 实测翻滚 `[4,16)` 无敌窗口。
+2. **落地 M1 实体三件套**：`enemy_director.gd`（含 I-3 `spawn_from_request` + 滞回追击 + 加权抽取）、`combat_resolver.gd`（伤害 / 削韧 / 异常结算）、`enemy_01_limgrave_soldier.tres`；随后在 Godot 里按设计文档 §2.3 实测翻滚 `[4,13)` 无敌窗口（`4/9/9=22 帧@60`，R19 裁决 / R20 回归同步）。
 3. **落地 M5 `boss_controller.gd` + `PhaseTransition`**：接 `boss_01_margit.tres`，跑通「HP 1750 触发 → 换攻击表 / 韧性 / pose 前缀 → 48 帧过渡 → 不换场景」，并执行 §7.4 的「改 `2.1→3.0`，伤害 `315→450`」验收。
 4. **补 `combat_data_validator.gd`**：在 `_ready()` 跑 E-1/E-3/E-4/E-5/E-8/E-9，把「数据表自洽」变成编辑器启动即报的事实（E-6/E-7 已在 `player_state_machine.gd` 实现）。
 5. **等 Q1~Q5 裁决后做一次接口收口**：删掉签名兼容分支、确认 `frame_index` 语义、对齐 pose 名映射，把 7 项待裁决收敛为 0。

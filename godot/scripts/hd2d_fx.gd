@@ -8,6 +8,16 @@ extends Node2D
 ##   ③ 光尘绘制时按 HUD 屏幕矩形（约 x<730、y<220）逐粒跳过，避免面板被点状遮挡；
 ##   ④ fx_profile desktop/mobile 档位开关与 texture_filter=Nearest 冻结口径不变。
 ##
+## R20 精修（派单 cmd-20261109-110237-810-A4 · [ROUND=R20] · Rank-4）：
+##   ⑤ 补 R19 缺口：新增「运行期强制档位覆盖」，读环境变量 AIERDENG_FX_PROFILE=mobile，
+##      经 call_deferred 在 courtyard.tscn 的 HD2DFX 根（Rank-1 独占 fx_profile_controller.gd）
+##      的 _ready() 强制 desktop 之后，把本 FX 节点真正落到 mobile 四项全关，并锁定档位
+##      忽略后续 desktop 请求 → Movie Maker 抓帧可真实输出移动档画面（非 desktop 帧改名）。
+##      未设该环境变量时完全不激活：默认 desktop 四项全开零回退，47 PASS 回归不受影响。
+##   ⑥ HUD 避让矩形（x<730、y<220）改由 hd2d_fx.tscn 的 metadata 场景级配置、脚本常量兜底；
+##      判定纳入光尘圆点半径（margin 只向外扩），避免粒子边缘擦进 HUD 面板。
+##      mobile 四项全关时 _draw() 直接 return、FX 层零绘制，天然无光尘遮 HUD。
+##
 ## 定位：把 HD2D-FX-PLAN.md §3 的四项 2D 程序化光效（湿地倒影 / 体积光 / 光尘 /
 ##       bloom）外提为独立 CanvasLayer 场景里的光效节点。R17 已由 Rank-1 把
 ##       hd2d_fx.tscn 挂进 courtyard.tscn；本轮不碰主场景（Rank-1 独占）。
@@ -37,6 +47,19 @@ const LIGHT_POS := Vector2(452.0, 92.0)
 
 const PROFILE_DESKTOP := "desktop"
 const PROFILE_MOBILE := "mobile"
+
+# ---------------------------------------------------------------------------
+# R20 · 运行期强制档位覆盖（补 R19「只抓到 desktop 画面」缺口）
+# 背景：courtyard.tscn 的 HD2DFX 根挂 Rank-1 独占 fx_profile_controller.gd，其 _ready()
+#       依 fx_profile_source（固定指向 desktop preset 640×360）把 4 个 FX 子节点强制切回
+#       desktop。本脚本是 hd2d_fx.tscn 的 4 个 FX 子节点（Rank-4 可写），在此提供
+#       「只在显式请求时激活」的覆盖：环境变量 = mobile 时，deferred 排在 controller
+#       _ready() 之后落到 mobile，并锁定档位忽略后续 desktop 请求。
+# 默认（未设环境变量）：不激活，_ready() 走原 set_fx_profile(fx_profile) 默认 desktop，
+#       desktop 四项全开零回退；verify_fx_mobile.gd 的 47 PASS 回归不受任何影响。
+# ---------------------------------------------------------------------------
+const ENV_FORCE_PROFILE: String = "AIERDENG_FX_PROFILE"
+var _force_profile: String = ""
 
 # 档位开关（唯一开关）：desktop 四项全开 / mobile 四项全关
 @export_enum("desktop", "mobile") var fx_profile: String = PROFILE_DESKTOP
@@ -68,6 +91,9 @@ var reflection_ripple: float = 0.035
 var hud_avoid_screen_w: float = 730.0
 var hud_avoid_screen_h: float = 220.0
 var logical_to_screen: float = 2.0
+# R20 精修：把光尘圆点半径纳入避让判定（最大 size≈3 逻辑px ×2 = 6 屏幕px），
+#   margin 只向外扩、不缩小冻结口径的 x<730 / y<220 矩形，避免粒子边缘擦进 HUD 面板。
+var hud_avoid_margin_px: float = 6.0
 
 # 倒影源：与 hd2d_placeholder.gd 一致的 32×32 像素实体色板索引阵列（内联常量，零外部素材）
 # 锚点 (16,31)：脚底像素位于 py=31；字符 '0'-'9'/'a'-'f' -> 色板索引 0..15，'.' = 透明。
@@ -124,13 +150,56 @@ func _ready() -> void:
 		_palette.append(Color(h))
 	_build_motes()
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	set_fx_profile(fx_profile)
+	_apply_hud_avoid_meta()
+	# R20 运行期强制档位：仅当显式设置环境变量 AIERDENG_FX_PROFILE=mobile 时激活。
+	# courtyard.tscn 的 HD2DFX 根（Rank-1 独占 fx_profile_controller.gd）会在其
+	# _ready() 里把 4 个 FX 子节点强制切回 desktop；故此处用 call_deferred 排队到
+	# 本帧所有 _ready() 完成后再落到 mobile，并锁定档位忽略后续 desktop 请求。
+	_force_profile = _read_forced_profile()
+	if _force_profile == PROFILE_MOBILE:
+		call_deferred("_apply_forced_mobile")
+		print("[R20][%s] 强制档位=mobile（deferred 覆盖 controller 的 desktop）env=%s" % [
+				str(name), ENV_FORCE_PROFILE])
+	else:
+		set_fx_profile(fx_profile)
+		print("[R20][%s] 默认档位=%s（未请求覆盖，desktop 四项全开零回退）" % [
+				str(name), fx_profile])
 
 
 ## 档位开关的公共入口：改档位并立即重算四项门 / 可见性（供 build 脚本回读真跑验证）。
+## R20：强制 mobile 激活期间忽略外部（fx_profile_controller / 画质菜单）切回 desktop 的请求，
+##       保证抓帧全程稳定停在 mobile；未激活时行为与 R18/R19 完全一致（47 PASS 不受影响）。
 func set_fx_profile(profile: String) -> void:
+	if _force_profile == PROFILE_MOBILE and profile == PROFILE_DESKTOP:
+		print("[R20][%s] 忽略外部 set_fx_profile(desktop)：强制 mobile 锁定生效" % str(name))
+		return
 	fx_profile = profile
 	_apply_profile()
+
+
+## R20：读取运行期强制档位（环境变量；零外部依赖、Movie Maker 兼容）。
+func _read_forced_profile() -> String:
+	if OS.has_environment(ENV_FORCE_PROFILE):
+		var v := OS.get_environment(ENV_FORCE_PROFILE).strip_edges().to_lower()
+		if v == PROFILE_MOBILE or v == PROFILE_DESKTOP:
+			return v
+	return ""
+
+
+## R20：deferred 落地（在所有 _ready() 之后），把本节点真正切到 mobile 四项全关。
+func _apply_forced_mobile() -> void:
+	set_fx_profile(PROFILE_MOBILE)
+	print("[R20][%s] deferred 落地 set_fx_profile(mobile) | visible=%s _all_on=%s fx_profile=%s 四门=[%s %s %s %s]" % [
+			str(name), str(visible), str(_all_on), fx_profile,
+			str(_on_reflection), str(_on_godrays), str(_on_motes), str(_on_bloom)])
+
+
+## R20：HUD 避让矩形可由 hd2d_fx.tscn 的 metadata 覆盖（场景级权威数据，脚本常量兜底）。
+func _apply_hud_avoid_meta() -> void:
+	if has_meta("hud_avoid_screen_w"):
+		hud_avoid_screen_w = float(get_meta("hud_avoid_screen_w"))
+	if has_meta("hud_avoid_screen_h"):
+		hud_avoid_screen_h = float(get_meta("hud_avoid_screen_h"))
 
 
 func _apply_profile() -> void:
@@ -242,10 +311,13 @@ func _collect_entity_blocks() -> Array[Dictionary]:
 # R18 ③ 光尘 HUD 避让：逻辑坐标 → 屏幕坐标判定（约 x<730、y<220）
 #   FX / HUD 同处 SubViewport(640×360)，stretch_shrink=2 放大到 1280×720；
 #   光尘会绘制在 HUD 之上（HD2DFX 与 Hud 同 layer=10、树序靠后），故绘制时逐粒跳过。
+#   R20 精修：判定纳入光尘圆点半径（margin 只向外扩、不缩小 x<730 / y<220 矩形）。
 # ---------------------------------------------------------------------------
 func _is_hud_avoid(logical_x: float, logical_y: float) -> bool:
-	return (logical_x * logical_to_screen < hud_avoid_screen_w) \
-		and (logical_y * logical_to_screen < hud_avoid_screen_h)
+	var sx := logical_x * logical_to_screen
+	var sy := logical_y * logical_to_screen
+	return (sx < hud_avoid_screen_w + hud_avoid_margin_px) \
+		and (sy < hud_avoid_screen_h + hud_avoid_margin_px)
 
 
 # ---------------------------------------------------------------------------
@@ -301,7 +373,7 @@ func _draw_godrays(_t: float) -> void:
 
 # ---------------------------------------------------------------------------
 # ③ 光尘：draw_circle()，seed=PLACEHOLDER_SEED 固定（HD2D-FX-PLAN.md §3.2 / step5+8）
-#    R18：绘制时逐粒跳过 HUD 矩形（约 x<730、y<220），避免面板被点状遮挡。
+#    R18/R20：绘制时逐粒跳过 HUD 矩形（约 x<730、y<220），避免面板被点状遮挡。
 # ---------------------------------------------------------------------------
 func _draw_motes(t: float) -> void:
 	for m in _motes_far:

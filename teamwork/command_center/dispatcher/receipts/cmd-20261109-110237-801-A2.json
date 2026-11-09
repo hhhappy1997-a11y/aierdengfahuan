@@ -1,0 +1,1 @@
+{"task_id":"cmd-20261109-110237-801-A2","ai":2,"status":"done","result":"引用 DONE-R20.md 实际结论：R20 回归完成，verify_frame_data.gd 纳入玩家 8 帧动作与 Boss 三招 47/71/91 及 hit 区间；真跑 PASS_COUNT=612 FAIL_COUNT=0 RESULT=ALL_MATCH，VALIDATOR_ERROR=0，E-8 max_resistance=400/480/420，SCRIPT ERROR=0，四段 EXIT 全 0；残留口径已逐文件清理并登记。"}

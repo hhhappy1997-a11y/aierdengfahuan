@@ -1,17 +1,22 @@
 extends SceneTree
 
 ## R19 · hud.gd 扩展真跑验证（Rank-3，cmd-20261109-102334-088-A3，[ROUND=R19]）
+## R20 复用（裁决 A9，cmd-20261109-110237-805-A3，[ROUND=R20]）：
+##   SaveDeltaWriter 已正式注册为 autoload，故 ⑫ 的登记期望由「降级=injected」反转为
+##   「autoload 源、不降级」，并新增 ⑭ autoload 存在性 / ⑮ autoload commit 顺序 /
+##   ⑯ 取不到 writer 时回退注入 committer 三条断言。①~⑬ 其余覆盖与编号保持不变。
 ## 只读：CACHE_MODE_IGNORE 强制从磁盘重读 hud.tscn / grace_network.tres → instantiate()，
 ##   不 pack / 不 save / 不改 hud.tscn 结构 / 不碰 courtyard.tscn / 不写任何工程文件。
 ##
-## 验证项：
+## 验证项（①~⑬ 既有 + ⑭⑮⑯ R20 新增）：
 ##   ① hud.tscn 脚本仍挂 res://scripts/hud.gd；② 4 个信号存在且可连接（R17 不破坏）；
 ##   ③ 新方法 open_grace_menu / travel_to / get_commit_status 可寻址；
 ##   ④ grace_network.tres 运行期读取 8 节点 / 7 边（不硬编码）；
 ##   ⑤ open_grace_menu() 实际 call 返回菜单数组 + 统计 8/7；
 ##   ⑥ R17 flag 增量刷新回归：set_flag 经 flag_changed 不触发 hud_refreshed（计数不变）；
-##   ⑦ travel_to()：先 commit 后发 travel_requested 信号（注入 committer 记录顺序）；
-##   ⑧ SaveDeltaWriter 非 autoload 时「注入 committer + 如实登记降级」可经 get_commit_status 读回。
+##   ⑦ travel_to()：先 commit 后发 travel_requested 信号（autoload writer.committed 记录顺序）；
+##   ⑧ autoload 已注册时 travel_to 走 autoload 源、如实登记（不降级）可经 get_commit_status 读回；
+##   ⑭ autoload 存在性；⑮ autoload commit 顺序；⑯ 取不到 writer 回退注入 committer。
 ## 中文 UTF-8 · Godot 4.7.2 全静态类型 · 零付费 · 零外部依赖。
 
 const HUD_PATH: String = "res://scenes/hud.tscn"
@@ -68,6 +73,7 @@ func _check(tag: String, ok: bool, detail: String) -> void:
 
 func _initialize() -> void:
 	print("[R19] ==== r19_verify_hud 真跑开始 ====")
+	print("[R20] ==== 裁决 A9 复用：SaveDeltaWriter 已注册 autoload，⑫ 期望反转 + 新增 ⑭⑮⑯ ====")
 	print("[R19] extends SceneTree | CACHE_MODE_IGNORE 只读回读，不改任何场景文件")
 
 	# ⓪ 如实记录 autoload 注册态与 /root 子节点（降级判定依据）
@@ -151,6 +157,12 @@ func _initialize() -> void:
 
 	# 注入 committer + 连接 GameEvents.travel_requested（验证「后发信号」与顺序）
 	hud.call("set_fast_travel_committer", Callable(self, "_on_commit"))
+	# R20：autoload 的 SaveDeltaWriter.committed(reason) 连到同一记录回调，
+	# 使「先 commit 后发信号」顺序断言能观测到 autoload 源的真实 commit。
+	var writer: Node = get_root().get_node_or_null("SaveDeltaWriter")
+	if writer != null and writer.has_signal("committed"):
+		writer.connect("committed", Callable(self, "_on_commit"))
+		print("[R20] 已连 SaveDeltaWriter.committed -> _on_commit | writer=%s" % str(writer != null))
 	var bus: Node = get_root().get_node_or_null("GameEvents")
 	var bus_connected: bool = false
 	if bus != null and bus.has_signal("travel_requested"):
@@ -223,10 +235,17 @@ func _verify_after_ready() -> void:
 	_check("⑪ commit_before_signal_order", order_ok,
 		"order=%s reason=%s(期望 grace_fast_travel) 先commit=%s 后travel_requested=%s" % [str(_order), _committed_reason, str(_order.size() > 0 and _order[0] == "commit"), str(_order.has("signal:travel_requested"))])
 
-	# ⑫ 降级登记可经 get_commit_status 读回（如实，不伪造 autoload）
-	var degraded_ok: bool = bool(st.get("degraded")) == true and str(st.get("source")) == "injected" and str(st.get("reason")) == "grace_fast_travel" and bool(st.get("ok")) == true and bool(st.get("writer_registered_as_autoload")) == false
-	_check("⑫ degraded_registration_readback", degraded_ok,
-		"degraded=%s source=%s ok=%s writer_registered_as_autoload=%s" % [str(st.get("degraded")), str(st.get("source")), str(st.get("ok")), str(st.get("writer_registered_as_autoload"))])
+	# ⑫ R20 契约：autoload 已正式注册，travel_to 走 autoload 源（不再降级）。
+	# 期望值随裁决 A9 由「degraded=true/source=injected」反转为「degraded=false/source=autoload」，
+	# 仍由 get_commit_status 如实读回，不伪造。
+	var autoload_status_ok: bool = bool(st.get("degraded")) == false \
+		and str(st.get("source")) == "autoload" \
+		and str(st.get("reason")) == "grace_fast_travel" \
+		and bool(st.get("ok")) == true \
+		and bool(st.get("writer_registered_as_autoload")) == true \
+		and bool(st.get("writer_root_exists")) == true
+	_check("⑫ autoload_registration_readback", autoload_status_ok,
+		"degraded=%s source=%s ok=%s writer_registered_as_autoload=%s writer_root_exists=%s" % [str(st.get("degraded")), str(st.get("source")), str(st.get("ok")), str(st.get("writer_registered_as_autoload")), str(st.get("writer_root_exists"))])
 
 	# ⑬ 4 信号在扩展后仍完整（收尾复核，不被破坏）
 	var still_ok: bool = true
@@ -234,6 +253,51 @@ func _verify_after_ready() -> void:
 		if not hud.has_signal(s):
 			still_ok = false
 	_check("⑬ four_signals_intact_after_extension", still_ok, "signals=%s" % str(["grace_selected", "travel_confirmed", "rest_requested", "hud_refreshed"]))
+
+	# ===== R20 新增断言（裁决 A9：autoload 存在性 + commit 顺序 + 回退）=====
+	# ⑭ autoload 存在性：注册键 + /root 节点 + commit 方法 + 脚本路径
+	var w: Node = get_root().get_node_or_null("SaveDeltaWriter")
+	var w_registered: bool = ProjectSettings.has_setting("autoload/SaveDeltaWriter")
+	var w_has_commit: bool = w != null and w.has_method("commit")
+	var w_script_path: String = "<null>"
+	if w != null:
+		var wscr: Script = w.get_script() as Script
+		if wscr != null:
+			w_script_path = wscr.resource_path
+	_check("⑭ autoload_registered_and_root_node",
+		w_registered and w != null and w_has_commit and w_script_path == "res://scripts/save_delta_writer.gd",
+		"has_setting=%s root_node=%s has_commit=%s script=%s" % [str(w_registered), str(w != null), str(w_has_commit), w_script_path])
+
+	# ⑮ autoload commit 顺序：travel_to 先触发 writer.committed（先落盘），
+	#    再 travel_confirmed、travel_requested；writer 自身 commit_count / reason 可回读。
+	var w_count: int = -1
+	var w_reason: String = "<null>"
+	if w != null:
+		w_count = int(w.get("commit_count"))
+		w_reason = str(w.get("last_commit_reason"))
+	var order_15: bool = _order.size() == 3 and _order[0] == "commit" \
+		and _order[1] == "signal:travel_confirmed" and _order[2] == "signal:travel_requested"
+	_check("⑮ autoload_commit_before_signal_order", order_15 and w_count >= 1 and w_reason == "grace_fast_travel",
+		"order=%s commit_count=%d last_reason=%s" % [str(_order), w_count, w_reason])
+
+	# ⑯ 取不到 /root/SaveDeltaWriter 时回退注入 committer：临时把 autoload 节点移出 root，
+	#    travel_to 应回退 set_fast_travel_committer 注入的 committer，如实登记降级；
+	#    顺序仍 commit → travel_confirmed → travel_requested。测毕恢复现场。
+	_order.clear()
+	_committed_reason = ""
+	var w2: Node = get_root().get_node_or_null("SaveDeltaWriter")
+	if w2 != null:
+		get_root().remove_child(w2)
+	hud.call("travel_to", TARGET_ID)
+	var st2: Dictionary = hud.call("get_commit_status")
+	var fallback_ok: bool = _order.size() == 3 and _order[0] == "commit" \
+		and _order.has("signal:travel_confirmed") and _order.has("signal:travel_requested") \
+		and bool(st2.get("degraded")) == true and str(st2.get("source")) == "injected" \
+		and bool(st2.get("ok")) == true
+	_check("⑯ fallback_to_injected_when_writer_missing", fallback_ok,
+		"writer_removed=%s order=%s degraded=%s source=%s" % [str(w2 != null), str(_order), str(st2.get("degraded")), str(st2.get("source"))])
+	if w2 != null:
+		get_root().add_child(w2)
 
 	var ok: bool = _fail == 0
 	print("[R19] ---- 回读汇总 ----")

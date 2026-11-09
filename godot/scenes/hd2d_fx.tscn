@@ -7,16 +7,28 @@ layer = 10
 
 [node name="FXReflection" type="Node2D" parent="." unique_id=665929974]
 texture_filter = 1
+fx_profile = "desktop"
 script = ExtResource("1_joxd1")
+metadata/hud_avoid_screen_w = 730.0
+metadata/hud_avoid_screen_h = 220.0
 
 [node name="FXGodRays" type="Node2D" parent="." unique_id=861575665]
 texture_filter = 1
+fx_profile = "desktop"
 script = ExtResource("1_joxd1")
+metadata/hud_avoid_screen_w = 730.0
+metadata/hud_avoid_screen_h = 220.0
 
 [node name="FXMotes" type="Node2D" parent="." unique_id=2139348949]
 texture_filter = 1
+fx_profile = "desktop"
 script = ExtResource("1_joxd1")
+metadata/hud_avoid_screen_w = 730.0
+metadata/hud_avoid_screen_h = 220.0
 
 [node name="FXBloom" type="Node2D" parent="." unique_id=1977446241]
 texture_filter = 1
+fx_profile = "desktop"
 script = ExtResource("1_joxd1")
+metadata/hud_avoid_screen_w = 730.0
+metadata/hud_avoid_screen_h = 220.0

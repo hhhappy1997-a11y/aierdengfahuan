@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-110237-775-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "引用 teamwork/Rank-1/DONE-R20.md 实际结论：R20 主任务闭环。新增 quality_settings.gd/quality_settings.tscn 并实例化进 courtyard.tscn（节点数如实回读=25，R19 为 24，未冒充），扩展 fx_profile_controller.gd 补 register_quality_provider()/re_evaluate() 与 [R20_CTRL] 切换日志、逐字保留 R19 功能逻辑。三段门禁 EXIT 0/0/0/0；8 份 r20_*.log 逐文件 grep SCRIPT ERROR|Parse Error=0 条；现有回归 verify_fx_profile.gd 34 PASS、verify_fx_mobile.gd 47 PASS 全绿，wire_r19.gd 因 EXPECTED_NODES=24 硬门槛与 25 节点冲突在 STEP3 quit(1)（EXIT=1、场景零改动、非功能破坏，已如实登记为阻塞）。Movie Maker 抓帧 EXIT=0，产出 6 帧 1280x720 r20_quality0000000*.png+wav，stdout 出现 [R20_CTRL] 且记录 [R20_CTRL] 重判 low -> high 至少一次，运行期低分辨率/缩放改写与 desktop/mobile 两档重判均由真跑 stdout 实证。未完成项与阻塞详见 DONE-R20.md 第③节。"
+}
