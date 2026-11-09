@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-082141-610-A3",
+  "ai": 3,
+  "status": "done",
+  "result": "R14 完成，结论见 teamwork/Rank-3/DONE-R14.md：① attach_hud.gd / HUD-ATTACH.md / DONE-R14.md / 回执 4 件齐备；② --check-only --script attach_hud.gd 真跑 GODOT_EXIT=0、SCRIPT ERROR/Parse Error/ERROR=0；③ 按边界未写入主场景 courtyard.tscn（sha256 前后一致），pack 节点数 22→23 与 CACHE_MODE_IGNORE 回读为脚本内设计预期、本轮未真跑，顺延 R15 串行改场景。"
+}

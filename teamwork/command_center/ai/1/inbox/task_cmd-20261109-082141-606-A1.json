@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-082141-606-A1",
+  "command_id": "cmd-20261109-082141-606",
+  "ai": 1,
+  "from": "总指挥",
+  "task": "[ROUND=R14] 【R14 画面整改 · Rank-1 环境光/雾】依据 `capture/CAPTURE-REPORT.md`「整体偏冷灰蓝」：用 `extends SceneTree` 追加式脚本 `godot/scripts/tune_env.gd` 给 `courtyard.tscn` 的 `WorldEnvironment` 设暖金环境光（ambient light color 偏暖、energy 提高）并启用适度 fog（暖金/冷雾对比），备份原场景、节点数保持 22、pack 后 `CACHE_MODE_IGNORE` 回读校验；再用 Movie Maker 抓帧 `capture/r14.png` 验证画面变化（命令需绝对路径 .png 后缀）。复跑三段门禁。完成写 `Rank-1/DONE-R14.md` 与 outbox 回执。只写 Rank-1 与授权 godot/ 子目录，零付费、不自行 git。",
+  "priority": "normal",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 08:21:42",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-082141-606-A1\",\"ai\":1,\"status\":\"done\",\"result\":\"...\"}"
+}

@@ -1,0 +1,8 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/generated/terrain/ground_tile.png" id="1_cqg7n"]
+
+[resource]
+albedo_texture = ExtResource("1_cqg7n")
+uv1_scale = Vector3(4, 4, 4)
+texture_filter = 0

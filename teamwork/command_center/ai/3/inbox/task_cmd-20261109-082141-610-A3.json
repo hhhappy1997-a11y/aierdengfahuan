@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-082141-610-A3",
+  "command_id": "cmd-20261109-082141-610",
+  "ai": 3,
+  "from": "总指挥",
+  "task": "[ROUND=R14] 【R14 · Rank-3 HUD 接入件】产出可复用 `godot/scripts/attach_hud.gd`（`extends SceneTree`，把 `res://scenes/hud.tscn` 实例化挂到 `courtyard.tscn` 的 `FXLayer` 下，节点数 22→23、pack 前/后比对、`CACHE_MODE_IGNORE` 回读校验）。**只交付脚本与 `Rank-3/HUD-ATTACH.md` 说明，不执行把 HUD 写进主场景**（避免与 Rank-1 并发写 courtyard.tscn 冲突）；脚本真跑 `--check-only` 验证语法。完成写 `Rank-3/DONE-R14.md` 与 outbox 回执。零付费、不自行 git。",
+  "priority": "normal",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 08:21:42",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-082141-610-A3\",\"ai\":3,\"status\":\"done\",\"result\":\"...\"}"
+}

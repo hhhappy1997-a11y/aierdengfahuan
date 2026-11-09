@@ -1,11 +1,11 @@
 {
-  "id": "cmd-20261109-080019-799-A4",
-  "command_id": "cmd-20261109-080019-799",
+  "id": "cmd-20261109-082141-612-A4",
+  "command_id": "cmd-20261109-082141-612",
   "ai": 4,
   "from": "总指挥",
-  "task": "[ROUND=R13] 【R13 画面整改 · Rank-4 美术】依据 `capture/CAPTURE-REPORT.md`「地形无贴图纯灰」：用本地程序化方式为 `godot/assets/generated/` 产出一张 128x128 的地面 tile PNG（暖灰/冷蓝、≤256 色、Nearest 适用），并写一份 `TERRAIN-TILE.md` 说明如何给 GroundPlate/TerraceLow/TerraceHigh 的 MeshInstance3D 挂材质（只给方案，不擅自改 Rank-1 场景）。完成后写 `Rank-4/DONE-R13.md` 与 outbox 回执。零付费、零外部生成服务、不自行 git。",
-  "priority": "high",
+  "task": "[ROUND=R14] 【R14 · Rank-4 地面材质资源】用 Godot `extends SceneTree` 脚本 `godot/scripts/build_ground_material.gd` 生成 `godot/assets/generated/terrain/ground_material.tres`（`StandardMaterial3D`，`albedo_texture` 指向 `ground_tile.png`、`texture_filter=Nearest`、uv 缩放参数写进注释/文档）。真跑 + 回读校验 material 类型/纹理引用/过滤；**不碰 courtyard.tscn**（避免并发冲突）。完成写 `Rank-4/DONE-R14.md` 与 outbox 回执。零付费、零外部素材、不自行 git。",
+  "priority": "normal",
   "note": "GUI 下达",
-  "issued_at": "2026-11-09 08:00:20",
-  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-080019-799-A4\",\"ai\":4,\"status\":\"done\",\"result\":\"...\"}"
+  "issued_at": "2026-11-09 08:21:42",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-082141-612-A4\",\"ai\":4,\"status\":\"done\",\"result\":\"...\"}"
 }

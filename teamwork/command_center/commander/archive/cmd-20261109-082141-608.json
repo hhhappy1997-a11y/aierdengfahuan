@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-082141-608",
+  "from": "总指挥",
+  "target": "2",
+  "task": "[ROUND=R14] 【R14 · Rank-2 Boss 动画切换】基于 `verify_boss_runtime.gd` 扩展或新建 `godot/scripts/verify_boss_poses.gd`（`extends SceneTree`），真跑实例化 `boss_01_margit.tscn`，依次对 3 个动画 `p1_dagger_slash`/`p1_staff_slam`/`p2_holy_hammer` 设置 `AnimatedSprite2D.animation` 并回读确认，贴实际 stdout；复跑三段门禁。完成写 `Rank-2/DONE-R14.md` 与 outbox 回执。不擅改战斗数值、只写授权范围、零付费。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}

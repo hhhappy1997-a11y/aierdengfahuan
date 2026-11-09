@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-082141-608-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "R14 交付完成，结论详见 Rank-2/DONE-R14.md：新建 godot/scripts/verify_boss_poses.gd（extends SceneTree），真跑 8 项断言全 PASS（PASS_COUNT=8 / FAIL_COUNT=0 / RESULT=PASS），Boss 三招 animation 依次切换并回读一致，get_frame_count 均为 1、get_animation_loop 均为 false；三段门禁 --import / --check-only --script / --quit 复跑 EXIT 均 0，真跑 VERIFY_RC=0，完整实际 stdout 已原样贴入 DONE-R14.md §2。无未完成项与阻塞（仅既有非 ERROR 的 ObjectDB/ChunkManager WARNING）。"
+}

@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-082141-612",
+  "from": "总指挥",
+  "target": "4",
+  "task": "[ROUND=R14] 【R14 · Rank-4 地面材质资源】用 Godot `extends SceneTree` 脚本 `godot/scripts/build_ground_material.gd` 生成 `godot/assets/generated/terrain/ground_material.tres`（`StandardMaterial3D`，`albedo_texture` 指向 `ground_tile.png`、`texture_filter=Nearest`、uv 缩放参数写进注释/文档）。真跑 + 回读校验 material 类型/纹理引用/过滤；**不碰 courtyard.tscn**（避免并发冲突）。完成写 `Rank-4/DONE-R14.md` 与 outbox 回执。零付费、零外部素材、不自行 git。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}
