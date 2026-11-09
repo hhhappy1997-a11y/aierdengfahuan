@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-083628-782",
+  "from": "总指挥",
+  "target": "2",
+  "task": "[ROUND=R15] 【R15 · Rank-2 pose 名一致性】写 `godot/scripts/verify_pose_names.gd`（`extends SceneTree`），真跑比对 `player_spriteframes.tres` 的 8 个动画名、`boss_spriteframes.tres` 的 3 个动画名与 `HybridSpriteRig.FROZEN_POSES` / `POSE_PREFIXES` 常量、`boss_import.json` 的 `pose_names`/`phase_hint`，输出逐项 PASS/FAIL 与实际 stdout；只写脚本与 `Rank-2/DONE-R15.md`、回执，不碰 courtyard.tscn、不改战斗数值。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}

@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-083628-784",
+  "from": "总指挥",
+  "target": "3",
+  "task": "[ROUND=R15] 【R15 · Rank-3 HUD 数据绑定方案】写 `Rank-3/HUD-BINDING.md`：说明 `hud.tscn` 的 Label 如何与 `WorldState` 三段式 flag（如 `grace.limgrave_gatefront.lit`）绑定、赐福菜单如何用 `grace_network.tres` 的 8 节点数据驱动、以及需要新增的 `hud.gd` 接口草案（只给草案，不写场景、不改 courtyard.tscn）。完成写 `Rank-3/DONE-R15.md` 与回执。零付费。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}

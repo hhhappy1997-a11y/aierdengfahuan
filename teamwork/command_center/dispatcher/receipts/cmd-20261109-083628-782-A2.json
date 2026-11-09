@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-083628-782-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "R15 交付完成，结论详见 Rank-2/DONE-R15.md：新建 godot/scripts/verify_pose_names.gd（extends SceneTree）真跑比对，31 项断言全 PASS（PASS_COUNT=31 / FAIL_COUNT=0 / RESULT=PASS）。逐项结论：① player_spriteframes.tres 8 个动画名全部在 HybridSpriteRig.FROZEN_POSES 内，集合恰等于冻结表基础 8（冻结表共 11 项=基础 8 + Boss 3，口径如实登记、非不一致）；② boss_spriteframes.tres 3 个动画名 == boss_import.json 的 phase_hint 键集合，前缀 p1_/p2_ 与 pose_prefix 值一致、去前缀与 pose_names 一致；③ HybridSpriteRig.POSE_PREFIXES 常量为 p1_ 与 p2_ 两项，与期望完全一致；④ 三段门禁 --import / --check-only --script verify_pose_names.gd / --quit 复跑 EXIT 均 0（SEG1/2/3_RC=0），--script 真跑 VERIFY_RC=0。完整实际 stdout 已原样贴入 DONE-R15.md §2。未发现不一致，故未改任何既有资源（未碰 courtyard.tscn、未改战斗数值、未自行 git）。无未完成项与阻塞，仅登记既有非 ERROR 的 ObjectDB/ChunkManager WARNING 与 FROZEN_POSES 11 项口径。"
+}

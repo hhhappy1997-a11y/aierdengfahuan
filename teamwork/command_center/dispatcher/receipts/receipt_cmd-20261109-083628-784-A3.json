@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-083628-784-A3",
+  "ai": 3,
+  "status": "done",
+  "result": "按边界只交付方案（详见 DONE-R15.md ③）。①交付清单：新建 Rank-3/HUD-BINDING.md，覆盖任务书 4 点——金色 TitleLabel 与 WorldState 三段式 flag（grace.limgrave_gatefront.lit）绑定、get_flag(key, default) 的 4 个调用时机与事件驱动刷新策略、grace_network.tres 8 节点/7 边数据驱动赐福菜单及 grace_fast_travel 先 commit 后发 travel_requested 的强制落盘口径（不进 0.5s 合并窗口、守 I-1）、hud.gd 仅给信号与方法签名草案不实现、R15 由 Rank-1 挂 HUD 与 R16 再绑数据的时机及 6 项前置依赖；DONE-R15.md（①交付清单 ②自检 ③未完成项与阻塞）与本回执齐备。②自检：6 份必读件开工一次性读完、三段式口径对齐总指挥裁决 A6、8 节点/7 边与 .tres 逐字一致，未改 courtyard.tscn/hud.tscn、未实现 hud.gd、未跑 Godot、未自行 git、零付费、默认不刺探、不伪造输出、中文 UTF-8。③未完成项与阻塞：hud.gd 实装、hud.tscn 挂脚本与菜单容器、端到端联调、空值回退/容器类型/class_name 裁决、R15 Rank-1 挂 HUD 共 5 项均属方案边界外或下游轮次；本轮无阻塞，下游依赖为 Rank-1 完成 R15 串行挂 HUD 且场景稳定后 R16 再绑数据，如实登记未擅自推进。"
+}

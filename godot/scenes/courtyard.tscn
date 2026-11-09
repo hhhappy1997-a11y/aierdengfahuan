@@ -1,8 +1,10 @@
 [gd_scene format=3]
 
+[ext_resource type="Material" path="res://assets/generated/terrain/ground_material.tres" id="1_2x0px"]
 [ext_resource type="Script" path="res://scripts/render/hybrid_2d3d_animated_sprite.gd" id="1_ypt7w"]
 [ext_resource type="SpriteFrames" path="res://assets/generated/chars/player_spriteframes.tres" id="2_e34af"]
 [ext_resource type="Script" path="res://scripts/render/hd2d_placeholder.gd" id="2_w844m"]
+[ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="4_6e1c7"]
 
 [sub_resource type="Environment" id="Environment_e34af"]
 background_mode = 1
@@ -15,23 +17,11 @@ fog_enabled = true
 fog_light_color = Color(0.4, 0.55, 0.72, 1)
 fog_density = 0.008
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_e34af"]
-albedo_color = Color(0.14, 0.17, 0.2, 1)
-roughness = 0.9
-
 [sub_resource type="PlaneMesh" id="PlaneMesh_15qxa"]
 size = Vector2(64, 64)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2x0px"]
-albedo_color = Color(0.2, 0.24, 0.27, 1)
-roughness = 0.9
-
 [sub_resource type="BoxMesh" id="BoxMesh_6e1c7"]
 size = Vector3(12, 0.6, 12)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_l1iq4"]
-albedo_color = Color(0.24, 0.28, 0.3, 1)
-roughness = 0.9
 
 [sub_resource type="BoxMesh" id="BoxMesh_k5tdy"]
 size = Vector3(8, 1.2, 8)
@@ -77,17 +67,17 @@ environment = SubResource("Environment_e34af")
 [node name="Terrain" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1636525606]
 
 [node name="GroundPlate" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=468563102]
-material_override = SubResource("StandardMaterial3D_e34af")
+material_override = ExtResource("1_2x0px")
 mesh = SubResource("PlaneMesh_15qxa")
 
 [node name="TerraceLow" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=1792765888]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.3, -6)
-material_override = SubResource("StandardMaterial3D_2x0px")
+material_override = ExtResource("1_2x0px")
 mesh = SubResource("BoxMesh_6e1c7")
 
 [node name="TerraceHigh" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=760291856]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0.6, -8)
-material_override = SubResource("StandardMaterial3D_l1iq4")
+material_override = ExtResource("1_2x0px")
 mesh = SubResource("BoxMesh_k5tdy")
 
 [node name="CliffRim" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=186070195]
@@ -121,6 +111,8 @@ layer = 10
 
 [node name="LightDust" type="Node2D" parent="SubViewportContainer/SubViewport/FXLayer" unique_id=1196391472]
 visible = false
+
+[node name="Hud" type="CanvasLayer" parent="SubViewportContainer/SubViewport/FXLayer" unique_id=1276405765 instance=ExtResource("4_6e1c7")]
 
 [node name="HD2DPlaceholderLayer" type="CanvasLayer" parent="." unique_id=1016476096]
 layer = -10
