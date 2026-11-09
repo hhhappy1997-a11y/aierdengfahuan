@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-110237-775",
+  "from": "总指挥",
+  "target": "1",
+  "task": "[ROUND=R20] 【R20 · Rank-1 画质设置接线与运行期重判档】把 R19 的 fx_profile_controller.gd 从「_ready 自动判一次」升级为「可被调用、设置变更后自动重判」：① 新写 godot/scripts/quality_settings.gd（extends CanvasLayer 或 Control，自选），提供 set_quality(preset:String) 与 apply()，preset 至少 low/medium/high 三档，运行期改写渲染低分辨率/缩放并通知 fx_profile_controller.switch_profile(desktop|mobile)；② 扩展 R19 的 fx_profile_controller.gd，补 register_quality_provider()/re_evaluate() 与 [R20_CTRL] 切换日志，保持不破坏 R19 的 17 PASS；③ 新写 godot/scenes/quality_settings.tscn 并实例化进 godot/scenes/courtyard.tscn（节点数如实登记，不得冒充 24）；④ 真跑：三段门禁 + 现有回归脚本 + Movie Maker 抓帧到 F:/Game/aierdengfahuan/capture/r20_quality.png，stdout 必须出现 [R20_CTRL] 且记录 low→high 至少一次重判；⑤ 不得改 godot/scripts/hud.gd（Rank-3 独占）、不得改 godot/project.godot（Rank-3 独占）。\n【公共契约】本轮直接改、直接真跑，不新建只读探针/巡检脚本；只写本 Rank 目录与本单指定的工程文件；引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe 走 --headless --import → --check-only --script → --headless --quit 三段门禁，grep SCRIPT ERROR 必须为 0；不谎报成功、不伪造产物、零付费零外部依赖。完成后写 teamwork/Rank-1/DONE-R20.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/1/outbox/<id>.json （不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":1,\"status\":\"done\",\"result\":\"引用 DONE-R20.md 实际结论\"}。",
+  "priority": "high",
+  "note": "GUI 下达"
+}

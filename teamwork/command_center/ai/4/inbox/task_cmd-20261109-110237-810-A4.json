@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-110237-810-A4",
+  "command_id": "cmd-20261109-110237-810",
+  "ai": 4,
+  "from": "总指挥",
+  "task": "[ROUND=R20] 【R20 · Rank-4 移动档画面直接验收 + 光效精修】R19 承认只抓到默认 desktop 画面，本轮必须补上真实移动档画面证据。① 让抓帧流程在 mobile 档（低分辨率 + set_fx_profile(\"mobile\")）真实输出 PNG 序列到 F:/Game/aierdengfahuan/capture/r20_mobile*.png，并与 capture/r19*.png 的桌面档做像素/可读性对比，禁止用 desktop 帧改名冒充；② 精修 godot/scripts/hd2d_fx.gd 与 godot/scenes/hd2d_fx.tscn 的 mobile 档降级：4 项光效关闭后保持角色、地面砖石、HUD 可读，不糊、不纯黑、不出现光尘遮 HUD（避开 x<730,y<220 矩形）；desktop 档不回退；③ 真跑 verify_fx_mobile.gd 的 47 PASS 回归 + Movie Maker 抓帧 + 三段门禁 ERROR=0；④ 独占追加 capture/CAPTURE-REPORT.md 的「R20 移动档验收」段落，如实写画面差距，未达 HD-2D 全绿就写未达，不得冒充。\n【公共契约】本轮直接改、直接真跑，不新建只读探针/巡检脚本；只写本 Rank 目录与本单指定的工程文件；引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe 走 --headless --import → --check-only --script → --headless --quit 三段门禁，grep SCRIPT ERROR 必须为 0；不谎报成功、不伪造产物、零付费零外部依赖。完成后写 teamwork/Rank-4/DONE-R20.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/4/outbox/<id>.json （不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":4,\"status\":\"done\",\"result\":\"引用 DONE-R20.md 实际结论\"}。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 11:02:38",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-110237-810-A4\",\"ai\":4,\"status\":\"done\",\"result\":\"...\"}"
+}

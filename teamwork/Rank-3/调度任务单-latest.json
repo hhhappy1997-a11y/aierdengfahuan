@@ -1,11 +1,11 @@
 {
-  "id": "cmd-20261109-102334-088-A3",
-  "command_id": "cmd-20261109-102334-088",
+  "id": "cmd-20261109-110237-805-A3",
+  "command_id": "cmd-20261109-110237-805",
   "ai": 3,
   "from": "总指挥",
-  "task": "[ROUND=R19] 【R19 · Rank-3 赐福菜单数据绑定】按 `Rank-3/HUD-BINDING.md` 扩展 `godot/scripts/hud.gd`：赐福菜单从 `res://data/rpg/grace_network.tres` 运行时读取 8 节点/7 边，提供 `open_grace_menu()` / `travel_to(grace_id)`（先 `SaveDeltaWriter.commit(reason)` 原子落盘、后发 `travel_requested`），挂 `hud.tscn` 不需要新增场景节点（用脚本内动态构建或只给接口）；`CACHE_MODE_IGNORE` 回读 + `--check-only` 真跑，贴实际 stdout。**不碰 courtyard.tscn**。完成写 `Rank-3/DONE-R19.md` 与回执。零付费、不伪造输出。",
-  "priority": "normal",
+  "task": "[ROUND=R20] 【R20 · Rank-3 裁决 A9：SaveDeltaWriter 注册 autoload 落地】总指挥裁决：结束 R19 的注入 committer 降级，正式注册 autoload，兑现「先 commit 后发信号」契约。① 新写 godot/scripts/save_delta_writer.gd（commit 接口签名与 R19 HUD 注入 committer 保持一致，遵守 00-协作契约.md §4.4 存档口径与 flag 严格三段式 <模块>.<对象>.<状态>）；② 在 godot/project.godot 的 [autoload] 段注册 SaveDeltaWriter（本轮只有你写 project.godot）；③ 改 godot/scripts/hud.gd：travel_to() 优先取 /root/SaveDeltaWriter，取不到才回退注入 committer，顺序保持 commit → travel_confirmed → travel_requested；④ 真跑：现有 13 PASS 用例 + R17 回归 11 PASS + 新增 autoload 存在性与 commit 顺序断言，三段门禁 ERROR=0；⑤ 在 DONE-R20.md 里如实说明降级是否仍保留、是否影响既有存档读档。不得改 courtyard.tscn 与 quality_settings 相关文件（Rank-1 独占）。\n【公共契约】本轮直接改、直接真跑，不新建只读探针/巡检脚本；只写本 Rank 目录与本单指定的工程文件；引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe 走 --headless --import → --check-only --script → --headless --quit 三段门禁，grep SCRIPT ERROR 必须为 0；不谎报成功、不伪造产物、零付费零外部依赖。完成后写 teamwork/Rank-3/DONE-R20.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/3/outbox/<id>.json （不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":3,\"status\":\"done\",\"result\":\"引用 DONE-R20.md 实际结论\"}。",
+  "priority": "high",
   "note": "GUI 下达",
-  "issued_at": "2026-11-09 10:23:34",
-  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-102334-088-A3\",\"ai\":3,\"status\":\"done\",\"result\":\"...\"}"
+  "issued_at": "2026-11-09 11:02:38",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-110237-805-A3\",\"ai\":3,\"status\":\"done\",\"result\":\"...\"}"
 }
