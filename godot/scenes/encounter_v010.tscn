@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/encounter_director.gd" id="1_pn2v7"]
+[ext_resource type="Script" path="res://scripts/combat/boss_controller.gd" id="2_fws14"]
+[ext_resource type="Resource" path="res://data/combat/boss_01_margit.tres" id="3_msbsn"]
+[ext_resource type="Script" path="res://scripts/combat/combat_event_bus.gd" id="4_8smvu"]
+[ext_resource type="Script" path="res://scripts/combat/combat_resolver.gd" id="5_ochyd"]
+
+[node name="EncounterRoot" type="Node" unique_id=475925940]
+script = ExtResource("1_pn2v7")
+
+[node name="Boss" type="Node3D" parent="." unique_id=1114354399]
+script = ExtResource("2_fws14")
+boss_data = ExtResource("3_msbsn")
+
+[node name="CombatEventBus" type="Node" parent="." unique_id=1115673106]
+script = ExtResource("4_8smvu")
+
+[node name="CombatResolver" type="Node" parent="." unique_id=1683655630]
+script = ExtResource("5_ochyd")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=448163040]
+layer = 20
+
+[node name="StatusLabel" type="Label" parent="HUD" unique_id=1698859679]
+offset_left = 24.0
+offset_top = 20.0
+offset_right = 24.0
+offset_bottom = 20.0
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.95, 0.82, 0.5, 1)
+text = "遭遇战 v0.1.0 载入中…"
