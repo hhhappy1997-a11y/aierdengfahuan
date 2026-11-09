@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-115818-643",
+  "from": "总指挥",
+  "target": "3",
+  "task": "[ROUND=R21] 【R21 · Rank-3 统一存档快旅口径】R20 如实登记 grace_fast_travel()（R16 既有接口）仍是注入 committer 优先，与 travel_to() 的 autoload 口径不一致。① 改 godot/scripts/hud.gd，让 grace_fast_travel() 与 travel_to() 统一优先取 /root/SaveDeltaWriter，注入 committer 仅在取不到时兜底，顺序保持 commit → travel_confirmed → travel_requested，赐福菜单 8 节点/7 边与 R20 的 16 PASS 断言不回退；② 在既有验证载体 teamwork/Rank-3/r19_verify_hud.gd 上追加断言（不新建探针脚本），覆盖两个入口的 autoload 优先级与 commit 顺序一致性；真跑 R20 16 PASS + R17 回归 11 PASS + 新增断言，输出 pass/fail 总数；③ 三段门禁 grep SCRIPT ERROR=0；④ DONE-R21.md 如实说明是否还有其它入口走旧口径、是否影响既有存档读档；⑤ 不改 project.godot / courtyard.tscn / quality_settings.* / verify_frame_data.gd / hd2d_fx.*。\n【公共契约】直接改、直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；只写本 Rank 目录与本单指定的工程文件；引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe 三段门禁 --headless --import → --check-only --script → --headless --quit，grep SCRIPT ERROR=0；零付费零外部依赖、不引入任何付费素材服务；不伪造产物、不谎报成功、不自行 git 提交（由总指挥收尾）。完成后写 teamwork/Rank-3/DONE-R21.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/3/outbox/<id>.json （不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":3,\"status\":\"done\",\"result\":\"引用 DONE-R21.md 实际结论\"}。\n【本轮目录所有权】courtyard.tscn / quality_settings.* 归 Rank-1；verify_frame_data.gd 与 godot/scripts/combat/ 归 Rank-2；hud.gd / save_delta_writer.gd 归 Rank-3；hd2d_fx.* / capture/ 归 Rank-4；本轮无人写 project.godot（避免并发冲突），重导双产物另以 R21B 补单在工程冻结后执行。",
+  "priority": "high",
+  "note": "GUI 下达"
+}

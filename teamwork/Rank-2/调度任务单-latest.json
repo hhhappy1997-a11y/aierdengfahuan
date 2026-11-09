@@ -1,11 +1,11 @@
 {
-  "id": "cmd-20261109-110237-801-A2",
-  "command_id": "cmd-20261109-110237-801",
+  "id": "cmd-20261109-115818-641-A2",
+  "command_id": "cmd-20261109-115818-641",
   "ai": 2,
   "from": "总指挥",
-  "task": "[ROUND=R20] 【R20 · Rank-2 帧数据裁决全链路回归】R19 已把 action_04_roll 修正为 4/9/9=22、无敌[4,13)。本轮做完整回归而不是再改数值：① 更新 godot/scripts/verify_frame_data.gd，把玩家 8 帧动作与 Boss 三招 p1_dagger_slash/p1_staff_slam/p2_holy_hammer 的 47/71/91 与 hit 区间一并纳入断言；② 真跑输出 PASS/FAIL 总数与 RESULT=ALL_MATCH，并同跑 CombatDataValidator 确认 ERROR=0、E-8 max_resistance 仍为 400/480/420；③ 检查 Rank-2 全部文档与 DONE-R19.md 是否还有 4/12/12=28、无敌[4,16) 的残留口径，有则改为 4/9/9=22、[4,13)，逐文件列出；④ 写 Rank-2/FRAME-DATA-REGRESSION-R20.md 记录可复跑命令与真跑输出。不得改其他 Rank 独占文件。\n【公共契约】本轮直接改、直接真跑，不新建只读探针/巡检脚本；只写本 Rank 目录与本单指定的工程文件；引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe 走 --headless --import → --check-only --script → --headless --quit 三段门禁，grep SCRIPT ERROR 必须为 0；不谎报成功、不伪造产物、零付费零外部依赖。完成后写 teamwork/Rank-2/DONE-R20.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/2/outbox/<id>.json （不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":2,\"status\":\"done\",\"result\":\"引用 DONE-R20.md 实际结论\"}。",
+  "task": "[ROUND=R21] 【R21 · Rank-2 CombatDataValidator 类落位与类级实例化真跑】R20 如实登记该类自 R2 起未落位工程根、组C 495 项为 §9 等价校验同跑。① 新写 godot/scripts/combat/combat_data_validator.gd（class_name CombatDataValidator，extends Node 或 RefCounted 自选），把 §9 校验入口做成可调用方法（例如 validate_all() -> Dictionary，返回 checks/pass/fail/errors）；② 改 godot/scripts/verify_frame_data.gd：用 preload/load 真实实例化该类并调用，替换组C 的等价同跑；组A/组B 与 612 PASS 口径不回退，如实登记新的 PASS 数字（可增不可减，若变化说明原因）；③ 真跑输出 VALIDATOR_ERROR=0、RESULT=ALL_MATCH、SCRIPT ERROR=0，并让类实际断言 player_actions.tres 的 4/9/9=22、无敌[4,13)、Boss 三招 47/71/91 与 hit 区间、E-8 max_resistance 400/480/420；④ 写 teamwork/Rank-2/VALIDATOR-CLASS-R21.md 记录类路径、接口签名、可复跑命令与真跑 stdout；⑤ 不注册 autoload（本轮 project.godot 不归你写）、不改 project.godot / courtyard.tscn / hud.gd / hd2d_fx.*。\n【公共契约】直接改、直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；只写本 Rank 目录与本单指定的工程文件；引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe 三段门禁 --headless --import → --check-only --script → --headless --quit，grep SCRIPT ERROR=0；零付费零外部依赖、不引入任何付费素材服务；不伪造产物、不谎报成功、不自行 git 提交（由总指挥收尾）。完成后写 teamwork/Rank-2/DONE-R21.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/2/outbox/<id>.json （不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":2,\"status\":\"done\",\"result\":\"引用 DONE-R21.md 实际结论\"}。\n【本轮目录所有权】courtyard.tscn / quality_settings.* 归 Rank-1；verify_frame_data.gd 与 godot/scripts/combat/ 归 Rank-2；hud.gd / save_delta_writer.gd 归 Rank-3；hd2d_fx.* / capture/ 归 Rank-4；本轮无人写 project.godot（避免并发冲突），重导双产物另以 R21B 补单在工程冻结后执行。",
   "priority": "high",
   "note": "GUI 下达",
-  "issued_at": "2026-11-09 11:02:38",
-  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-110237-801-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
+  "issued_at": "2026-11-09 11:58:19",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-115818-641-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
 }

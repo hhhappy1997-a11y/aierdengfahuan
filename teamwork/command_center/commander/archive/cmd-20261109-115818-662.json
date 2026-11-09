@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-115818-662",
+  "from": "总指挥",
+  "target": "4",
+  "task": "[ROUND=R21] 【R21 · Rank-4 移动档低分辨率与帧时间实测】R20 如实登记 --resolution 640x360 未改变 Movie Maker 录制尺寸（仍 1280×720）。本轮用零依赖方式查清并留证，不改 project.godot（避免与其它三路并发冲突）：① 真跑 Godot CLI 的分辨率/缩放参数组合，记录每种组合下 Movie Maker 实际输出 PNG 尺寸与 stdout，产出 capture/r21_lowres*.png；② 用 Performance/--print-fps 或逐帧时间戳实测 mobile 档与 desktop 档的帧时间，产出 capture/r21_frame_time.md 记录真跑数字（不是估算）；③ 若仍无法让引擎直接输出 640×360 PNG，如实写明边界；可用 PIL 对原始帧做 2× 降采样生成 640×360 对照图并明确标注为「后处理对照，非引擎低分辨率渲染」，禁止冒充；④ 保持 verify_fx_mobile.gd 47 PASS / verify_fx_profile.gd 34 PASS 不回退，三段门禁 EXIT=0、SCRIPT ERROR=0；⑤ 独占追加 capture/CAPTURE-REPORT.md 的「R21 低分辨率与帧时间」段落；不改 courtyard.tscn / quality_settings.* / project.godot / hud.gd / verify_frame_data.gd。\n【公共契约】直接改、直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；只写本 Rank 目录与本单指定的工程文件；引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe 三段门禁 --headless --import → --check-only --script → --headless --quit，grep SCRIPT ERROR=0；零付费零外部依赖、不引入任何付费素材服务；不伪造产物、不谎报成功、不自行 git 提交（由总指挥收尾）。完成后写 teamwork/Rank-4/DONE-R21.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/4/outbox/<id>.json （不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":4,\"status\":\"done\",\"result\":\"引用 DONE-R21.md 实际结论\"}。\n【本轮目录所有权】courtyard.tscn / quality_settings.* 归 Rank-1；verify_frame_data.gd 与 godot/scripts/combat/ 归 Rank-2；hud.gd / save_delta_writer.gd 归 Rank-3；hd2d_fx.* / capture/ 归 Rank-4；本轮无人写 project.godot（避免并发冲突），重导双产物另以 R21B 补单在工程冻结后执行。",
+  "priority": "high",
+  "note": "GUI 下达"
+}
