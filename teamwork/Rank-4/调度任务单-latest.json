@@ -1,11 +1,11 @@
 {
-  "id": "cmd-20261109-044100-997-A4",
-  "command_id": "cmd-20261109-044100-997",
+  "id": "cmd-20261109-080019-799-A4",
+  "command_id": "cmd-20261109-080019-799",
   "ai": 4,
   "from": "总指挥",
-  "task": "[ROUND=R12] 【R12 出图就绪核验 · Rank-4】04:39 实测 ComfyUI 0.33.2、像素 SDXL checkpoint 可用，但 LoRA/ControlNet 均为 SD1.5 系。读 F:/Game/aierdengfahuan/teamwork\\Rank-4\\任务书-R12.md 并执行：核验兼容性、产出 COMFYUI-READINESS.md（出图前置清单 + 一键命令 + 旧 job 为何不并行）。**只读核验，不 POST /prompt、不出图、不启动第二个 GPU job**；完成后写 DONE-R12.md 并按本任务单 id 写回执。默认不刺探、零付费、不自行 git push。",
-  "priority": "normal",
+  "task": "[ROUND=R13] 【R13 画面整改 · Rank-4 美术】依据 `capture/CAPTURE-REPORT.md`「地形无贴图纯灰」：用本地程序化方式为 `godot/assets/generated/` 产出一张 128x128 的地面 tile PNG（暖灰/冷蓝、≤256 色、Nearest 适用），并写一份 `TERRAIN-TILE.md` 说明如何给 GroundPlate/TerraceLow/TerraceHigh 的 MeshInstance3D 挂材质（只给方案，不擅自改 Rank-1 场景）。完成后写 `Rank-4/DONE-R13.md` 与 outbox 回执。零付费、零外部生成服务、不自行 git。",
+  "priority": "high",
   "note": "GUI 下达",
-  "issued_at": "2026-11-09 04:41:01",
-  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-044100-997-A4\",\"ai\":4,\"status\":\"done\",\"result\":\"...\"}"
+  "issued_at": "2026-11-09 08:00:20",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-080019-799-A4\",\"ai\":4,\"status\":\"done\",\"result\":\"...\"}"
 }

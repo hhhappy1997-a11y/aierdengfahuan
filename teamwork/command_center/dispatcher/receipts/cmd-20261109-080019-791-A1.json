@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-080019-791-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "引用 teamwork/Rank-1/DONE-R13.md 实际结论：R13 主任务闭环。tune_visual.gd 已落盘并真跑（EXIT=0），courtyard.tscn 改动为 SunLight light_color=Color(1,0.78,0.45)、light_energy=1.8、Camera3D origin=(0,9.6,14.4)（fov/朝向不变），节点数 pack 前22=后22=期望22；ResourceLoader CACHE_MODE_IGNORE 回读 color_ok/energy_ok/cam_ok/nodes_ok/OK 全 true，磁盘逐行核对一致。三段门禁 --import / --check-only --script tune_visual.gd / --quit EXIT 全0，grep SCRIPT ERROR 与 ERROR 无匹配。抓帧：按原命令 --write-movie capture/tuned.png 真跑 EXIT=0 但零 PNG（7条 ERROR，相对路径被解析到不存在的 godot/capture/，已如实留档、未伪造）；改用绝对路径 F:/Game/aierdengfahuan/capture/tuned.png 后成功，ERROR=0，产出 6 帧 1280x720 PNG（tuned00000000~00000005）+ tuned.wav。实际看图定性对比：角色与平台明显变大（拉近生效）、平台略偏暖灰，但整体仍偏冷灰蓝，未达暖金×冷夜雾强对比，不冒充达标。未完成项：glow 因工程渲染方法 gl_compatibility 不支持 Environment glow 而登记未做；整体色调需后续调 ambient/fog/材质；既有 ChunkManager 与 ObjectDB leaked WARNING（非 ERROR）。status=done 指主任务闭环，非全绿达标。"
+}

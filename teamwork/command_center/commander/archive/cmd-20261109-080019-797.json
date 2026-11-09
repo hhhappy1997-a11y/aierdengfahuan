@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-080019-797",
+  "from": "总指挥",
+  "target": "3",
+  "task": "[ROUND=R13] 【R13 画面整改 · Rank-3 UI】依据 `capture/CAPTURE-REPORT.md`「没有任何 UI」：生成一个最小金线深蓝 HUD 场景 `godot/scenes/hud.tscn`（CanvasLayer + 深蓝 Panel + 金色 1px 边框文字占位，纯程序化、零外部素材），并用 SceneTree 构建脚本真跑 + 回读校验。完成后写 `Rank-3/DONE-R13.md` 与 outbox 回执。只写授权范围、不接入主场景（避免跨工位冲突）、零付费。",
+  "priority": "high",
+  "note": "GUI 下达"
+}

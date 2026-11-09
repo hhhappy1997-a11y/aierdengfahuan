@@ -1,11 +1,11 @@
 {
-  "id": "cmd-20261109-040336-521-A2",
-  "command_id": "cmd-20261109-040336-521",
+  "id": "cmd-20261109-080019-794-A2",
+  "command_id": "cmd-20261109-080019-794",
   "ai": 2,
   "from": "总指挥",
-  "task": "[ROUND=R10] 【R10 裁决执行续派 · Rank-2 战斗系统与数据驱动】主 AI 已产出 `00-汇总.md` 并裁决 9 项；本轮执行其中属于你的部分：执行裁决 A1（E-8 数值）。读 F:/Game/aierdengfahuan/teamwork\\Rank-2\\任务书-R10.md 并执行；只写授权范围、仅做裁决指定的最小改动、其余待裁决项只登记不擅改；真跑三段门禁并贴实际输出；完成后写 DONE-R10.md，并按本任务单 id 在 command_center\\ai\\2\\outbox\\ 写回执。默认不刺探、零付费、不自行 git push。",
+  "task": "[ROUND=R13] 【R13 画面整改 · Rank-2 战斗】依据 `capture/CAPTURE-REPORT.md` 与 `boss_spriteframes.tres`：写一个最小 SceneTree 自检脚本，真跑验证 `res://scenes/boss_01_margit.tscn` 可 instantiate、AnimatedSprite2D 的 sprite_frames 含 3 个动画、`HybridSpriteRig.set_pose()` 调用链在现有工程里可解析；把实际 stdout 写进自检。完成后写 `Rank-2/DONE-R13.md` 与 outbox 回执。不擅改既有战斗数值、只写授权范围、零付费。",
   "priority": "high",
   "note": "GUI 下达",
-  "issued_at": "2026-11-09 04:03:37",
-  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-040336-521-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
+  "issued_at": "2026-11-09 08:00:20",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-080019-794-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
 }

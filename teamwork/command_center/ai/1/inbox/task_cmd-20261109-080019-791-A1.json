@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-080019-791-A1",
+  "command_id": "cmd-20261109-080019-791",
+  "ai": 1,
+  "from": "总指挥",
+  "task": "[ROUND=R13] 【R13 画面整改 · Rank-1 渲染】依据 `capture/CAPTURE-REPORT.md`：给 `godot/scenes/courtyard.tscn` 的 SunLight 设暖金光色（如 Color(1.0,0.78,0.45)）、提高能量，并调整 Camera3D 让中央角色在 1280x720 里占比更大；可选项：WorldEnvironment 加 glow/bloom。用 `extends SceneTree` 追加式构建脚本真跑修改，节点数必须保持 22，保存后新进程回读复核。完成后写 `Rank-1/DONE-R13.md` 与 outbox 回执。只写 Rank-1 与授权的 godot/ 子目录，零付费、默认不刺探、不自行 git。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 08:00:20",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-080019-791-A1\",\"ai\":1,\"status\":\"done\",\"result\":\"...\"}"
+}

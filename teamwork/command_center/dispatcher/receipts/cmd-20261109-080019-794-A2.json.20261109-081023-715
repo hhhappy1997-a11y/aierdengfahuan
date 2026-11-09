@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-080019-794-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "R13 完成，实际结论见 Rank-2/DONE-R13.md 与 Rank-2/BOSS-RUNTIME-CHECK.md：verify_boss_runtime.gd 真跑 4 项断言全 PASS（FAIL_COUNT=0 / RESULT=PASS / VERIFY_RC=0），三段门禁 --import / --check-only / --quit 复跑均 EXIT=0；实际读数 root.name=Boss01Margit、AnimatedSprite2D.sprite_frames 含 3 动画（p1_dagger_slash / p1_staff_slam / p2_holy_hammer）且 current_animation=p1_dagger_slash、boss_spriteframes.tres 独立加载 3 动画与场景一致；--check-only 静态解析通过（SEG2_RC=0）证明 class_name HybridSpriteRig 的 set_pose() 可调用，缓存第 123 行佐证注册。无阻塞，仅既有 ObjectDB leaked WARNING 与 ChunkRoot WARNING（非 ERROR）。"
+}

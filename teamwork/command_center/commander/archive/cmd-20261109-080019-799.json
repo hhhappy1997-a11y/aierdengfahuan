@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-080019-799",
+  "from": "总指挥",
+  "target": "4",
+  "task": "[ROUND=R13] 【R13 画面整改 · Rank-4 美术】依据 `capture/CAPTURE-REPORT.md`「地形无贴图纯灰」：用本地程序化方式为 `godot/assets/generated/` 产出一张 128x128 的地面 tile PNG（暖灰/冷蓝、≤256 色、Nearest 适用），并写一份 `TERRAIN-TILE.md` 说明如何给 GroundPlate/TerraceLow/TerraceHigh 的 MeshInstance3D 挂材质（只给方案，不擅自改 Rank-1 场景）。完成后写 `Rank-4/DONE-R13.md` 与 outbox 回执。零付费、零外部生成服务、不自行 git。",
+  "priority": "high",
+  "note": "GUI 下达"
+}
