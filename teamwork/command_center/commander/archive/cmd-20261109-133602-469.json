@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-133602-469",
+  "from": "总指挥",
+  "target": "1",
+  "task": "[ROUND=R23] 【R23 · Rank-1 HD-2D 夜景与景深整改（画面层整改）】R22 总指挥目视回看判定：亮蓝白天调、无平滑多层景深、HUD 放大遮挡角色。本轮不改素材文件（Rank-4 独占），只改场景与光效：① 独占 godot/scenes/courtyard.tscn 与 WorldEnvironment / hd2d_fx 相关渲染脚本：把亮蓝白天调改为冷夜雾 + 暖金主光强对比（深蓝夜空、冷雾 density、暖金主光色/energy），保持既有 4 项光效与 HUD layer=20 / quality_settings layer=40 不回退；② 新增程序化多层视差远景（CanvasLayer _draw() 层：远景山影/雾带、平滑景深、光尘分层），零外部依赖；③ 修复 R22 录屏段 B「low 档 HUD 面板放大遮挡角色」：限制面板最大尺寸或调整锚点，保证 low/medium/high 三档角色始终可见；④ 真跑三段门禁 grep SCRIPT ERROR=0、34 PASS / 47 PASS 不回退；Movie Maker 抓帧 capture/r23_night*.png 并用 ViewImage 真看，写 Rank-1/HD2D-NIGHT-R23.md 记录与《八方旅人》HD-2D（像素精灵 vs 平滑景深、暖金光与冷夜雾强对比、体积光/光尘/湿地倒影/bloom、金线深蓝 UI）的差距，未达全绿就写未达；节点数如实回读登记（R22 为 25）；⑤ 不改 project.godot / hud.gd / godot/assets/generated/r23/ / verify_frame_data.gd / README.md / 00-协作契约.md。\n【本轮公共契约 · godogen + game-studio 纪律迁移】用户选 Godot 主线，不新建 game-studio HTML 小游戏；只借用其「换素材 → 构建 → 试玩 → 目视回看 → 交付」闭环：素材/场景改动一律三段门禁 --headless --import → --check-only --script → --headless --quit 且 grep SCRIPT ERROR=0，再用 Movie Maker 抓帧 + ViewImage 真看，用画面判断进度而非 clean build。零付费、不引入任何付费素材生成服务、一次只跑一个 GPU 任务；DNF 贴片仅本机风格参考、绝不进发布包；直接改直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；不伪造产物、不谎报成功、不自行 git。完成后写 teamwork/Rank-1/DONE-R23.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/1/outbox/<id>.json （不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":1,\"status\":\"done\",\"result\":\"引用 DONE-R23.md 实际结论\"}。\n【目录所有权】godot/assets/generated/r23/ 与 teamwork/Rank-4/ 归 Rank-4；courtyard.tscn 与渲染脚本归 Rank-1；teamwork/Rank-2/ 归 Rank-2；00-协作契约.md / 00-汇总.md §6.2 / README.md / teamwork/Rank-3/ 归 Rank-3；本轮无人写 project.godot。",
+  "priority": "high",
+  "note": "GUI 下达"
+}

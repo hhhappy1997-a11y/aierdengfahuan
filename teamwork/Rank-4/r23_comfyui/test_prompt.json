@@ -1,0 +1,92 @@
+{
+  "_note": "R23 单图连通性测试工作流。基于 comfyui_workflow_pixel.json 的 9 节点骨架，参考本机 /history 中已 success 的 pixelArtDiffusionXL+lora 配置改造；【已移除 ImageQuantize(colors=256) 节点】以解除 <=256 色硬限制，允许 256 色以上，保留 alpha 由本机 PIL 抠纯色背景生成。",
+  "prompt": {
+    "1": {
+      "class_type": "CheckpointLoaderSimple",
+      "inputs": {
+        "ckpt_name": "pixelArtDiffusionXL_spriteShaper.safetensors"
+      }
+    },
+    "2": {
+      "class_type": "LoraLoader",
+      "inputs": {
+        "lora_name": "pixel-art-xl.safetensors",
+        "strength_model": 0.8,
+        "strength_clip": 0.8,
+        "model": ["1", 0],
+        "clip": ["1", 1]
+      }
+    },
+    "3": {
+      "class_type": "LoraLoader",
+      "inputs": {
+        "lora_name": "sdxl_lightning_4step_lora.safetensors",
+        "strength_model": 0.75,
+        "strength_clip": 0.75,
+        "model": ["2", 0],
+        "clip": ["2", 1]
+      }
+    },
+    "4": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "pixel art game sprite, single fantasy knight character, full body, front three-quarter view, bold dark outline, flat cel shading, saturated warm gold and deep blue palette, crisp hard pixel edges, no anti-aliasing, centered, feet on ground line, idle stance with sword, solid uniform flat dark teal background, no gradient, no shadow, HD-2D dark fantasy, readable silhouette",
+        "clip": ["3", 1]
+      }
+    },
+    "5": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "smooth gradients, anti-aliasing, blurry, 3d render, photorealistic, jpeg artifacts, watermark, text, signature, extra limbs, duplicate characters, cropped, multiple views, gradient background, glow, motion blur, realistic skin texture, depth of field",
+        "clip": ["3", 1]
+      }
+    },
+    "6": {
+      "class_type": "EmptyLatentImage",
+      "inputs": {
+        "width": 512,
+        "height": 512,
+        "batch_size": 1
+      }
+    },
+    "7": {
+      "class_type": "KSampler",
+      "inputs": {
+        "seed": 20261109001,
+        "steps": 8,
+        "cfg": 1.8,
+        "sampler_name": "euler",
+        "scheduler": "sgm_uniform",
+        "denoise": 1.0,
+        "model": ["3", 0],
+        "positive": ["4", 0],
+        "negative": ["5", 0],
+        "latent_image": ["6", 0]
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": ["7", 0],
+        "vae": ["1", 2]
+      }
+    },
+    "9": {
+      "class_type": "ImageScale",
+      "inputs": {
+        "image": ["8", 0],
+        "upscale_method": "nearest-exact",
+        "width": 128,
+        "height": 128,
+        "crop": "disabled"
+      }
+    },
+    "10": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": ["9", 0],
+        "filename_prefix": "r23_test_idle"
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-133602-469-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "引用 DONE-R23.md 实际结论：R23 交付闭环，但 HD-2D 未达全绿。改动 courtyard.tscn（深蓝夜空+冷夜雾 fog_density 0.008→0.02、ambient 暖金→冷蓝 0.8→0.4、fog_light_color 亮蓝→冷夜蓝、暖金主光 (1,0.78,0.45)/1.8→(1,0.72,0.32)/1.5）、新增零外部依赖程序化多层视差远景 hd2d_parallax.gd（3 层山影/雾带/平滑景深/分层光尘/地面冷夜压暗）、hud.tscn 改纯 anchor 修复 low 档 HUD 面板放大；4 项光效与 HUD layer=20 / quality_settings layer=40 不回退。三段门禁 9 份 r23_*.log 逐文件 SCRIPT ERROR=0；verify_fx_profile.gd 34 PASS、verify_fx_mobile.gd 47 PASS 不回退（另 verify_quality_interaction.gd 19 PASS）；节点数 CACHE_MODE_IGNORE 真跑回读 27（R22=25，新增 2 节点，不冒充）。Movie Maker 抓 capture/r23_night_00000000~00000012.png 共 13 张 + r23_night_.wav，ViewImage 目视三档均深蓝冷夜调、HUD 面板尺寸一致约 480px、角色完整可见、4 项光效保留。未完成项：景深为 2D 程序化近似非 3D DoF、无真实相机视差、地面白天感残留、4 项光效为 2D 近似（Rank-4 独占未改）、光源位置随画质档漂移、信号注入非鼠标点击；详见 HD2D-NIGHT-R23.md §4（结论=未达全绿）。"
+}

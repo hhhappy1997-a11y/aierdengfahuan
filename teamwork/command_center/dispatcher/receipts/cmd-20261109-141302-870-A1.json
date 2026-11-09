@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-141302-870-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "引用 DONE-R23B.md 实际结论：56 条校验按 ASSET-SPEC-R23.md §2③ 授权的实质规格语义口径逐条真跑 → 56 PASS/0 FAIL（F 组 2 条 128bit 挂起不计 PASS/FAIL；§3 字面 import.json 载体与未锁定字段命名的差异、接入裁决均如实登记，不冒充字面全 PASS）；接入 6 个 tres 指向 r23/ 新 PNG（player_spritesheet 1024×128 / boss_spritesheet 384×128 / ground_tile，旧 PNG 保留不覆盖，pose 名/帧序/region.x 不变，courtyard.tscn 本身未改、CACHE_MODE_IGNORE 回读节点数 27）；三段门禁 EXIT 0/0/0、8 份日志 SCRIPT ERROR=0、verify_frame_data.gd 650 PASS/0 FAIL ALL_MATCH 与 34/47/19/20 PASS 全部不回退；450 帧=15.000000 秒实机录屏 + r23_final.mp4（libx264/yuv420p/faststart，WAV 5,760,044 B 真实产出但未混入、如实登记）+ ViewImage 真看首/中/尾并与 R23 旧帧对照，新素材确实进入可见画面，HD-2D 全绿未达（如实写未达）；双产物 --export-release \"Windows Desktop\" 与 --export-debug \"Android\" 各 EXIT=0、apksigner Verifies/v2+v3+v4 true/signers=1/包名 com.aierdengfahuan.game，新旧字节数 exe 109,127,680 / pck 993,736→1,579,332 / apk 29,239,499→29,829,394 / idsig 234,930→239,026 B，pck/apk 内 15/15 张 r23 PNG 实证进包，产物按 .gitignore 排除不入库；未完成/待裁决项：契约 import.json 载体与 §3 D 字段命名待 Rank-2/总指挥裁决、128bit 歧义待用户确认、HD-2D 全绿未达、Boss 新素材已接入但 courtyard 无 Boss 实例故本录屏画面不含 Boss、decor_layer 未接入、WAV 未混入 MP4。阻塞：无。"
+}

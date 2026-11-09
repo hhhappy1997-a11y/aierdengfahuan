@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-133602-471-A2",
+  "command_id": "cmd-20261109-133602-471",
+  "ai": 2,
+  "from": "总指挥",
+  "task": "[ROUND=R23] 【R23 · Rank-2 新素材 I-5 规格契约 + 帧数据回归】用户新口径「128bit 256色以上」改变了既有 ≤256 色规格，本轮由你定义接入契约并守住数据回归：① 写 teamwork/Rank-2/ASSET-SPEC-R23.md：定义 R23 新素材必须满足的 I-5 契约 —— 128px 基准画布、色数 ≥256（不再 ≤256）、RGBA 保留 alpha、pose 名/帧序/坐标系与既有 player_spriteframes.tres(8) / boss_spriteframes.tres(3) 一致、import.json 字段清单、`128bit` 歧义保留待用户确认、零付费与 DNF 仅参考不进发布包；供 R23B 接入时逐项校验；② 真跑 verify_frame_data.gd 确认 650 PASS / 0 FAIL RESULT=ALL_MATCH、CombatDataValidator.validate_all() 533 checks / VALIDATOR_ERROR=0；翻滚 4/9/9=22、无敌[4,13)、Boss 47/71/91、E-8 400/480/420 不回退；③ 三段门禁 grep SCRIPT ERROR=0；④ 只写 teamwork/Rank-2/，不改任何 godot/ 工程文件与其它 Rank 文档。\n【本轮公共契约 · godogen + game-studio 纪律迁移】用户选 Godot 主线，不新建 game-studio HTML 小游戏；只借用其「换素材 → 构建 → 试玩 → 目视回看 → 交付」闭环：素材/场景改动一律三段门禁 --headless --import → --check-only --script → --headless --quit 且 grep SCRIPT ERROR=0，再用 Movie Maker 抓帧 + ViewImage 真看，用画面判断进度而非 clean build。零付费、不引入任何付费素材生成服务、一次只跑一个 GPU 任务；DNF 贴片仅本机风格参考、绝不进发布包；直接改直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；不伪造产物、不谎报成功、不自行 git。完成后写 teamwork/Rank-2/DONE-R23.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/2/outbox/<id>.json （不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":2,\"status\":\"done\",\"result\":\"引用 DONE-R23.md 实际结论\"}。\n【目录所有权】godot/assets/generated/r23/ 与 teamwork/Rank-4/ 归 Rank-4；courtyard.tscn 与渲染脚本归 Rank-1；teamwork/Rank-2/ 归 Rank-2；00-协作契约.md / 00-汇总.md §6.2 / README.md / teamwork/Rank-3/ 归 Rank-3；本轮无人写 project.godot。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 13:36:03",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-133602-471-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
+}

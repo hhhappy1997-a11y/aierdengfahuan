@@ -1,0 +1,260 @@
+{
+  "round": "R23",
+  "comfyui": "127.0.0.1:8188 v0.33.2 本机",
+  "workflow": "pixelArtDiffusionXL + pixel-art-xl + sdxl_lightning_4step, 8 steps, 无 ImageQuantize",
+  "queue_discipline": "串行：确认上一个 job completed 且 /queue running=0 才提交下一个",
+  "system_stats_timeouts": 0,
+  "queue_timeouts": 0,
+  "jobs": [
+    {
+      "tag": "player_idle",
+      "prompt_id": "34ff9457-1425-4738-9f2d-7ee95a89c0fe",
+      "status": "ok",
+      "seed": 20261109010,
+      "kind": "player",
+      "pose": "idle",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "alpha_coverage": 0.2369,
+      "unique_rgb_visible": 3760,
+      "comfyui_output": "r23_g_player_idle_00001_.png"
+    },
+    {
+      "tag": "player_walk",
+      "prompt_id": "beaec350-ca9b-4bb5-adda-b7ab66a494fd",
+      "status": "ok",
+      "seed": 20261109011,
+      "kind": "player",
+      "pose": "walk",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "alpha_coverage": 0.335,
+      "unique_rgb_visible": 4944,
+      "comfyui_output": "r23_g_player_walk_00001_.png"
+    },
+    {
+      "tag": "player_run",
+      "prompt_id": "e5bba422-36cf-429c-94d7-af9b9ab51069",
+      "status": "ok",
+      "seed": 20261109012,
+      "kind": "player",
+      "pose": "run",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "alpha_coverage": 0.3176,
+      "unique_rgb_visible": 4642,
+      "comfyui_output": "r23_g_player_run_00001_.png"
+    },
+    {
+      "tag": "player_roll",
+      "prompt_id": "3b0669cf-3ae4-4443-860e-c30cc0a75629",
+      "status": "ok",
+      "seed": 20261109013,
+      "kind": "player",
+      "pose": "roll",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "alpha_coverage": 0.2318,
+      "unique_rgb_visible": 3664,
+      "comfyui_output": "r23_g_player_roll_00001_.png"
+    },
+    {
+      "tag": "player_attack_light",
+      "prompt_id": "c9f06e20-3acc-4141-a20e-97307386ec80",
+      "status": "ok",
+      "seed": 20261109914,
+      "kind": "player",
+      "pose": "attack_light",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "alpha_coverage": 0.4511,
+      "unique_rgb_visible": 6553,
+      "comfyui_output": "r23_retry_player_attack_light_00001_.png",
+      "retry": {
+        "reason": "首轮出图目视发现 4 个重复小人（duplicate characters 破图）",
+        "original_seed": 20261109014,
+        "original_prompt_id": "8915c3a0-e0aa-46b3-a30b-14d6b1315d0d",
+        "retry_seed": 20261109914,
+        "retry_prompt_id": "c9f06e20-3acc-4141-a20e-97307386ec80",
+        "retry_output": "r23_retry_player_attack_light_00001_.png",
+        "retry_status": "ok"
+      },
+      "visually_rechecked": true
+    },
+    {
+      "tag": "player_attack_heavy",
+      "prompt_id": "47507d62-3a84-477b-a72c-25841f8aab52",
+      "status": "ok",
+      "seed": 20261109015,
+      "kind": "player",
+      "pose": "attack_heavy",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "alpha_coverage": 0.314,
+      "unique_rgb_visible": 4617,
+      "comfyui_output": "r23_g_player_attack_heavy_00001_.png"
+    },
+    {
+      "tag": "player_hitstun",
+      "prompt_id": "35c6b29a-6471-48d3-97ce-adad2de13bc7",
+      "status": "ok",
+      "seed": 20261109016,
+      "kind": "player",
+      "pose": "hitstun",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "alpha_coverage": 0.3148,
+      "unique_rgb_visible": 4777,
+      "comfyui_output": "r23_g_player_hitstun_00001_.png"
+    },
+    {
+      "tag": "player_death",
+      "prompt_id": "77ba52a6-683a-4160-851e-200744a203fc",
+      "status": "ok",
+      "seed": 20261109017,
+      "kind": "player",
+      "pose": "death",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "alpha_coverage": 0.2379,
+      "unique_rgb_visible": 3672,
+      "comfyui_output": "r23_g_player_death_00001_.png"
+    },
+    {
+      "tag": "boss_p1_dagger_slash",
+      "prompt_id": "9b179b5c-0343-4840-872b-73c8fe44572b",
+      "status": "ok",
+      "seed": 20261109030,
+      "kind": "boss",
+      "pose": "p1_dagger_slash",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "alpha_coverage": 0.3245,
+      "unique_rgb_visible": 5163,
+      "comfyui_output": "r23_g_boss_p1_dagger_slash_00001_.png"
+    },
+    {
+      "tag": "boss_p1_staff_slam",
+      "prompt_id": "d85c2276-9fb6-4ec7-871e-03208fbfe37d",
+      "status": "ok",
+      "seed": 20261109031,
+      "kind": "boss",
+      "pose": "p1_staff_slam",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "alpha_coverage": 0.4014,
+      "unique_rgb_visible": 6269,
+      "comfyui_output": "r23_g_boss_p1_staff_slam_00001_.png"
+    },
+    {
+      "tag": "boss_p2_holy_hammer",
+      "prompt_id": "95f40483-9938-4a77-bfd9-42e148476d28",
+      "status": "ok",
+      "seed": 20261109032,
+      "kind": "boss",
+      "pose": "p2_holy_hammer",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "alpha_coverage": 0.3357,
+      "unique_rgb_visible": 5392,
+      "comfyui_output": "r23_g_boss_p2_holy_hammer_00001_.png"
+    },
+    {
+      "tag": "decor_layer",
+      "prompt_id": "1b21d8bc-5e74-49f1-89a1-1544296c211f",
+      "status": "ok",
+      "seed": 20261109050,
+      "kind": "decor",
+      "pose": "decor_layer",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": true,
+      "alpha_coverage": 0.8062,
+      "unique_rgb_visible": 11739,
+      "comfyui_output": "r23_g_decor_layer_00001_.png"
+    },
+    {
+      "tag": "ground_tile",
+      "prompt_id": "b12cf43b-f476-4803-8a53-6c2675368363",
+      "status": "ok",
+      "seed": 20261109060,
+      "kind": "ground",
+      "pose": "ground_tile",
+      "size": [
+        128,
+        128
+      ],
+      "alpha": false,
+      "alpha_coverage": 1.0,
+      "unique_rgb_visible": 13605,
+      "comfyui_output": "r23_g_ground_tile_00001_.png",
+      "postprocess": {
+        "name": "deterministic_edge_seamless",
+        "method": "最外 1 行/1 列改为两侧均值并强制四角相等，逐像素边缘对齐",
+        "edge_mae_before": {
+          "left_right": 12.64,
+          "top_bottom": 23.6
+        },
+        "edge_mae_after": {
+          "left_right": 0.0,
+          "top_bottom": 0.0
+        },
+        "strict_seamless": true,
+        "pixels_from_comfyui": true
+      }
+    }
+  ],
+  "blocked": false,
+  "spritesheet_player": true,
+  "spritesheet_boss": true,
+  "retries": [
+    {
+      "tag": "player_attack_light",
+      "original_seed": 20261109014,
+      "retry_seed": 20261109914,
+      "prompt_id": "c9f06e20-3acc-4141-a20e-97307386ec80",
+      "status": "ok",
+      "timeouts": 0
+    }
+  ],
+  "ground_tile_seamless": {
+    "strict": true,
+    "edge_mae_LR": 0.0,
+    "edge_mae_TB": 0.0
+  }
+}

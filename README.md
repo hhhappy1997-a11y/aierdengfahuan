@@ -5,6 +5,7 @@
 > 工程根 `F:/Game/aierdengfahuan`｜Godot 工程 `F:/Game/aierdengfahuan/godot`｜引擎 `D:/Godot/Godot_v4.7.2-stable_win64.exe`
 > （`--version` = `4.7.2.stable.official.ed1daf0bf`，R22 实测 `EXIT=0`）。
 > 本文件由 **R22 · cmd-20261109-124640-185-A3（Rank-3）** 更新；资产表字节数均为 `stat -c %s` 对实际落盘文件的实测值，不编造。
+> **R23 · cmd-20261109-133602-490-A3（Rank-3）** 追加 §3.4「R23 素材条目与本机可选素材源合规登记」（口径 / 合规登记，非落盘产物）；§3.1~§3.3 既有实测值与历史结论未改。
 
 ---
 
@@ -155,3 +156,21 @@
 > quality_settings = 2,309 + 10,872 = **13,181 B**；存档三件 = 4,378 + 15,353 + 11,227 = **30,958 B**。
 > `player_spriteframes.tres` 实测注册 **8 个动作**（attack_heavy / attack_light / death / hitstun / idle / roll / run / walk），与「玩家 base 8 帧」口径吻合；
 > `boss_spriteframes.tres` 对应 3 招。`courtyard.tscn` 的 25 节点为 `grep -c '^\[node '` 实测值。
+
+---
+
+### 3.4 R23 素材条目与本机可选素材源合规登记（2026-11-09 · 口径 / 合规登记，非落盘产物）
+
+> 本小节为**规格口径与合规边界登记**，不代表本轮新增任何落盘素材文件：`godot/assets/generated/r23/` 归 Rank-4 所有，本轮未写、未生成 PNG、`stat` 实测字节数不适用。
+> 依据：用户 R23 拍板口径「`128bit` + 256 色以上」与 DNF 合规边界；`teamwork/00-协作契约.md` §9.3（I-5 资产交付口径真源）、`teamwork/Rank-3/DNF-COMPLIANCE-R23.md`。
+
+| 条目 | 来源 / 规格 | 落盘状态 | published_in_pck | 备注 |
+|---|---|---|:--:|---|
+| **R23 素材条目** | **本地 ComfyUI 自制**（零付费 / 零外部服务）｜**128px 基准画布**｜**≥256 色（256 色以上）**｜**RGBA / alpha 保留** | 口径登记，本轮未新增落盘素材 | **false** | `128bit` 词义歧义（128px 画布 / 位宽 / 色深）显式保留待用户确认；正式素材路线仍为本地 ComfyUI |
+| **本机可选素材源：DNF NPK 仅参考** | DNF（`Neople` / 腾讯版权）NPK / 贴片，**仅本机开发期风格参考** | 参考目录，**不进工程素材链** | **false** | 参考目录以 `.gdignore` 标记，Godot 不扫描 / 不导入 / 不打包；不随仓库分发可识别商业贴片；不得进 `pck` / `exe` / `apk` |
+
+**合规口径（`published_in_pck:false` 全覆盖）**：
+
+- 上表两项均 **`published_in_pck: false`** —— 既不进 `.pck`，也不进 `.exe` / `.apk` 任何发布包；R23 素材条目是规格口径而非已发布资产，DNF NPK 是本机参考而非工程素材。
+- **参考目录 `.gdignore`**：DNF 参考目录须以 `.gdignore` 标记，使 Godot 4.7.2 跳过该目录的文件系统扫描与资源导入，从机制上保证不被打进发布包；本轮不改素材目录，仅登记该约定（`.gdignore` 由素材目录所有方 Rank-4 按需落地）。
+- 版权归 `Neople` / 腾讯；完整合规登记见 `teamwork/Rank-3/DNF-COMPLIANCE-R23.md`。

@@ -1,0 +1,349 @@
+{
+  "schema_version": 1,
+  "round": "R23",
+  "task_id": "cmd-20261109-133602-467-A4",
+  "source": "ComfyUI 本地 http://127.0.0.1:8188 (v0.33.2)，零付费、本机 GPU (NVIDIA RTX 4060 Ti)",
+  "workflow": {
+    "base": "comfyui_workflow_pixel.json 的 9 节点骨架 + 本机 /history 已 success 配置",
+    "checkpoint": "pixelArtDiffusionXL_spriteShaper.safetensors",
+    "loras": [
+      "pixel-art-xl.safetensors (0.8)",
+      "sdxl_lightning_4step_lora.safetensors (0.75)"
+    ],
+    "sampler": "euler / sgm_uniform / steps=8 / cfg=1.8",
+    "latent": "512x512 -> ImageScale nearest-exact -> 128x128",
+    "ImageQuantize": "已移除（原 colors=256 硬限制删除），允许 256 色以上",
+    "prompt_template": "见 r23_comfyui/batch_generate.py BASE_POS / NEG（DNF 风格规律见 DNF-STYLE-REFERENCE-R23.md）"
+  },
+  "spec": {
+    "canvas": "128x128（128px 基准画布保持不变）",
+    "color_policy": "不强制量化到 <=256 色；实测色数按非透明像素唯一 RGB 统计，如实登记",
+    "color_range_actual": [
+      3664,
+      13605
+    ],
+    "alpha": "RGBA：玩家 / Boss / 装饰层由本机确定性 flood-fill 抠纯色背景生成硬边 alpha；ground_tile alpha 全 255（不透明）",
+    "128bit_ambiguity": "用户口径「128bit 256色以上」中 128bit 的具体含义仍待用户确认；本轮不擅自改尺寸口径，128px 基准画布保持不变，歧义在 DONE-R23.md 显式保留"
+  },
+  "provenance": "像素 100% 来自本机 ComfyUI 输出 PNG；alpha 与 ground_tile 无缝化均为本机确定性后处理，不绘制新像素、不伪造 PNG；未使用任何 DNF 贴片或付费素材生成服务",
+  "published_in_pck": true,
+  "frame_order": {
+    "player": [
+      "idle",
+      "walk",
+      "run",
+      "roll",
+      "attack_light",
+      "attack_heavy",
+      "hitstun",
+      "death"
+    ],
+    "boss": [
+      "p1_dagger_slash",
+      "p1_staff_slam",
+      "p2_holy_hammer"
+    ],
+    "coordinate_system": "单行 128px 网格：player x=0,128,...,896（1024x128）；boss x=0,128,256（384x128）。与既有 player_spriteframes.tres(8) / boss_spriteframes.tres(3) 的 AtlasTexture region 逐字一致",
+    "note": "本轮仅产出 r23/ 目录内素材，未改任何 .tres / 场景 / 脚本；R23B 才接入"
+  },
+  "assets": [
+    {
+      "file": "player_idle.png",
+      "pose": "idle",
+      "kind": "player",
+      "seed": 20261109010,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 3760,
+      "alpha": true,
+      "alpha_coverage": 0.2369,
+      "published_in_pck": true,
+      "comfyui_output": "r23_g_player_idle_00001_.png"
+    },
+    {
+      "file": "player_walk.png",
+      "pose": "walk",
+      "kind": "player",
+      "seed": 20261109011,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 4944,
+      "alpha": true,
+      "alpha_coverage": 0.335,
+      "published_in_pck": true,
+      "comfyui_output": "r23_g_player_walk_00001_.png"
+    },
+    {
+      "file": "player_run.png",
+      "pose": "run",
+      "kind": "player",
+      "seed": 20261109012,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 4642,
+      "alpha": true,
+      "alpha_coverage": 0.3176,
+      "published_in_pck": true,
+      "comfyui_output": "r23_g_player_run_00001_.png"
+    },
+    {
+      "file": "player_roll.png",
+      "pose": "roll",
+      "kind": "player",
+      "seed": 20261109013,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 3664,
+      "alpha": true,
+      "alpha_coverage": 0.2318,
+      "published_in_pck": true,
+      "comfyui_output": "r23_g_player_roll_00001_.png"
+    },
+    {
+      "file": "player_attack_light.png",
+      "pose": "attack_light",
+      "kind": "player",
+      "seed": 20261109914,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 6553,
+      "alpha": true,
+      "alpha_coverage": 0.4511,
+      "published_in_pck": true,
+      "comfyui_output": "r23_retry_player_attack_light_00001_.png",
+      "retry": {
+        "reason": "首轮出图目视发现 4 个重复小人（duplicate characters 破图）",
+        "original_seed": 20261109014,
+        "original_prompt_id": "8915c3a0-e0aa-46b3-a30b-14d6b1315d0d",
+        "retry_seed": 20261109914,
+        "retry_prompt_id": "c9f06e20-3acc-4141-a20e-97307386ec80",
+        "retry_output": "r23_retry_player_attack_light_00001_.png",
+        "retry_status": "ok"
+      }
+    },
+    {
+      "file": "player_attack_heavy.png",
+      "pose": "attack_heavy",
+      "kind": "player",
+      "seed": 20261109015,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 4617,
+      "alpha": true,
+      "alpha_coverage": 0.314,
+      "published_in_pck": true,
+      "comfyui_output": "r23_g_player_attack_heavy_00001_.png"
+    },
+    {
+      "file": "player_hitstun.png",
+      "pose": "hitstun",
+      "kind": "player",
+      "seed": 20261109016,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 4777,
+      "alpha": true,
+      "alpha_coverage": 0.3148,
+      "published_in_pck": true,
+      "comfyui_output": "r23_g_player_hitstun_00001_.png"
+    },
+    {
+      "file": "player_death.png",
+      "pose": "death",
+      "kind": "player",
+      "seed": 20261109017,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 3672,
+      "alpha": true,
+      "alpha_coverage": 0.2379,
+      "published_in_pck": true,
+      "comfyui_output": "r23_g_player_death_00001_.png"
+    },
+    {
+      "file": "boss_p1_dagger_slash.png",
+      "pose": "p1_dagger_slash",
+      "kind": "boss",
+      "seed": 20261109030,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 5163,
+      "alpha": true,
+      "alpha_coverage": 0.3245,
+      "published_in_pck": true,
+      "comfyui_output": "r23_g_boss_p1_dagger_slash_00001_.png"
+    },
+    {
+      "file": "boss_p1_staff_slam.png",
+      "pose": "p1_staff_slam",
+      "kind": "boss",
+      "seed": 20261109031,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 6269,
+      "alpha": true,
+      "alpha_coverage": 0.4014,
+      "published_in_pck": true,
+      "comfyui_output": "r23_g_boss_p1_staff_slam_00001_.png"
+    },
+    {
+      "file": "boss_p2_holy_hammer.png",
+      "pose": "p2_holy_hammer",
+      "kind": "boss",
+      "seed": 20261109032,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 5392,
+      "alpha": true,
+      "alpha_coverage": 0.3357,
+      "published_in_pck": true,
+      "comfyui_output": "r23_g_boss_p2_holy_hammer_00001_.png"
+    },
+    {
+      "file": "decor_layer.png",
+      "pose": "decor_layer",
+      "kind": "decor",
+      "seed": 20261109050,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 11739,
+      "alpha": true,
+      "alpha_coverage": 0.8062,
+      "published_in_pck": true,
+      "comfyui_output": "r23_g_decor_layer_00001_.png"
+    },
+    {
+      "file": "ground_tile.png",
+      "pose": "ground_tile",
+      "kind": "ground",
+      "seed": 20261109060,
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unique_rgb_visible": 13605,
+      "alpha": false,
+      "alpha_coverage": 1.0,
+      "published_in_pck": true,
+      "comfyui_output": "r23_g_ground_tile_00001_.png",
+      "postprocess": {
+        "name": "deterministic_edge_seamless",
+        "method": "最外 1 行/1 列改为两侧均值并强制四角相等，逐像素边缘对齐",
+        "edge_mae_before": {
+          "left_right": 12.64,
+          "top_bottom": 23.6
+        },
+        "edge_mae_after": {
+          "left_right": 0.0,
+          "top_bottom": 0.0
+        },
+        "strict_seamless": true,
+        "pixels_from_comfyui": true
+      }
+    }
+  ],
+  "spritesheets": {
+    "player_spritesheet.png": {
+      "size": [
+        1024,
+        128
+      ],
+      "frames": 8,
+      "aligned_with": "player_spriteframes.tres"
+    },
+    "boss_spritesheet.png": {
+      "size": [
+        384,
+        128
+      ],
+      "frames": 3,
+      "aligned_with": "boss_spriteframes.tres"
+    }
+  },
+  "ground_tile_seamless": {
+    "strict": true,
+    "edge_mae_LR": 0.0,
+    "edge_mae_TB": 0.0
+  },
+  "retries": [
+    {
+      "tag": "player_attack_light",
+      "original_seed": 20261109014,
+      "retry_seed": 20261109914,
+      "prompt_id": "c9f06e20-3acc-4141-a20e-97307386ec80",
+      "status": "ok",
+      "timeouts": 0
+    }
+  ],
+  "gpu_discipline": {
+    "queue_final": "running=0 / pending=0",
+    "one_job_at_a_time": "串行提交：确认上一个 job completed 且 /queue running=0 才提交下一个",
+    "old_qwen_image_job": "不杀、不重启、不触碰",
+    "queue_timeouts": 0,
+    "system_stats_timeouts": 0,
+    "blocked": false,
+    "note": "首轮曾出现 /system_stats、/queue、/history/<id> 的 curl 超时/空返回，按「以 /queue 为准、超时如实登记」处理；以 output 目录真实 PNG 为硬证据"
+  },
+  "visual_check": "13 张（含 1 张重试）经 ViewImage 棋盘格联系表目视确认为清晰可辨素材，无破图/空白/重复小人，透明背景干净；ground_tile 2x2 平铺目视接缝消失",
+  "three_stage_gate": {
+    "commands": [
+      "--headless --import",
+      "--headless --check-only --script res://scripts/verify_fx_mobile.gd",
+      "--headless --quit"
+    ],
+    "exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "SCRIPT_ERROR_or_Parse_Error_count": 0,
+    "note": "G3 退出时引擎报 2 ObjectDB instances leaked（warning，非 SCRIPT ERROR），如实登记",
+    "logs": [
+      "capture/r23_ref_g1_import.log",
+      "capture/r23_ref_g2_check.log",
+      "capture/r23_ref_g3_quit.log"
+    ]
+  },
+  "compliance": {
+    "dnf_resources": "DNF 贴片版权归 Neople/腾讯，仅在 teamwork/Rank-4/r23_dnf_reference/ 作本机风格参考；该目录 .gdignore + raw/ .gitignore + manifest published_in_pck:false；未拷入 godot/assets/、未进 pck/exe/apk/发布包",
+    "generated_assets": "本机 ComfyUI 原创生成，published_in_pck:true，可进发布包",
+    "zero_paid": true
+  }
+}

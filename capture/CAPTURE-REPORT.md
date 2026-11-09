@@ -226,3 +226,85 @@ D:/Godot/Godot_v4.7.2-stable_win64.exe \
 5. 未做人工试玩逐帧动态验收 / GPU 时间戳 / 逐 `_draw()` 拆分；Movie Maker 固定步长录屏不等价于实时性能评测。
 
 未完成项、阻塞与合规边界详见 `teamwork/Rank-4/DONE-R22.md`。
+
+---
+
+## R23 新素材接入验收（R23B · Rank-1 独占追加 · 2026-11-09 · `cmd-20261109-141302-870-A1`）
+
+> 本节由 **Rank-1 独占追加**。四路 R23 已完成、工程与素材冻结；本轮把 `godot/assets/generated/r23/`
+> 的新素材真正接进可见画面，并交付 15 秒录屏 + 目视回看 + 双产物重导。
+> **结论：新素材确实进入画面（与 R23 旧帧有可辨差异）；HD-2D 全绿仍未达，如实写未达。**
+
+### 1. 接入改动（静态，真改真核对）
+
+| 文件 | 改动 | 目的 |
+|---|---|---|
+| `godot/assets/generated/chars/player_spriteframes.tres` | `ext_resource path` → `res://assets/generated/r23/player_spritesheet.png` | 玩家 8 pose 新图 |
+| `godot/assets/generated/boss/boss_spriteframes.tres` | `ext_resource path` → `res://assets/generated/r23/boss_spritesheet.png` | Boss 3 pose 新图 |
+| `godot/assets/generated/terrain/ground_material.tres` | `ext_resource path` → `res://assets/generated/r23/ground_tile.png` | 派单点名的地面材质 |
+| `ground_tile_mat_plate.tres` / `ground_tile_mat_low.tres` / `ground_tile_mat_high.tres` | `ext_resource path` → `res://assets/generated/r23/ground_tile.png` | **派单「必要时同步 courtyard.tscn 实例引用」裁量**：`courtyard.tscn` 实际引用的是这 3 个材质而非 `ground_material.tres`，只改后者画面不会变 |
+
+- **保留旧 PNG 不覆盖**：`chars/player_spritesheet.png` 59,147 B、`boss/boss_spritesheet.png` 31,250 B、
+  `terrain/ground_tile.png` 1,495 B 均原样保留；新 PNG 217,416 / 86,163 / 38,339 B。
+- **pose 名 / 帧序 / `region.x` 不变**：`player_spriteframes.tres` 8 个 `Rect2(*,0,128,128)`
+  （idle=0 … death=896）、`boss_spriteframes.tres` 3 个（0/128/256）、loop 与 `uv1_scale` 全部未改。
+  帧序硬证据：`player_spritesheet.png` / `boss_spritesheet.png` 逐 128 切片与对应单帧 PNG **像素级 IDENTICAL**（8/8、3/3）。
+- **`courtyard.tscn` 本身未改**（引用的是 `.tres` 文件、路径不变）；节点数经
+  `CACHE_MODE_IGNORE` 真跑回读 `SceneState_node_count=27`（`r23b_verify_quality_interaction.log`），
+  与 R23 登记一致，**不冒充 25**。
+- **56 条校验**：按 `ASSET-SPEC-R23.md` A~E 组逐条真跑（PNG PIL 实测 / manifest / `.png.import` / tres /
+  verify 脚本 / 文件系统）→ **56 PASS / 0 FAIL**；F 组 2 条 `128bit` 歧义**挂起、不计 PASS/FAIL**。
+  契约字面载体（`player|boss/import.json` 与未锁定命名字段）与实际交付（单一 `manifest.json`）的差异
+  **逐条如实登记、不冒充字面全 PASS**，见 `teamwork/Rank-1/DONE-R23B.md §2`。
+
+### 2. 15 秒录屏产物（真跑）
+
+| 项 | 值 |
+|---|---|
+| 命令 | `--path <root> --write-movie capture/r23_final.png --fixed-fps 30 --quit-after 450 --script res://test/presentation.gd res://scenes/courtyard.tscn`（复用 R22 已验证形态） |
+| EXIT | **0** |
+| 帧 | **450 张** `r23_final00000000.png` ~ `r23_final00000449.png`，全部 1280×720 |
+| 时长 | **450 帧 @30 FPS = 15.000000 s**（ffprobe `nb_frames=450 / duration=15.000000`） |
+| 时间线 | SEG-A(0–149 medium/desktop) / SEG-B(150–299 low/mobile) / SEG-C(300–449 high/desktop)，`时间线完成 frame=450` |
+| MP4 | `capture/r23_final.mp4`，**1,288,103 B**，`libx264 / yuv420p / +faststart`，`FFMPEG_EXIT=0` |
+| WAV | `capture/r23_final.wav` **5,760,044 B** 真实产出；**未混入 MP4**（ffprobe 音频流=0，MP4 仅视频轨），与 R22 `r22_demo.mp4` 口径一致，**如实登记、不谎报合并** |
+
+### 3. ViewImage 目视回看（首 / 中 / 尾三帧 + R23 旧帧对照）
+
+| 帧 | 目视结论 |
+|---|---|
+| 首 `r23_final00000000.png` | 密集不规则暖金/青灰石砖地面（非纯色平面）、红发+钴蓝板甲+金饰像素骑士、深蓝夜空+山影+雾带、暖金光柱/光尘/光池、金线深蓝 HUD 不遮挡 |
+| 中 `r23_final00000225.png` | 石砖纹理依旧清晰；角色换 pose（红白头饰+钴蓝甲+金护肩）完整可见；四项光效全关（无光柱/光尘/倒影）；HUD 标题随 flag 变「赐福 · 巡礼教堂」，三档面板尺寸一致 |
+| 尾 `r23_final00000449.png` | 石砖最锐利；角色为红发+格纹头巾+胸前发光青蓝宝石 pose，无破图/重复小人；光柱/光尘/光池回归；标题「赐福 · 希芙拉河井底」暗色未点亮 |
+
+**接入前后对照**（`capture/r23_night_00000005.png` 为 R23 接入前旧帧）：
+- 地面：旧 = 规则长条砖网格、黄绿/棕褐平涂、重复感强；新 = 不规则密集石砖、暖金/青灰/橙点、磨损颗粒细节。
+- 角色：旧 = 蓝白头盔+红围巾小骑士、色块简单；新 = 红发/格纹头巾+钴蓝板甲+金饰+青蓝宝石、层次与硬描边明显。
+→ **「新素材是否真的进入画面」= 是**，由静态指向改动 + 450 帧真实渲染 + ViewImage 目视三者支撑，非 clean build 推断、非改名冒充。
+
+**Boss 如实登记**：`courtyard.tscn` 27 节点中**无 Boss 实例**，`boss_spriteframes.tres` 虽已指向 r23/、
+`boss_01_margit.tscn` 引用它，但本 15 秒 courtyard 画面**不含 Boss**，不冒充可见；`decor_layer.png` 未接入（派单未要求）。
+
+### 4. 门禁与回归（真跑，不回退）
+
+- 三段门禁 `--headless --import` / `--check-only --script` / `--headless --quit`：`EXIT 0 / 0 / 0`；
+  **8 份 `r23b_*.log` 的 `SCRIPT ERROR|Parse Error` 合计 = 0**。
+- `verify_frame_data.gd` **650 PASS / 0 FAIL / RESULT=ALL_MATCH**（`VALIDATOR_CHECKS=533 VALIDATOR_ERROR=0`；
+  翻滚 `4/9/9=22@60` 无敌 `[4,13)`、Boss `47/71/91`、E-8 `400/480/420` 不回退）；
+  `verify_fx_profile.gd` **34 PASS**、`verify_fx_mobile.gd` **47 PASS**、
+  `verify_quality_interaction.gd` **19 PASS**、`r19_verify_hud.gd` **20 PASS** —— 全部不回退。
+- 既有非致命 WARNING（`2 ObjectDB instances were leaked` / `ChunkManager 未找到 ChunkRoot` / HUD 降级登记）
+  非 `SCRIPT ERROR`、不改退出码，如实登记。
+
+### 5. 与 HD-2D 目标的差距：**未达全绿**
+
+新石砖贴图与角色细节明显改善，但：`uv1_scale` 高倍平铺重复感仍明显、暖金地面大面积偏亮（冷夜雾向地面渗透不足、
+白天感残留）；景深仍为 2D 程序化分层近似（山影几何化，无 3D 深度雾 / DOF）；四项光效仍为 2D `draw_*` 近似
+（`gl_compatibility` 不支持 HDR bloom / 体积光 / SSR）；8 pose 各仅 1 帧、无逐帧动作动画；角色为 3D
+`AnimatedSprite3D` 像素贴图。本轮只做接入与目视回看、未精修美术，**不冒充全绿**。
+
+### 6. 合规
+
+零付费、未引入付费素材生成服务、一次只跑一个 GPU/编码任务；未写 `project.godot`；未自行 `git commit`；
+产物按 `.gitignore`（`build/`、`*.exe`、`*.pck`、`*.apk`、`*.log`）排除不入库。
+完整交付与未完成项见 `teamwork/Rank-1/DONE-R23B.md`，逐帧目视详见 `capture/R23-FINAL-REVIEW.md`。

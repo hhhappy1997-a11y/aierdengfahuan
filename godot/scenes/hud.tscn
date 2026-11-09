@@ -15,17 +15,26 @@ layer = 20
 script = ExtResource("1_hud")
 
 [node name="HudPanel" type="Panel" parent="." unique_id=1292641255]
-offset_left = 24.0
-offset_top = 24.0
-offset_right = 364.0
-offset_bottom = 108.0
+anchor_left = 0.025
+anchor_top = 0.06
+anchor_right = 0.4
+anchor_bottom = 0.26
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_toqtt")
 
 [node name="TitleLabel" type="Label" parent="." unique_id=1414552291]
-offset_left = 44.0
-offset_top = 44.0
-offset_right = 344.0
-offset_bottom = 84.0
+anchor_left = 0.05
+anchor_top = 0.1
+anchor_right = 0.37
+anchor_bottom = 0.22
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+vertical_alignment = 1
 theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.83, 0.68, 0.3, 1)
 text = "赐福 · 宁姆格福"

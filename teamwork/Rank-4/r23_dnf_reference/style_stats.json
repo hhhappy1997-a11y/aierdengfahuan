@@ -1,0 +1,1737 @@
+{
+  "ok": [
+    {
+      "cat": "character",
+      "name": "swordman_ghosthand",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_character_swordman_equipment_growtype_basics.NPK",
+      "entry": "sprite/character/swordman/equipment/growtype/basics/ghosthand.img",
+      "raw": "raw/character__swordman_ghosthand__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.0069,
+      "unique_rgb_visible": 10,
+      "top_colors": [
+        {
+          "rgb": [
+            31,
+            31,
+            39
+          ],
+          "share": 0.3274
+        },
+        {
+          "rgb": [
+            47,
+            47,
+            71
+          ],
+          "share": 0.2212
+        },
+        {
+          "rgb": [
+            95,
+            95,
+            119
+          ],
+          "share": 0.1416
+        },
+        {
+          "rgb": [
+            127,
+            127,
+            175
+          ],
+          "share": 0.1062
+        },
+        {
+          "rgb": [
+            175,
+            183,
+            207
+          ],
+          "share": 0.0531
+        },
+        {
+          "rgb": [
+            87,
+            79,
+            119
+          ],
+          "share": 0.0531
+        },
+        {
+          "rgb": [
+            119,
+            103,
+            143
+          ],
+          "share": 0.0354
+        },
+        {
+          "rgb": [
+            231,
+            247,
+            255
+          ],
+          "share": 0.0265
+        }
+      ],
+      "luma_mean": 80.3,
+      "luma_p90": 165.0,
+      "edge_mae": 46.8,
+      "edge_strong_ratio": 0.5929,
+      "sat_mean": 23.6
+    },
+    {
+      "cat": "character",
+      "name": "swordman_ghosthand",
+      "frame": 1,
+      "status": "ok",
+      "pack": "sprite_character_swordman_equipment_growtype_basics.NPK",
+      "entry": "sprite/character/swordman/equipment/growtype/basics/ghosthand.img",
+      "raw": "raw/character__swordman_ghosthand__f01.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.0067,
+      "unique_rgb_visible": 10,
+      "top_colors": [
+        {
+          "rgb": [
+            31,
+            31,
+            39
+          ],
+          "share": 0.3182
+        },
+        {
+          "rgb": [
+            47,
+            47,
+            71
+          ],
+          "share": 0.2182
+        },
+        {
+          "rgb": [
+            95,
+            95,
+            119
+          ],
+          "share": 0.1364
+        },
+        {
+          "rgb": [
+            127,
+            127,
+            175
+          ],
+          "share": 0.1
+        },
+        {
+          "rgb": [
+            175,
+            183,
+            207
+          ],
+          "share": 0.0727
+        },
+        {
+          "rgb": [
+            119,
+            103,
+            143
+          ],
+          "share": 0.0455
+        },
+        {
+          "rgb": [
+            151,
+            167,
+            191
+          ],
+          "share": 0.0364
+        },
+        {
+          "rgb": [
+            199,
+            207,
+            231
+          ],
+          "share": 0.0273
+        }
+      ],
+      "luma_mean": 84.4,
+      "luma_p90": 183.3,
+      "edge_mae": 51.8,
+      "edge_strong_ratio": 0.65,
+      "sat_mean": 23.9
+    },
+    {
+      "cat": "character",
+      "name": "swordman_ghosthand",
+      "frame": 2,
+      "status": "ok",
+      "pack": "sprite_character_swordman_equipment_growtype_basics.NPK",
+      "entry": "sprite/character/swordman/equipment/growtype/basics/ghosthand.img",
+      "raw": "raw/character__swordman_ghosthand__f02.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.008,
+      "unique_rgb_visible": 10,
+      "top_colors": [
+        {
+          "rgb": [
+            31,
+            31,
+            39
+          ],
+          "share": 0.374
+        },
+        {
+          "rgb": [
+            47,
+            47,
+            71
+          ],
+          "share": 0.2519
+        },
+        {
+          "rgb": [
+            95,
+            95,
+            119
+          ],
+          "share": 0.1221
+        },
+        {
+          "rgb": [
+            127,
+            127,
+            175
+          ],
+          "share": 0.0763
+        },
+        {
+          "rgb": [
+            175,
+            183,
+            207
+          ],
+          "share": 0.0611
+        },
+        {
+          "rgb": [
+            119,
+            103,
+            143
+          ],
+          "share": 0.0458
+        },
+        {
+          "rgb": [
+            151,
+            167,
+            191
+          ],
+          "share": 0.0305
+        },
+        {
+          "rgb": [
+            231,
+            247,
+            255
+          ],
+          "share": 0.0153
+        }
+      ],
+      "luma_mean": 75.4,
+      "luma_p90": 165.0,
+      "edge_mae": 41.4,
+      "edge_strong_ratio": 0.5038,
+      "sat_mean": 21.8
+    },
+    {
+      "cat": "monster",
+      "name": "abnova_kobolt",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_monster_abnova_kobolt.NPK",
+      "entry": "sprite/monster/abnova/kobolt/rollingkobolt.img",
+      "raw": "raw/monster__abnova_kobolt__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.4207,
+      "unique_rgb_visible": 42,
+      "top_colors": [
+        {
+          "rgb": [
+            148,
+            99,
+            49
+          ],
+          "share": 0.0975
+        },
+        {
+          "rgb": [
+            99,
+            49,
+            25
+          ],
+          "share": 0.0856
+        },
+        {
+          "rgb": [
+            197,
+            148,
+            74
+          ],
+          "share": 0.0794
+        },
+        {
+          "rgb": [
+            66,
+            49,
+            33
+          ],
+          "share": 0.0756
+        },
+        {
+          "rgb": [
+            33,
+            25,
+            33
+          ],
+          "share": 0.0585
+        },
+        {
+          "rgb": [
+            99,
+            82,
+            49
+          ],
+          "share": 0.0583
+        },
+        {
+          "rgb": [
+            16,
+            16,
+            16
+          ],
+          "share": 0.0547
+        },
+        {
+          "rgb": [
+            0,
+            0,
+            0
+          ],
+          "share": 0.0522
+        }
+      ],
+      "luma_mean": 64.3,
+      "luma_p90": 154.2,
+      "edge_mae": 20.9,
+      "edge_strong_ratio": 0.2912,
+      "sat_mean": 45.4
+    },
+    {
+      "cat": "monster",
+      "name": "abnova_kobolt",
+      "frame": 1,
+      "status": "ok",
+      "pack": "sprite_monster_abnova_kobolt.NPK",
+      "entry": "sprite/monster/abnova/kobolt/rollingkobolt.img",
+      "raw": "raw/monster__abnova_kobolt__f01.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.4061,
+      "unique_rgb_visible": 41,
+      "top_colors": [
+        {
+          "rgb": [
+            197,
+            148,
+            74
+          ],
+          "share": 0.0869
+        },
+        {
+          "rgb": [
+            148,
+            99,
+            49
+          ],
+          "share": 0.0858
+        },
+        {
+          "rgb": [
+            99,
+            49,
+            25
+          ],
+          "share": 0.0815
+        },
+        {
+          "rgb": [
+            66,
+            49,
+            33
+          ],
+          "share": 0.0812
+        },
+        {
+          "rgb": [
+            99,
+            82,
+            49
+          ],
+          "share": 0.063
+        },
+        {
+          "rgb": [
+            74,
+            16,
+            8
+          ],
+          "share": 0.0607
+        },
+        {
+          "rgb": [
+            0,
+            0,
+            0
+          ],
+          "share": 0.0585
+        },
+        {
+          "rgb": [
+            16,
+            16,
+            16
+          ],
+          "share": 0.0564
+        }
+      ],
+      "luma_mean": 64.3,
+      "luma_p90": 154.2,
+      "edge_mae": 20.2,
+      "edge_strong_ratio": 0.2757,
+      "sat_mean": 47.2
+    },
+    {
+      "cat": "monster",
+      "name": "abnova_kobolt",
+      "frame": 2,
+      "status": "ok",
+      "pack": "sprite_monster_abnova_kobolt.NPK",
+      "entry": "sprite/monster/abnova/kobolt/rollingkobolt.img",
+      "raw": "raw/monster__abnova_kobolt__f02.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.4001,
+      "unique_rgb_visible": 42,
+      "top_colors": [
+        {
+          "rgb": [
+            66,
+            49,
+            33
+          ],
+          "share": 0.1466
+        },
+        {
+          "rgb": [
+            99,
+            49,
+            25
+          ],
+          "share": 0.078
+        },
+        {
+          "rgb": [
+            197,
+            148,
+            74
+          ],
+          "share": 0.0693
+        },
+        {
+          "rgb": [
+            148,
+            99,
+            49
+          ],
+          "share": 0.0667
+        },
+        {
+          "rgb": [
+            99,
+            82,
+            49
+          ],
+          "share": 0.0632
+        },
+        {
+          "rgb": [
+            74,
+            16,
+            8
+          ],
+          "share": 0.0586
+        },
+        {
+          "rgb": [
+            16,
+            16,
+            16
+          ],
+          "share": 0.0561
+        },
+        {
+          "rgb": [
+            33,
+            25,
+            16
+          ],
+          "share": 0.0546
+        }
+      ],
+      "luma_mean": 62.0,
+      "luma_p90": 154.2,
+      "edge_mae": 18.8,
+      "edge_strong_ratio": 0.2486,
+      "sat_mean": 44.9
+    },
+    {
+      "cat": "tile",
+      "name": "mobgen_floor",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_map_breakableobject.NPK",
+      "entry": "sprite/map/breakableobject/mobgen_floor.img",
+      "raw": "raw/tile__mobgen_floor__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.1976,
+      "unique_rgb_visible": 13,
+      "top_colors": [
+        {
+          "rgb": [
+            41,
+            41,
+            58
+          ],
+          "share": 0.3247
+        },
+        {
+          "rgb": [
+            33,
+            25,
+            41
+          ],
+          "share": 0.1362
+        },
+        {
+          "rgb": [
+            16,
+            16,
+            25
+          ],
+          "share": 0.1291
+        },
+        {
+          "rgb": [
+            132,
+            74,
+            58
+          ],
+          "share": 0.1168
+        },
+        {
+          "rgb": [
+            90,
+            66,
+            82
+          ],
+          "share": 0.063
+        },
+        {
+          "rgb": [
+            239,
+            206,
+            165
+          ],
+          "share": 0.0602
+        },
+        {
+          "rgb": [
+            181,
+            156,
+            132
+          ],
+          "share": 0.0402
+        },
+        {
+          "rgb": [
+            0,
+            0,
+            0
+          ],
+          "share": 0.0358
+        }
+      ],
+      "luma_mean": 62.5,
+      "luma_p90": 160.7,
+      "edge_mae": 27.9,
+      "edge_strong_ratio": 0.3185,
+      "sat_mean": 30.0
+    },
+    {
+      "cat": "tile",
+      "name": "stonetomb",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_map_breakableobject.NPK",
+      "entry": "sprite/map/breakableobject/stonetomb.img",
+      "raw": "raw/tile__stonetomb__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.6046,
+      "unique_rgb_visible": 26,
+      "top_colors": [
+        {
+          "rgb": [
+            16,
+            8,
+            25
+          ],
+          "share": 0.1826
+        },
+        {
+          "rgb": [
+            33,
+            16,
+            41
+          ],
+          "share": 0.1554
+        },
+        {
+          "rgb": [
+            58,
+            41,
+            66
+          ],
+          "share": 0.0744
+        },
+        {
+          "rgb": [
+            74,
+            58,
+            82
+          ],
+          "share": 0.0652
+        },
+        {
+          "rgb": [
+            16,
+            8,
+            16
+          ],
+          "share": 0.0581
+        },
+        {
+          "rgb": [
+            99,
+            82,
+            107
+          ],
+          "share": 0.0561
+        },
+        {
+          "rgb": [
+            33,
+            8,
+            25
+          ],
+          "share": 0.0446
+        },
+        {
+          "rgb": [
+            156,
+            148,
+            156
+          ],
+          "share": 0.0378
+        }
+      ],
+      "luma_mean": 69.5,
+      "luma_p90": 181.0,
+      "edge_mae": 17.1,
+      "edge_strong_ratio": 0.204,
+      "sat_mean": 22.6
+    },
+    {
+      "cat": "tile",
+      "name": "stonetomb",
+      "frame": 1,
+      "status": "ok",
+      "pack": "sprite_map_breakableobject.NPK",
+      "entry": "sprite/map/breakableobject/stonetomb.img",
+      "raw": "raw/tile__stonetomb__f01.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.6224,
+      "unique_rgb_visible": 26,
+      "top_colors": [
+        {
+          "rgb": [
+            16,
+            8,
+            25
+          ],
+          "share": 0.1628
+        },
+        {
+          "rgb": [
+            247,
+            230,
+            214
+          ],
+          "share": 0.1426
+        },
+        {
+          "rgb": [
+            33,
+            16,
+            41
+          ],
+          "share": 0.126
+        },
+        {
+          "rgb": [
+            156,
+            148,
+            156
+          ],
+          "share": 0.0697
+        },
+        {
+          "rgb": [
+            181,
+            181,
+            181
+          ],
+          "share": 0.0576
+        },
+        {
+          "rgb": [
+            58,
+            41,
+            66
+          ],
+          "share": 0.0545
+        },
+        {
+          "rgb": [
+            16,
+            8,
+            16
+          ],
+          "share": 0.0506
+        },
+        {
+          "rgb": [
+            214,
+            197,
+            189
+          ],
+          "share": 0.0499
+        }
+      ],
+      "luma_mean": 100.8,
+      "luma_p90": 233.3,
+      "edge_mae": 17.6,
+      "edge_strong_ratio": 0.1811,
+      "sat_mean": 21.1
+    },
+    {
+      "cat": "tile",
+      "name": "jip",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_map_breakableobject.NPK",
+      "entry": "sprite/map/breakableobject/jip.img",
+      "raw": "raw/tile__jip__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.3083,
+      "unique_rgb_visible": 14,
+      "top_colors": [
+        {
+          "rgb": [
+            252,
+            240,
+            247
+          ],
+          "share": 0.2484
+        },
+        {
+          "rgb": [
+            0,
+            0,
+            0
+          ],
+          "share": 0.1342
+        },
+        {
+          "rgb": [
+            167,
+            168,
+            210
+          ],
+          "share": 0.1205
+        },
+        {
+          "rgb": [
+            104,
+            82,
+            71
+          ],
+          "share": 0.0913
+        },
+        {
+          "rgb": [
+            72,
+            54,
+            43
+          ],
+          "share": 0.0837
+        },
+        {
+          "rgb": [
+            231,
+            226,
+            248
+          ],
+          "share": 0.0774
+        },
+        {
+          "rgb": [
+            161,
+            157,
+            180
+          ],
+          "share": 0.0574
+        },
+        {
+          "rgb": [
+            201,
+            197,
+            217
+          ],
+          "share": 0.0562
+        }
+      ],
+      "luma_mean": 147.5,
+      "luma_p90": 244.4,
+      "edge_mae": 14.5,
+      "edge_strong_ratio": 0.1376,
+      "sat_mean": 22.1
+    },
+    {
+      "cat": "tile",
+      "name": "rollingstonepiece",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_map_breakableobject.NPK",
+      "entry": "sprite/map/breakableobject/rollingstonepiece.img",
+      "raw": "raw/tile__rollingstonepiece__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.1653,
+      "unique_rgb_visible": 5,
+      "top_colors": [
+        {
+          "rgb": [
+            181,
+            156,
+            99
+          ],
+          "share": 0.3689
+        },
+        {
+          "rgb": [
+            82,
+            49,
+            58
+          ],
+          "share": 0.2326
+        },
+        {
+          "rgb": [
+            41,
+            33,
+            41
+          ],
+          "share": 0.1987
+        },
+        {
+          "rgb": [
+            140,
+            115,
+            74
+          ],
+          "share": 0.116
+        },
+        {
+          "rgb": [
+            115,
+            82,
+            66
+          ],
+          "share": 0.0838
+        }
+      ],
+      "luma_mean": 100.3,
+      "luma_p90": 157.0,
+      "edge_mae": 7.3,
+      "edge_strong_ratio": 0.1025,
+      "sat_mean": 51.3
+    },
+    {
+      "cat": "effect",
+      "name": "fountainwaterglow",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_map_act2_fountain.NPK",
+      "entry": "sprite/map/act2/fountain/fountainwaterglow.img",
+      "raw": "raw/effect__fountainwaterglow__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.0121,
+      "unique_rgb_visible": 4,
+      "top_colors": [
+        {
+          "rgb": [
+            226,
+            226,
+            226
+          ],
+          "share": 0.6212
+        },
+        {
+          "rgb": [
+            151,
+            151,
+            151
+          ],
+          "share": 0.2374
+        },
+        {
+          "rgb": [
+            120,
+            120,
+            120
+          ],
+          "share": 0.1061
+        },
+        {
+          "rgb": [
+            136,
+            136,
+            136
+          ],
+          "share": 0.0354
+        }
+      ],
+      "luma_mean": 193.8,
+      "luma_p90": 226.0,
+      "edge_mae": 81.9,
+      "edge_strong_ratio": 0.6717,
+      "sat_mean": 0.0
+    },
+    {
+      "cat": "effect",
+      "name": "fountainwaterglow",
+      "frame": 1,
+      "status": "ok",
+      "pack": "sprite_map_act2_fountain.NPK",
+      "entry": "sprite/map/act2/fountain/fountainwaterglow.img",
+      "raw": "raw/effect__fountainwaterglow__f01.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.0188,
+      "unique_rgb_visible": 5,
+      "top_colors": [
+        {
+          "rgb": [
+            226,
+            226,
+            226
+          ],
+          "share": 0.6494
+        },
+        {
+          "rgb": [
+            120,
+            120,
+            120
+          ],
+          "share": 0.2273
+        },
+        {
+          "rgb": [
+            151,
+            151,
+            151
+          ],
+          "share": 0.1006
+        },
+        {
+          "rgb": [
+            136,
+            136,
+            136
+          ],
+          "share": 0.0195
+        },
+        {
+          "rgb": [
+            75,
+            75,
+            75
+          ],
+          "share": 0.0032
+        }
+      ],
+      "luma_mean": 192.1,
+      "luma_p90": 226.0,
+      "edge_mae": 79.0,
+      "edge_strong_ratio": 0.5958,
+      "sat_mean": 0.0
+    },
+    {
+      "cat": "effect",
+      "name": "fountainparticles",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_map_act2_fountain.NPK",
+      "entry": "sprite/map/act2/fountain/fountainparticles.img",
+      "raw": "raw/effect__fountainparticles__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.0423,
+      "unique_rgb_visible": 10,
+      "top_colors": [
+        {
+          "rgb": [
+            74,
+            66,
+            99
+          ],
+          "share": 0.2554
+        },
+        {
+          "rgb": [
+            189,
+            115,
+            123
+          ],
+          "share": 0.202
+        },
+        {
+          "rgb": [
+            230,
+            173,
+            140
+          ],
+          "share": 0.1255
+        },
+        {
+          "rgb": [
+            140,
+            90,
+            123
+          ],
+          "share": 0.1227
+        },
+        {
+          "rgb": [
+            255,
+            247,
+            222
+          ],
+          "share": 0.0779
+        },
+        {
+          "rgb": [
+            239,
+            206,
+            148
+          ],
+          "share": 0.0649
+        },
+        {
+          "rgb": [
+            49,
+            49,
+            82
+          ],
+          "share": 0.0592
+        },
+        {
+          "rgb": [
+            148,
+            132,
+            140
+          ],
+          "share": 0.0476
+        }
+      ],
+      "luma_mean": 132.1,
+      "luma_p90": 209.3,
+      "edge_mae": 22.7,
+      "edge_strong_ratio": 0.3557,
+      "sat_mean": 53.9
+    },
+    {
+      "cat": "effect",
+      "name": "fountainparticles",
+      "frame": 1,
+      "status": "ok",
+      "pack": "sprite_map_act2_fountain.NPK",
+      "entry": "sprite/map/act2/fountain/fountainparticles.img",
+      "raw": "raw/effect__fountainparticles__f01.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.037,
+      "unique_rgb_visible": 9,
+      "top_colors": [
+        {
+          "rgb": [
+            74,
+            66,
+            99
+          ],
+          "share": 0.2574
+        },
+        {
+          "rgb": [
+            148,
+            132,
+            140
+          ],
+          "share": 0.2327
+        },
+        {
+          "rgb": [
+            189,
+            115,
+            123
+          ],
+          "share": 0.1254
+        },
+        {
+          "rgb": [
+            230,
+            173,
+            140
+          ],
+          "share": 0.1139
+        },
+        {
+          "rgb": [
+            239,
+            214,
+            165
+          ],
+          "share": 0.1056
+        },
+        {
+          "rgb": [
+            99,
+            90,
+            107
+          ],
+          "share": 0.0776
+        },
+        {
+          "rgb": [
+            255,
+            247,
+            222
+          ],
+          "share": 0.0479
+        },
+        {
+          "rgb": [
+            140,
+            90,
+            123
+          ],
+          "share": 0.0297
+        }
+      ],
+      "luma_mean": 136.1,
+      "luma_p90": 215.9,
+      "edge_mae": 36.8,
+      "edge_strong_ratio": 0.5,
+      "sat_mean": 44.5
+    },
+    {
+      "cat": "effect",
+      "name": "ob_light",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_map_breakableobject.NPK",
+      "entry": "sprite/map/breakableobject/chn_event_doll_ob_light.img",
+      "raw": "raw/effect__ob_light__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.1075,
+      "unique_rgb_visible": 107,
+      "top_colors": [
+        {
+          "rgb": [
+            239,
+            238,
+            158
+          ],
+          "share": 0.0528
+        },
+        {
+          "rgb": [
+            224,
+            223,
+            107
+          ],
+          "share": 0.046
+        },
+        {
+          "rgb": [
+            255,
+            255,
+            208
+          ],
+          "share": 0.0409
+        },
+        {
+          "rgb": [
+            185,
+            184,
+            61
+          ],
+          "share": 0.0329
+        },
+        {
+          "rgb": [
+            105,
+            61,
+            23
+          ],
+          "share": 0.0227
+        },
+        {
+          "rgb": [
+            105,
+            75,
+            25
+          ],
+          "share": 0.0216
+        },
+        {
+          "rgb": [
+            105,
+            63,
+            23
+          ],
+          "share": 0.0204
+        },
+        {
+          "rgb": [
+            105,
+            79,
+            26
+          ],
+          "share": 0.0159
+        }
+      ],
+      "luma_mean": 102.8,
+      "luma_p90": 229.2,
+      "edge_mae": 6.9,
+      "edge_strong_ratio": 0.0556,
+      "sat_mean": 79.9
+    },
+    {
+      "cat": "effect",
+      "name": "timespiral_particle",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_map_breakableobject.NPK",
+      "entry": "sprite/map/breakableobject/timespiral_particle.img",
+      "raw": "raw/effect__timespiral_particle__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.1428,
+      "unique_rgb_visible": 21,
+      "top_colors": [
+        {
+          "rgb": [
+            49,
+            41,
+            41
+          ],
+          "share": 0.2248
+        },
+        {
+          "rgb": [
+            173,
+            181,
+            156
+          ],
+          "share": 0.1739
+        },
+        {
+          "rgb": [
+            107,
+            66,
+            33
+          ],
+          "share": 0.0927
+        },
+        {
+          "rgb": [
+            255,
+            255,
+            239
+          ],
+          "share": 0.0778
+        },
+        {
+          "rgb": [
+            33,
+            33,
+            33
+          ],
+          "share": 0.0697
+        },
+        {
+          "rgb": [
+            214,
+            140,
+            58
+          ],
+          "share": 0.0688
+        },
+        {
+          "rgb": [
+            107,
+            107,
+            90
+          ],
+          "share": 0.047
+        },
+        {
+          "rgb": [
+            74,
+            66,
+            66
+          ],
+          "share": 0.0432
+        }
+      ],
+      "luma_mean": 118.8,
+      "luma_p90": 212.1,
+      "edge_mae": 25.6,
+      "edge_strong_ratio": 0.362,
+      "sat_mean": 41.4
+    },
+    {
+      "cat": "effect",
+      "name": "timespiral_particle",
+      "frame": 1,
+      "status": "ok",
+      "pack": "sprite_map_breakableobject.NPK",
+      "entry": "sprite/map/breakableobject/timespiral_particle.img",
+      "raw": "raw/effect__timespiral_particle__f01.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.1102,
+      "unique_rgb_visible": 26,
+      "top_colors": [
+        {
+          "rgb": [
+            49,
+            41,
+            41
+          ],
+          "share": 0.1961
+        },
+        {
+          "rgb": [
+            173,
+            181,
+            156
+          ],
+          "share": 0.1363
+        },
+        {
+          "rgb": [
+            33,
+            33,
+            33
+          ],
+          "share": 0.1357
+        },
+        {
+          "rgb": [
+            214,
+            140,
+            58
+          ],
+          "share": 0.1224
+        },
+        {
+          "rgb": [
+            107,
+            66,
+            33
+          ],
+          "share": 0.0986
+        },
+        {
+          "rgb": [
+            132,
+            132,
+            115
+          ],
+          "share": 0.0493
+        },
+        {
+          "rgb": [
+            74,
+            66,
+            66
+          ],
+          "share": 0.0465
+        },
+        {
+          "rgb": [
+            107,
+            107,
+            90
+          ],
+          "share": 0.0454
+        }
+      ],
+      "luma_mean": 101.9,
+      "luma_p90": 175.8,
+      "edge_mae": 25.7,
+      "edge_strong_ratio": 0.3488,
+      "sat_mean": 45.4
+    },
+    {
+      "cat": "prop",
+      "name": "treasurebox",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_map_breakableobject.NPK",
+      "entry": "sprite/map/breakableobject/treasurebox.img",
+      "raw": "raw/prop__treasurebox__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.2487,
+      "unique_rgb_visible": 11,
+      "top_colors": [
+        {
+          "rgb": [
+            197,
+            107,
+            41
+          ],
+          "share": 0.228
+        },
+        {
+          "rgb": [
+            222,
+            148,
+            49
+          ],
+          "share": 0.16
+        },
+        {
+          "rgb": [
+            123,
+            33,
+            33
+          ],
+          "share": 0.151
+        },
+        {
+          "rgb": [
+            156,
+            49,
+            41
+          ],
+          "share": 0.1195
+        },
+        {
+          "rgb": [
+            132,
+            58,
+            16
+          ],
+          "share": 0.1041
+        },
+        {
+          "rgb": [
+            90,
+            25,
+            16
+          ],
+          "share": 0.0724
+        },
+        {
+          "rgb": [
+            82,
+            33,
+            8
+          ],
+          "share": 0.0476
+        },
+        {
+          "rgb": [
+            41,
+            8,
+            8
+          ],
+          "share": 0.0447
+        }
+      ],
+      "luma_mean": 96.5,
+      "luma_p90": 158.8,
+      "edge_mae": 19.8,
+      "edge_strong_ratio": 0.2623,
+      "sat_mean": 122.3
+    },
+    {
+      "cat": "prop",
+      "name": "barrel",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_map_breakableobject.NPK",
+      "entry": "sprite/map/breakableobject/barrel.img",
+      "raw": "raw/prop__barrel__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.2436,
+      "unique_rgb_visible": 12,
+      "top_colors": [
+        {
+          "rgb": [
+            156,
+            115,
+            82
+          ],
+          "share": 0.1401
+        },
+        {
+          "rgb": [
+            16,
+            8,
+            8
+          ],
+          "share": 0.1386
+        },
+        {
+          "rgb": [
+            189,
+            140,
+            82
+          ],
+          "share": 0.1265
+        },
+        {
+          "rgb": [
+            90,
+            99,
+            74
+          ],
+          "share": 0.1228
+        },
+        {
+          "rgb": [
+            49,
+            58,
+            41
+          ],
+          "share": 0.117
+        },
+        {
+          "rgb": [
+            115,
+            74,
+            49
+          ],
+          "share": 0.1055
+        },
+        {
+          "rgb": [
+            66,
+            41,
+            25
+          ],
+          "share": 0.104
+        },
+        {
+          "rgb": [
+            132,
+            148,
+            115
+          ],
+          "share": 0.1035
+        }
+      ],
+      "luma_mean": 89.1,
+      "luma_p90": 148.0,
+      "edge_mae": 19.6,
+      "edge_strong_ratio": 0.3428,
+      "sat_mean": 46.8
+    },
+    {
+      "cat": "prop",
+      "name": "fountain",
+      "frame": 0,
+      "status": "ok",
+      "pack": "sprite_map_act2_fountain.NPK",
+      "entry": "sprite/map/act2/fountain/fountain2.img",
+      "raw": "raw/prop__fountain__f00.png",
+      "size": [
+        128,
+        128
+      ],
+      "alpha_coverage": 0.4567,
+      "unique_rgb_visible": 44,
+      "top_colors": [
+        {
+          "rgb": [
+            189,
+            255,
+            239
+          ],
+          "share": 0.0644
+        },
+        {
+          "rgb": [
+            123,
+            197,
+            206
+          ],
+          "share": 0.0607
+        },
+        {
+          "rgb": [
+            99,
+            156,
+            181
+          ],
+          "share": 0.0557
+        },
+        {
+          "rgb": [
+            148,
+            132,
+            140
+          ],
+          "share": 0.0549
+        },
+        {
+          "rgb": [
+            25,
+            16,
+            41
+          ],
+          "share": 0.0547
+        },
+        {
+          "rgb": [
+            74,
+            66,
+            99
+          ],
+          "share": 0.0547
+        },
+        {
+          "rgb": [
+            99,
+            90,
+            107
+          ],
+          "share": 0.0531
+        },
+        {
+          "rgb": [
+            49,
+            41,
+            58
+          ],
+          "share": 0.0517
+        }
+      ],
+      "luma_mean": 135.8,
+      "luma_p90": 233.4,
+      "edge_mae": 33.0,
+      "edge_strong_ratio": 0.4119,
+      "sat_mean": 46.8
+    }
+  ],
+  "categories": [
+    "character",
+    "effect",
+    "monster",
+    "prop",
+    "tile"
+  ]
+}

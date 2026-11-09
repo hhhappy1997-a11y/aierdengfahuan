@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-133602-490",
+  "from": "总指挥",
+  "target": "3",
+  "task": "[ROUND=R23] 【R23 · Rank-3 契约口径与 README 合规登记】用户拍板新素材口径与 DNF 合规边界，本轮落到文档真源：① 改 teamwork/00-协作契约.md 的 I-5 规格：色数由 ≤256 放宽为「256 色以上」、128px 基准画布不变、`128bit` 歧义显式保留待用户确认、RGBA/alpha 保留、零付费、DNF 资源仅本机开发参考且不得进 pck / exe / apk；同步改 00-汇总.md §6.2 的待确认项；② 更新 F:/Game/aierdengfahuan/README.md 资产表：新增 R23 素材条目（来源 ComfyUI 本地 / 128px / ≥256 色）与「本机可选素材源：DNF NPK 仅参考」合规说明，标明 published_in_pck:false、参考目录 .gdignore；③ 写 teamwork/Rank-3/DNF-COMPLIANCE-R23.md 合规登记（版权归 Neople/腾讯、仅本机、不进发布包、不随仓库分发可识别商业贴片）；④ 真跑 R21/R22 的 31 PASS 存档与 HUD 回归不回退 + 三段门禁 grep SCRIPT ERROR=0；⑤ 只写 00-协作契约.md / 00-汇总.md §6.2 / README.md / teamwork/Rank-3/；不改 courtyard.tscn、project.godot、素材目录、其它 Rank 文档。\n【本轮公共契约 · godogen + game-studio 纪律迁移】用户选 Godot 主线，不新建 game-studio HTML 小游戏；只借用其「换素材 → 构建 → 试玩 → 目视回看 → 交付」闭环：素材/场景改动一律三段门禁 --headless --import → --check-only --script → --headless --quit 且 grep SCRIPT ERROR=0，再用 Movie Maker 抓帧 + ViewImage 真看，用画面判断进度而非 clean build。零付费、不引入任何付费素材生成服务、一次只跑一个 GPU 任务；DNF 贴片仅本机风格参考、绝不进发布包；直接改直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；不伪造产物、不谎报成功、不自行 git。完成后写 teamwork/Rank-3/DONE-R23.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/3/outbox/<id>.json （不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":3,\"status\":\"done\",\"result\":\"引用 DONE-R23.md 实际结论\"}。\n【目录所有权】godot/assets/generated/r23/ 与 teamwork/Rank-4/ 归 Rank-4；courtyard.tscn 与渲染脚本归 Rank-1；teamwork/Rank-2/ 归 Rank-2；00-协作契约.md / 00-汇总.md §6.2 / README.md / teamwork/Rank-3/ 归 Rank-3；本轮无人写 project.godot。",
+  "priority": "high",
+  "note": "GUI 下达"
+}
