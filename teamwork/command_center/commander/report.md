@@ -1,10 +1,14 @@
 # 总指挥战报
 
-生成时间：2026-11-09 09:24:14  
+生成时间：2026-11-09 09:48:12  
 调度中枢 v1.0.0  |  空间：`F:\Game\aierdengfahuan\teamwork\command_center`
 
 | 任务 ID | 目标 | 任务 | 状态 | 派发 | 完成 | 结果 |
 | --- | --- | --- | --- | --- | --- | --- |
+| cmd-20261109-093050-722-A4 | 4号 | [ROUND=R17] 【R17 · Rank-4 光效档位验证】写 `godot/scripts/verify_fx_ | done | 2026-11-09 09:30:51 | 2026-11-09 09:43:08 | R17 完成：编写 godot/scripts/verify_fx_profile.gd（extends SceneTr |
+| cmd-20261109-093050-719-A3 | 3号 | [ROUND=R17] 【R17 · Rank-3 HUD flag 绑定真跑】写 `godot/scripts/ver | done | 2026-11-09 09:30:51 | 2026-11-09 09:48:12 | 引用 DONE-R17.md 实际结论：MODE=AUTOLOAD_OK，未降级（degraded=false）。/ro |
+| cmd-20261109-093050-716-A2 | 2号 | [ROUND=R17] 【R17 · Rank-2 Boss 阶段切换】写 `godot/scripts/verify_ | done | 2026-11-09 09:30:51 | 2026-11-09 09:36:55 | 引用 DONE-R17.md 实际结论 |
+| cmd-20261109-093050-714-A1 | 1号 | [ROUND=R17] 【R17 光效挂载 · Rank-1】本轮**只有你写 `godot/scenes/courty | done | 2026-11-09 09:30:51 | 2026-11-09 09:41:50 | 见 DONE-R17.md：attach_fx_r17.gd 真跑 EXIT=0/verify_ok=true，HD2D |
 | cmd-20261109-085736-029-A4 | 4号 | [ROUND=R16] 【R16 · Rank-4 实现 HD-2D 光效独立场景】按 `Rank-4/HD2D-FX- | done | 2026-11-09 08:57:36 | 2026-11-09 09:06:14 | 引用 teamwork/Rank-4/DONE-R16.md 实际结论：R16 主任务闭环——实现独立可挂载 HD-2D |
 | cmd-20261109-085736-027-A3 | 3号 | [ROUND=R16] 【R16 · Rank-3 实现 hud.gd】按 `Rank-3/HUD-BINDING.md | done | 2026-11-09 08:57:36 | 2026-11-09 09:09:42 | 引用 DONE-R16.md 实际结论 |
 | cmd-20261109-085736-024-A2 | 2号 | [ROUND=R16] 【R16 · Rank-2 战斗运行期扩展】写 `godot/scripts/verify_co | done | 2026-11-09 08:57:36 | 2026-11-09 09:15:20 | 引用 DONE-R16.md 的实际结论：[ROUND=R16] 写 godot/scripts/verify_comb |
@@ -63,9 +67,9 @@
 
 ## 1-4 号 AI 状态
 
-- **Rank-1 引擎架构与渲染**：idle ｜ 累计完成 22 ｜ 当前任务 无 ｜ 最后活动 2026-11-09 09:24:14
-- **Rank-2 战斗系统与数据驱动**：idle ｜ 累计完成 18 ｜ 当前任务 无 ｜ 最后活动 2026-11-09 09:15:20
-- **Rank-3 RPG/世界/存档**：idle ｜ 累计完成 18 ｜ 当前任务 无 ｜ 最后活动 2026-11-09 09:09:42
-- **Rank-4 美术管线与工具链**：idle ｜ 累计完成 20 ｜ 当前任务 无 ｜ 最后活动 2026-11-09 09:06:14
+- **Rank-1 引擎架构与渲染**：idle ｜ 累计完成 23 ｜ 当前任务 无 ｜ 最后活动 2026-11-09 09:41:50
+- **Rank-2 战斗系统与数据驱动**：idle ｜ 累计完成 19 ｜ 当前任务 无 ｜ 最后活动 2026-11-09 09:36:55
+- **Rank-3 RPG/世界/存档**：idle ｜ 累计完成 19 ｜ 当前任务 无 ｜ 最后活动 2026-11-09 09:48:12
+- **Rank-4 美术管线与工具链**：idle ｜ 累计完成 21 ｜ 当前任务 无 ｜ 最后活动 2026-11-09 09:43:08
 
 > 回执写法：在 `ai/N/outbox/` 放入 JSON：`{"task_id":"任务ID","ai":N,"status":"done","result":"执行结果"}`

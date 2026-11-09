@@ -8,6 +8,7 @@
 [ext_resource type="Material" path="res://assets/generated/terrain/ground_tile_mat_high.tres" id="3_tihrx"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="4_6e1c7"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="5_l1iq4"]
+[ext_resource type="PackedScene" path="res://scenes/hd2d_fx.tscn" id="8_p30c5"]
 
 [sub_resource type="Environment" id="Environment_e34af"]
 background_mode = 1
@@ -118,6 +119,9 @@ visible = false
 
 [node name="Hud" type="CanvasLayer" parent="SubViewportContainer/SubViewport/FXLayer" unique_id=1276405765 instance=ExtResource("4_6e1c7")]
 script = ExtResource("5_l1iq4")
+
+[node name="HD2DFX" type="CanvasLayer" parent="SubViewportContainer/SubViewport" unique_id=80156914 instance=ExtResource("8_p30c5")]
+layer = 10
 
 [node name="HD2DPlaceholderLayer" type="CanvasLayer" parent="." unique_id=1016476096]
 layer = -10

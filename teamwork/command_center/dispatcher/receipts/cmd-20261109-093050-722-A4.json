@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-093050-722-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "R17 完成：编写 godot/scripts/verify_fx_profile.gd（extends SceneTree），真跑实例化 hd2d_fx.tscn（CACHE_MODE_IGNORE 加载 + instantiate + 加入场景树并等待首帧触发 4 个 FX 节点 _ready()，实证 inst_inside_tree=true 且四节点 ready=true），用公共入口 set_fx_profile() 把 FXReflection/FXGodRays/FXMotes/FXBloom 分别切到 desktop 与 mobile，逐项回读 visible/_all_on/fx_profile/texture_filter，共 34 项校验全 PASS（pass=34 fail=0，RESULT=PASS）：desktop 四项全开（visible=true/_all_on=true/fx_profile=desktop）、mobile 四项全关（visible=false/_all_on=false/fx_profile=mobile），texture_filter 两档均为 CanvasItem.TEXTURE_FILTER_NEAREST(=1)。三段门禁 G1 --import / G2 --check-only --script verify_fx_profile.gd / G3 --quit 实际 EXIT 全 0，另含 RUN 真跑 EXIT=0；完整实际 stdout 见 DONE-R17.md §2.2。courtyard.tscn sha256 PRE=POST=306b2467ca0a6290639693b1c7e2b4b66f1b55dada2d05ad0bf8d08ff2300fe3，本工位零写入、未碰该文件（Rank-1 独占）。交付件 verify_fx_profile.gd 6625 B / sha256 4f48d67ca92524b3… / utf8_ok=True has_cjk=True；2 条 WARNING（ChunkManager autoload + ObjectDB leaked）为工程既有非阻塞，首版 ready=false 的修正过程均如实登记。边界：本轮为档位程序化验证，独立场景仍未挂主场景（R17 由 Rank-1 接入）、未运行期抓帧 / 未验收画面；未完成项与阻塞详见 teamwork/Rank-4/DONE-R17.md 实际结论。"
+}

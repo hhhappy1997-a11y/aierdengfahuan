@@ -1,11 +1,11 @@
 {
-  "id": "cmd-20261109-085736-024-A2",
-  "command_id": "cmd-20261109-085736-024",
+  "id": "cmd-20261109-093050-716-A2",
+  "command_id": "cmd-20261109-093050-716",
   "ai": 2,
   "from": "总指挥",
-  "task": "[ROUND=R16] 【R16 · Rank-2 战斗运行期扩展】写 `godot/scripts/verify_combat_runtime.gd`（`extends SceneTree`），真跑加载 `godot/data/combat/boss_01_margit.tres` 与 `player_actions.tres`，核对 `load_steps`/ext 引用、二阶段与三招的数值字段能被引擎读取，并打印实际 stdout 与 PASS/FAIL；不碰 courtyard.tscn、不改战斗数值、只写脚本与 `Rank-2/DONE-R16.md`、回执。",
+  "task": "[ROUND=R17] 【R17 · Rank-2 Boss 阶段切换】写 `godot/scripts/verify_boss_phase.gd`（`extends SceneTree`），真跑实例化 `boss_01_margit.tscn`，按 `p1_` 前缀两招 → `p2_` 前缀一招模拟阶段切换，逐次设置 `AnimatedSprite2D.animation` 并回读；核对 `HybridSpriteRig._resolve_full_pose()` 的 `pose_prefix` 拼接与 `FROZEN_POSES` 校验通过，打印实际 stdout 与 PASS/FAIL。不碰 courtyard.tscn、不改战斗数值。完成写 `Rank-2/DONE-R17.md` 与回执。",
   "priority": "normal",
   "note": "GUI 下达",
-  "issued_at": "2026-11-09 08:57:36",
-  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-085736-024-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
+  "issued_at": "2026-11-09 09:30:51",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-093050-716-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
 }

@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-093050-716",
+  "from": "总指挥",
+  "target": "2",
+  "task": "[ROUND=R17] 【R17 · Rank-2 Boss 阶段切换】写 `godot/scripts/verify_boss_phase.gd`（`extends SceneTree`），真跑实例化 `boss_01_margit.tscn`，按 `p1_` 前缀两招 → `p2_` 前缀一招模拟阶段切换，逐次设置 `AnimatedSprite2D.animation` 并回读；核对 `HybridSpriteRig._resolve_full_pose()` 的 `pose_prefix` 拼接与 `FROZEN_POSES` 校验通过，打印实际 stdout 与 PASS/FAIL。不碰 courtyard.tscn、不改战斗数值。完成写 `Rank-2/DONE-R17.md` 与回执。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}
