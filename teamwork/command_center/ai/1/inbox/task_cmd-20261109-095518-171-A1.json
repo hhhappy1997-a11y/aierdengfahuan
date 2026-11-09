@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-095518-171-A1",
+  "command_id": "cmd-20261109-095518-171",
+  "ai": 1,
+  "from": "总指挥",
+  "task": "[ROUND=R18] 【R18 分档接线 · Rank-1】本轮**只有你写 `godot/scenes/courtyard.tscn`**。写 `godot/scripts/wire_profile_r18.gd`（`extends SceneTree`，幂等）：① 备份 courtyard.tscn 到 `_archived_20261108/courtyard.tscn.bak-pre-r18`；② 实例化后找到 `HD2DFX` 实例，把桌面/移动画质档位（`quality_preset_desktop.tres`/`quality_preset_mobile.tres`）与 `fx_profile` 建立可切换接线（可通过读取 quality preset 的 `resolution` 或写一份 `Rank-1/FX-PROFILE-WIRING.md` 说明并在场景里给 HD2DFX 设一个 `fx_profile` 默认值 / 元数据；**只做能真跑验证的改动**）；③ 节点数保持 24，pack 前/后比对 + `CACHE_MODE_IGNORE` 回读；④ 三段门禁 + 抓帧 `F:/Game/aierdengfahuan/capture/r18_scene.png`（绝对路径+.png）。完成写 `Rank-1/DONE-R18.md` 与回执到 `teamwork/command_center/ai/1/outbox/`。零付费、不伪造输出、不自行 git。",
+  "priority": "normal",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 09:55:19",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-095518-171-A1\",\"ai\":1,\"status\":\"done\",\"result\":\"...\"}"
+}

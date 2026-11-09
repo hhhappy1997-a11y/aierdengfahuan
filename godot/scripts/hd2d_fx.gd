@@ -1,16 +1,21 @@
 extends Node2D
-## R16 · 独立可挂载 HD-2D 光效节点（程序化 _draw() · 零外部素材）
-## 派单：cmd-20261109-085736-029-A4 · [ROUND=R16] · 工位 Rank-4
+## R18 · 独立可挂载 HD-2D 光效节点（程序化 _draw() · 零外部素材）
+## 派单：cmd-20261109-095518-176-A4 · [ROUND=R18] · 工位 Rank-4
+## 精修（在 R16 独立场景 / R17 由 Rank-1 挂进主场景的基础上，只改本 .gd）：
+##   ① 暖金体积光扇形 4→6 层、峰值 alpha 保持 0.18 不糊画面、补中心高光带（柔核+亮核）；
+##   ② 倒影改垂直镜像近似：2×2 半透明色块向下翻转 + 压缩 0.85 + 深度渐隐 + 逐行波纹，
+##      不再是被地面横砖淹没成的「一条水平亮线」；
+##   ③ 光尘绘制时按 HUD 屏幕矩形（约 x<730、y<220）逐粒跳过，避免面板被点状遮挡；
+##   ④ fx_profile desktop/mobile 档位开关与 texture_filter=Nearest 冻结口径不变。
 ##
 ## 定位：把 HD2D-FX-PLAN.md §3 的四项 2D 程序化光效（湿地倒影 / 体积光 / 光尘 /
-##       bloom）从「焊死在占位层单节点」外提为独立 CanvasLayer 场景里的光效节点。
-##       本轮只交付独立场景 hd2d_fx.tscn，不碰 courtyard.tscn（Rank-1 独占），
-##       R17 由 Rank-1 挂进主场景。
+##       bloom）外提为独立 CanvasLayer 场景里的光效节点。R17 已由 Rank-1 把
+##       hd2d_fx.tscn 挂进 courtyard.tscn；本轮不碰主场景（Rank-1 独占）。
 ##
 ## 四项原语（均落在 _draw() 内，零 PNG / 零贴图 / 零插件 / 零云服务 / 零付费 API）：
-##   · 倒影   draw_rect()     垂直镜像 + 压缩 0.70 + 逐行波纹（§3.3 / 占位 step6）
-##   · 体积光 draw_colored_polygon()（draw_polygon 家族）+ draw_line() 中心高光（§3.1 / step5）
-##   · 光尘   draw_circle()   远景冷白 48 + 近景暖金 32，seed=20261108 固定（§3.2 / step5+8）
+##   · 倒影   draw_rect()     垂直镜像色块 + 压缩 + 逐行波纹 + 深度渐隐（§3.3 / 占位 step6）
+##   · 体积光 draw_colored_polygon() ×6 + draw_line() 中心高光（§3.1 / step5）
+##   · 光尘   draw_circle()   远景冷白 48 + 近景暖金 32，seed=20261108 固定，HUD 区避让（§3.2）
 ##   · bloom  draw_circle()   同心圆 ×5 + 暖金核心，仅 warm_gold_key 过阈（§3.4 / step8）
 ##
 ## 档位开关：fx_profile = "desktop" 四项全开 / "mobile" 四项全关
@@ -18,7 +23,7 @@ extends Node2D
 ##   §4.3「移动档降级而非全关」是待裁决建议，本轮不擅自实现（沿用 R15 登记）。
 ##
 ## 约束：ComfyUI 仍是主美术路线，本脚本是零外部依赖的 2D 程序化兜底，不取代主路线、
-##       不宣称已能出图 / 已实现 3D 后处理 / 已抓帧验收画面；中文 UTF-8；Godot 4 合法语法。
+##       不宣称已能出图 / 已实现 3D 后处理；中文 UTF-8；Godot 4 合法语法。
 ##       实体坐标 round() 到整数、禁亚像素；Nearest 过滤；不改运行中 hd2d_placeholder.gd。
 
 # ---------------------------------------------------------------------------
@@ -42,6 +47,27 @@ var _on_reflection: bool = true
 var _on_godrays: bool = true
 var _on_motes: bool = true
 var _on_bloom: bool = true
+
+# ---------------------------------------------------------------------------
+# R18 精修参数（普通成员，供 build_fx_r18_verify.gd 运行期 get() 回读；零外部素材）
+# ---------------------------------------------------------------------------
+# ① 体积光：层数 4→6（径向衰减更细腻），扇形峰值 alpha 保持 0.18 不抬高以免糊画面；
+#    另以中心高光带（柔核 + 亮核）强化暖金主光方向。
+var godray_layers: int = 6
+var godray_alpha: Array[float] = [0.18, 0.14, 0.10, 0.07, 0.045, 0.025]
+var godray_spread_base: float = 40.0
+var godray_spread_step: float = 30.0
+# ② 倒影：垂直镜像 2×2 半透明色块（连成轮廓）+ 压缩 0.85 向下延伸 + 深度渐隐 + 逐行波纹。
+var reflection_squash: float = 0.85
+var reflection_alpha: float = 0.42
+var reflection_fade: float = 0.55
+var reflection_block_px: float = 2.0
+var reflection_ripple: float = 0.035
+# ③ 光尘 HUD 避让：屏幕坐标矩形（约 x<730、y<220），绘制时逐粒跳过。
+#    FX 与 HUD 同处 SubViewport(640×360) 逻辑坐标，画布经 stretch_shrink=2 放大到 1280×720。
+var hud_avoid_screen_w: float = 730.0
+var hud_avoid_screen_h: float = 220.0
+var logical_to_screen: float = 2.0
 
 # 倒影源：与 hd2d_placeholder.gd 一致的 32×32 像素实体色板索引阵列（内联常量，零外部素材）
 # 锚点 (16,31)：脚底像素位于 py=31；字符 '0'-'9'/'a'-'f' -> 色板索引 0..15，'.' = 透明。
@@ -213,52 +239,82 @@ func _collect_entity_blocks() -> Array[Dictionary]:
 
 
 # ---------------------------------------------------------------------------
-# ① 湿地倒影：镜像 draw_rect()（HD2D-FX-PLAN.md §3.3 / 占位 step6）
+# R18 ③ 光尘 HUD 避让：逻辑坐标 → 屏幕坐标判定（约 x<730、y<220）
+#   FX / HUD 同处 SubViewport(640×360)，stretch_shrink=2 放大到 1280×720；
+#   光尘会绘制在 HUD 之上（HD2DFX 与 Hud 同 layer=10、树序靠后），故绘制时逐粒跳过。
+# ---------------------------------------------------------------------------
+func _is_hud_avoid(logical_x: float, logical_y: float) -> bool:
+	return (logical_x * logical_to_screen < hud_avoid_screen_w) \
+		and (logical_y * logical_to_screen < hud_avoid_screen_h)
+
+
+# ---------------------------------------------------------------------------
+# ① 湿地倒影：垂直镜像 2×2 半透明色块（HD2D-FX-PLAN.md §3.3 / 占位 step6）
+#    R18：源块关于 GROUND_Y 向下翻转 + 压缩到脚下 + 深度渐隐 + 逐行波纹，
+#         画成连片的镜像色块，而非 1×1 点被地面横砖淹没成的一条水平亮线。
 # ---------------------------------------------------------------------------
 func _draw_reflection(t: float) -> void:
 	var blocks := _collect_entity_blocks()
+	var cx := BUFFER_W * 0.5
+	# 水面基底：2 条极淡横向波纹（仅作湿地反光质感，主体是下方镜像色块）
+	for k in range(2):
+		var wy := float(round(GROUND_Y + 7.0 + float(k) * 16.0))
+		draw_line(Vector2(cx - 26.0, wy), Vector2(cx + 26.0, wy),
+				_c("#BFD0EA", 0.05), 1.0)
 	for b in blocks:
 		var sy: float = float(b["y"])
-		var y_mirror := 2.0 * GROUND_Y - sy - 1.0             # 脚底 Y 对齐的垂直镜像
-		var y_ref := GROUND_Y + (y_mirror - GROUND_Y) * 0.70  # 高度压缩 0.70
-		var ripple_dx := sin(t + y_ref) * 0.03 * BUFFER_W     # 逐行横向错位模拟水波
-		# 倒影是半透明减色，用普通 Mix（非 Add）；alpha 0.35 冻结值
-		draw_rect(Rect2(float(round(float(b["x"]) + ripple_dx)), float(round(y_ref)), 1.0, 1.0),
-				_c_palette_alpha(int(b["idx"]), 0.35))
+		# 垂直镜像：源块在 GROUND_Y 之上，关于 GROUND_Y 向下翻转
+		var y_mirror := 2.0 * GROUND_Y - sy - 1.0
+		# 压缩后落在 GROUND_Y 之下（向下延伸成镜像色块）
+		var y_ref := GROUND_Y + (y_mirror - GROUND_Y) * reflection_squash
+		# 深度衰减：离脚底越远越淡（水面吸收），脚底最清晰
+		var depth := clampf((y_ref - GROUND_Y) / (31.0 * reflection_squash), 0.0, 1.0)
+		var alpha := reflection_alpha * (1.0 - reflection_fade * depth)
+		# 逐行横向错位 → 水波（相位含 y_ref，行与行错开）
+		var ripple_dx := sin(t * 1.4 + y_ref * 0.35) * reflection_ripple * BUFFER_W
+		# 2×2 半透明色块连成镜像轮廓（普通 Mix 减色，非 Add）
+		draw_rect(Rect2(float(round(float(b["x"]) + ripple_dx)), float(round(y_ref)),
+					reflection_block_px, reflection_block_px),
+				_c_palette_alpha(int(b["idx"]), alpha))
 
 
 # ---------------------------------------------------------------------------
-# ② 体积光：draw_colored_polygon（draw_polygon 家族）+ draw_line 中心高光
-#    （HD2D-FX-PLAN.md §3.1 / 占位 step5）
+# ② 体积光：draw_colored_polygon ×6 + draw_line 中心高光（HD2D-FX-PLAN.md §3.1 / step5）
+#    R18：层数 4→6、spread 递进更密、峰值 alpha 保持 0.18 不抬高（不糊画面），
+#         另补「柔核 + 亮核」两道暖金中心高光带强化主光方向。
 # ---------------------------------------------------------------------------
 func _draw_godrays(_t: float) -> void:
-	var godray_alpha: Array[float] = [0.18, 0.12, 0.07, 0.04]
 	var bottom := GROUND_Y + 30.0
-	for i in range(godray_alpha.size()):
-		var spread := 40.0 + float(i) * 46.0                  # 40 / 86 / 132 / 178
+	for i in range(godray_layers):
+		var spread := godray_spread_base + float(i) * godray_spread_step
 		var poly := PackedVector2Array([
 			LIGHT_POS,
 			Vector2(LIGHT_POS.x - spread, bottom),
 			Vector2(LIGHT_POS.x + spread, bottom)
 		])
-		# _draw() 无逐调用 Add 混合参数，用低 alpha 多次叠加近似径向光束衰减；
-		# draw_colored_polygon 是 draw_polygon 的单色便捷形式（占位 step5 已验证合法）
+		# _draw() 无逐调用 Add 混合参数，用低 alpha 多次叠加近似径向光束衰减
 		draw_colored_polygon(poly, _c("#FFD27A", godray_alpha[i]))
-	# 中心高光带：draw_line 近似方案 §3.1 的 Line2D 锐利核心
-	draw_line(LIGHT_POS, Vector2(LIGHT_POS.x, bottom), _c("#FFF0C2", 0.10), 1.0)
+	# 中心高光带：较宽柔核 + 锐利亮核（只在暖金主光方向，不铺满画面）
+	draw_line(LIGHT_POS, Vector2(LIGHT_POS.x, bottom), _c("#FFD27A", 0.16), 3.0)
+	draw_line(LIGHT_POS, Vector2(LIGHT_POS.x, bottom), _c("#FFF0C2", 0.12), 1.0)
 
 
 # ---------------------------------------------------------------------------
 # ③ 光尘：draw_circle()，seed=PLACEHOLDER_SEED 固定（HD2D-FX-PLAN.md §3.2 / step5+8）
+#    R18：绘制时逐粒跳过 HUD 矩形（约 x<730、y<220），避免面板被点状遮挡。
 # ---------------------------------------------------------------------------
 func _draw_motes(t: float) -> void:
 	for m in _motes_far:
 		var y := fposmod(float(m["y0"]) - float(m["speed"]) * t, BUFFER_H)
 		var x := float(m["x0"]) + sin(t * float(m["freq"]) + float(m["phase"])) * 3.0
+		if _is_hud_avoid(x, y):
+			continue
 		draw_circle(Vector2(float(round(x)), float(round(y))), float(m["size"]), _c("#BFD0EA", 0.25))
 	for m in _motes_near:
 		var y := fposmod(float(m["y0"]) - float(m["speed"]) * t, BUFFER_H)
 		var x := float(m["x0"]) + sin(t * float(m["freq"]) + float(m["phase"])) * 3.0
+		if _is_hud_avoid(x, y):
+			continue
 		draw_circle(Vector2(float(round(x)), float(round(y))), float(m["size"]), _c("#FFD27A", 0.45))
 
 

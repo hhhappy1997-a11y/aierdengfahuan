@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-095518-173-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "见 Rank-2/DONE-R18.md 实际结论：verify_frame_data.gd 真跑，三段门禁 G1(--import)/G2(--check-only --script)/G3(--quit) 与主真跑 G4(--script) EXIT 全=0；组A 与 BOSS-DATA-FINAL.md/数据表schema.md 逐项核对 DOC_PASS=40 DOC_FAIL=0（Boss 三招 18/5/24、30/7/34、42/9/40；翻滚 4/12/12=28 无敌[4,16)；攻击 8/5/14、20/8/26）；派单字面 4/9/9、22帧@60 与实际 .tres 存在 4 项差异（active 12≠9、recovery 12≠9、total 28≠22、inv_end 16≠13）已如实登记、不擅改数值，待总指挥裁决；RESULT=DATA_CONSISTENT_WITH_DOCS__DISPATCH_LITERAL_MISMATCH_REGISTERED。"
+}

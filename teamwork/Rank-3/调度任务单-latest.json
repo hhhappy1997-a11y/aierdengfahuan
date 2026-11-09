@@ -1,11 +1,11 @@
 {
-  "id": "cmd-20261109-093050-719-A3",
-  "command_id": "cmd-20261109-093050-719",
+  "id": "cmd-20261109-095518-174-A3",
+  "command_id": "cmd-20261109-095518-174",
   "ai": 3,
   "from": "总指挥",
-  "task": "[ROUND=R17] 【R17 · Rank-3 HUD flag 绑定真跑】写 `godot/scripts/verify_hud_binding.gd`（`extends SceneTree`），真跑实例化 `hud.tscn`，拿到 `hud.gd` 实例；若 `WorldState` autoload 可访问则设置一个三段式 flag 并验证 `TitleLabel` 增量刷新，若不可访问则**如实登记降级**并至少验证信号/方法可调用；贴实际 stdout 与 PASS/FAIL。不碰 courtyard.tscn、不改 hud.tscn 结构。完成写 `Rank-3/DONE-R17.md` 与回执。",
+  "task": "[ROUND=R18] 【R18 · Rank-3 HUD 遮挡修复】依据 R17 画面「少量光尘落在 HUD 面板上」：改 `godot/scenes/hud.tscn`（可写，独立场景）把根 CanvasLayer 的 `layer` 提高到 FX 层之上（如 20），或给 Panel 加不透明底色让光尘不穿透文字；`CACHE_MODE_IGNORE` 回读校验 layer 与文字颜色，贴实际 stdout；**不碰 courtyard.tscn**（Rank-1 独占）。完成写 `Rank-3/DONE-R18.md` 与回执。零付费。",
   "priority": "normal",
   "note": "GUI 下达",
-  "issued_at": "2026-11-09 09:30:51",
-  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-093050-719-A3\",\"ai\":3,\"status\":\"done\",\"result\":\"...\"}"
+  "issued_at": "2026-11-09 09:55:19",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-095518-174-A3\",\"ai\":3,\"status\":\"done\",\"result\":\"...\"}"
 }

@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-095518-176-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "R18 精修完成，详见 teamwork/Rank-4/DONE-R18.md 实际结论：①暖金体积光扇形 4→6 层 + 中心柔核/亮核高光，峰值 alpha 保持 0.18 不抬高（不糊画面）；②倒影改 2×2 垂直镜像半透明色块 + 压缩 0.85 + 深度渐隐 + 逐行波纹（不再只是一条水平亮线）；③光尘绘制时按 HUD 屏幕矩形 x<730,y<220 逐粒跳过（HUD 面板内光尘点 R17 多个 → R18 归零，面板外光尘保留、seed/数量 48+32 不变）；④fx_profile desktop/mobile 档位开关与 texture_filter=Nearest 冻结口径零改动。build_fx_r18_verify.gd(extends SceneTree) 真跑 RESULT=PASS、pass=47 fail=0，CACHE_MODE_IGNORE 回读节点/档位/参数全 PASS、_is_hud_avoid() 4 坐标 call 真跑命中；三段门禁 G1 --import / G2 --check-only / G3 --quit 及 RUN EXIT 全 0，SCRIPT ERROR|Parse Error|ERROR 检索 0 条；courtyard.tscn sha256 前后一致（零写入），两 .gd 合法 UTF-8。Movie Maker 抓帧 F:/Game/aierdengfahuan/capture/r18_fx.png --fixed-fps 30 --quit-after 6 EXIT=0，产出 6 帧 PNG 序列 r18_fx00000000..05.png（第 3 帧另存 r18_fx.png），R17→R18 画面差异（体积光扇形更连续且有中心亮柱、倒影呈块状镜像、HUD 面板变干净、画面未过曝砖纹清晰）见 DONE-R18.md §2.4。未完成项与阻塞（体积光提升受同色系地面限制、倒影 2D/3D 遮挡固有限制、倒影参数偏离 PLAN §3.3 冻结值待复核、HUD 避让为保守矩形近似、移动档降级/静态层节流仍待裁决、未做动态画面验收）见 DONE-R18.md §3。零付费/零外部素材/零插件，ComfyUI 仍主美术路线，未自行 git、未追加总线。"
+}

@@ -11,6 +11,7 @@ border_width_bottom = 1
 border_color = Color(0.83, 0.68, 0.3, 1)
 
 [node name="Hud" type="CanvasLayer" unique_id=1276405765]
+layer = 20
 script = ExtResource("1_hud")
 
 [node name="HudPanel" type="Panel" parent="." unique_id=1292641255]

@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-095518-171-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "见 DONE-R18.md：wire_profile_r18.gd 真跑 EXIT=0/verify_ok=true，HD2DFX 实例根写入 6 项 metadata/fx_profile_* 接线表（桌面 quality_preset_desktop.tres 640x360→fx_profile=desktop 四项全开 / 移动 quality_preset_mobile.tres 480x270→mobile 四项全关），节点数 pack 前24/pack 后24/CACHE_MODE_IGNORE 回读24、回读14项全 PASS（含6项接线值逐项回读）；幂等重跑 ALREADY_WIRED/SKIP_SAVE、字节级一致、备份(=R17终态)未覆盖；三段门禁 EXIT 0/0/0、SCRIPT ERROR|ERROR grep 0 条；Movie Maker 抓帧 EXIT=0 产出6帧1280x720 PNG+wav；切换时机/调用方式方案见 FX-PROFILE-WIRING.md；未完成项：运行时自动切换未落盘(给方案即可)、冻结件未改、§4.3/§4.4 待裁决、既有WARNING，详见 DONE-R18.md ③。"
+}

@@ -1,0 +1,8 @@
+{
+  "id": "cmd-20261109-095518-173",
+  "from": "总指挥",
+  "target": "2",
+  "task": "[ROUND=R18] 【R18 · Rank-2 战斗帧数据核对】写 `godot/scripts/verify_frame_data.gd`（`extends SceneTree`），真跑读取 `boss_01_margit.tres` 的三招帧数（前摇/判定/后摇）与 `player_actions.tres` 的翻滚无敌帧（4/9/9、22 帧@60），核对与 `数据表schema.md`/`BOSS-DATA-FINAL.md` 一致，打印实际 stdout 与 PASS/FAIL；不碰 courtyard.tscn、不改数值。完成写 `Rank-2/DONE-R18.md` 与回执。",
+  "priority": "normal",
+  "note": "GUI 下达"
+}
