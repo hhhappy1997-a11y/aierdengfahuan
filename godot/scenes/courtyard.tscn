@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="4_6e1c7"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="5_l1iq4"]
 [ext_resource type="PackedScene" path="res://scenes/hd2d_fx.tscn" id="8_p30c5"]
+[ext_resource type="Script" path="res://scripts/fx_profile_controller.gd" id="9_tihrx"]
 
 [sub_resource type="Environment" id="Environment_e34af"]
 background_mode = 1
@@ -123,6 +124,7 @@ script = ExtResource("5_l1iq4")
 
 [node name="HD2DFX" type="CanvasLayer" parent="SubViewportContainer/SubViewport" unique_id=80156914 instance=ExtResource("8_p30c5")]
 layer = 10
+script = ExtResource("9_tihrx")
 metadata/fx_profile_source = "res://data/render/quality_preset_desktop.tres"
 metadata/fx_profile_active = "desktop"
 metadata/fx_profile_desktop_preset = "res://data/render/quality_preset_desktop.tres"

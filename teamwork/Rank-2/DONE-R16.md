@@ -392,3 +392,27 @@ SEG3_RC=0
 - 结论（与正文一致）：四段 EXIT 全 0；运行时健康 `PASS=27 / FAIL=0 / RESULT=PASS`；数值逐项对照 `PASS=144 / FAIL(登记)=3`，3 项为 `max_resistance` 文档-运行件版本差（运行件 `400/480/420` 与 R10 总指挥裁决 A1 一致、`BOSS-DATA-FINAL.md`(R9) 未同步），**如实登记、不擅改战斗数值、不冒充全绿、不伪造输出、贴完整实际 stdout 而非只写结论**。
 
 补充复核（送达态）：写入 outbox 后，该文件已被调度中枢即时消费并归档为 `teamwork/command_center/dispatcher/receipts/cmd-20261109-085736-024-A2.json`（已只读核对其内容：task_id / ai / status=done / result 均与本轮一致，只 1 份）。因此 outbox 现为空属「回执已送达中枢」的正常态，按任务规则**不再写第二份回执**。
+
+---
+
+## 附录 B · R19 裁决修正注记（cmd-20261109-102334-084-A2，append-only，不改上文任何历史 stdout / 结论）
+
+> 本文件为 R16 历史交付记录，**正文与附录 A 的当时真跑 stdout 与结论一律不改写**（上文中 `action_04_roll | ... | 帧=4/12/12 | invul=[4,16]` 等均为 R16 当时真实输出，按「不伪造输出」原则原样保留）。本附录仅按 R19 总指挥裁决，追加登记翻滚帧口径的正式修正。
+
+- **裁决依据**：`00-汇总.md` §5 M1 验收与用户原始需求「翻滚无敌帧 4/9/9（22 帧 @60）」；裁决以 **4/9/9=22 帧@60、无敌 `[4,13)`** 为准，`4/12/12=28`、无敌 `[4,16)` 为实现偏差。
+- **改前 → 改后**（`action_04_roll`）：
+
+| 字段 | 改前（R16 及之前） | 改后（R19 裁决） |
+|---|---|---|
+| `startup_frames` | 4 | 4（不变） |
+| `active_frames` | 12 | **9** |
+| `recovery_frames` | 12 | **9** |
+| `total`（派生，不设字段） | 28 | **22**（`4+9+9`） |
+| `invulnerable_start_frame` | 4 | 4（不变） |
+| `invulnerable_end_frame` | 16 | **13** |
+| 无敌区间 | `[4,16)` | **`[4,13)`** |
+| `logic_fps` | 60 | 60（不变） |
+
+- **E-7 自洽**：`inv_end = startup + active = 4 + 9 = 13`；`total = 4+9+9 = 22`；`0 <= 4 < 13 <= 22` 成立。
+- **已同步件（R19 本轮）**：运行权威件 `godot/data/combat/player_actions.tres`；`motion-mapping.md` §4.1、`战斗系统设计.md` §2（含 §1.1 表格 roll 行）、`数据表schema.md` §7/E-7、`接口契约.md` M1 验收项；验证脚本 `godot/scripts/verify_frame_data.gd` 期望值。Boss 三招数值、`courtyard.tscn` 未改动。
+- **本附录不改动**上文 R16 的任何 stdout / 结论 / 数值；R16 当时的 `4/12/12=28` 为其历史真实状态，非错误，仅按裁决在后续轮次正式修正口径。

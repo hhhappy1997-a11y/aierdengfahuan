@@ -102,11 +102,13 @@ duration = (numFrames - 1) / clip.fps    # loop clip 一周期秒数（末帧重
 
 | 动作 | 表内字段 `startup/active/recovery` | 三段区间（逻辑帧，左闭右开） | 判定 / 无敌 | 位移 / 备注 |
 |---|---|---|---|---|
-| `action_04_roll` | `4 / 12 / 12` | 起手 `[0,4)` · **无敌 `[4,16)`** · 恢复 `[16,28)` | `[invulnerable_start_frame=4, end=16)` 与 `[startup, startup+active)` 完全对齐（E-7 ✓） | `move_speed_px_per_sec=260.0`；`pelvisXZ` 前冲须落在无敌段 |
+| `action_04_roll` | `4 / 9 / 9` | 起手 `[0,4)` · **无敌 `[4,13)`** · 恢复 `[13,22)` | `[invulnerable_start_frame=4, end=13)` 与 `[startup, startup+active)` 完全对齐（E-7 ✓；`4+9=13`） | `move_speed_px_per_sec=260.0`；`pelvisXZ` 前冲须落在无敌段 |
 | `action_05_attack_light` | `8 / 5 / 14` | 前摇 `[0,8)` · **判定 `[8,13)`** · 后摇 `[13,27)` | `cancel_window_frames=6` | `motion_multiplier=1.0`，`hitbox_reach_px=62.0` |
 | `action_06_attack_heavy` | `20 / 8 / 26` | 前摇 `[0,20)` · **判定 `[20,28)`** · 后摇 `[28,54)` | `cancel_window_frames=8` | `motion_multiplier=1.65`，`hitbox_reach_px=78.0` |
 | `idle/walk/run` | `0/1/0`（循环） | `loop=true` 闭合周期 | — | `footContact 0→1` 落脚事件按周期重复 |
 | `hitstun/death` | `0/12/6`、`0/48/0` | one-shot | — | — |
+
+> **R19 裁决修正（cmd-20261109-102334-084-A2 / 总指挥裁决，依据 `00-汇总.md` §5 M1 验收）**：`action_04_roll` 翻滚帧口径改前 `4/12/12=28`、无敌 `[4,16)` → 改后 **`4/9/9=22`、无敌 `[4,13)`**（`startup=4 / active=9 / recovery=9 / invulnerable_start_frame=4 / invulnerable_end_frame=13`，`logic_fps=60`）。E-7 自洽：`inv_end = startup + active = 4+9 = 13`、`total = 4+9+9 = 22`。运行权威件 `godot/data/combat/player_actions.tres` 已同步修正。
 
 ### 4.2 Boss 招式（`boss_01_margit.tres`，供 `frameData` 校验参考）
 
@@ -122,7 +124,7 @@ duration = (numFrames - 1) / clip.fps    # loop clip 一周期秒数（末帧重
 |---|---|---|
 | `move_01_soldier_slash` | `12 / 4 / 18` | `[12,16)` |
 
-> 换算示例（若对应 clip `fps=30`）：roll 无敌段 `[4,16)` 游戏帧 ← motion 帧 `[2,8)`；light attack 判定 `[8,13)` ← `[4,6.5)`→取整 `[4,7)`；仅为对齐示意，**最终以 `.tres` 游戏帧为准**，motion 帧不回写表。
+> 换算示例（若对应 clip `fps=30`）：roll 无敌段 `[4,13)` 游戏帧 ← motion 帧 `[2,6.5)`→取整 `[2,7)`；light attack 判定 `[8,13)` ← `[4,6.5)`→取整 `[4,7)`；仅为对齐示意，**最终以 `.tres` 游戏帧为准**，motion 帧不回写表。（R19 裁决：无敌段由 `[4,16)` 修正为 `[4,13)`，换算随之更新。）
 
 ---
 

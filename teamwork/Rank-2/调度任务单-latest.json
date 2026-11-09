@@ -1,11 +1,11 @@
 {
-  "id": "cmd-20261109-095518-173-A2",
-  "command_id": "cmd-20261109-095518-173",
+  "id": "cmd-20261109-102334-084-A2",
+  "command_id": "cmd-20261109-102334-084",
   "ai": 2,
   "from": "总指挥",
-  "task": "[ROUND=R18] 【R18 · Rank-2 战斗帧数据核对】写 `godot/scripts/verify_frame_data.gd`（`extends SceneTree`），真跑读取 `boss_01_margit.tres` 的三招帧数（前摇/判定/后摇）与 `player_actions.tres` 的翻滚无敌帧（4/9/9、22 帧@60），核对与 `数据表schema.md`/`BOSS-DATA-FINAL.md` 一致，打印实际 stdout 与 PASS/FAIL；不碰 courtyard.tscn、不改数值。完成写 `Rank-2/DONE-R18.md` 与回执。",
+  "task": "[ROUND=R19] 【R19 裁决执行 · Rank-2 修正翻滚帧】**总指挥裁决已下**：以用户原始需求 `4/9/9 = 22 帧@60、无敌 [4,13)` 为准（`00-汇总.md` §5 M1 验收），当前 `4/12/12=28、无敌[4,16)` 属实现偏差。本轮**正式修正**：① `godot/data/combat/player_actions.tres` 的 `action_04_roll`：`startup_frames=4`、`active_frames=9`、`recovery_frames=9`、`total_frames=22`、`invulnerable_start_frame=4`、`invulnerable_end_frame=13`（E-7 `inv_end=startup+active` 自洽）；② 同步 `Rank-2/motion-mapping.md` §4.1、`Rank-2/战斗系统设计.md` §2、`Rank-2/数据表schema.md` §7/E-7、`Rank-2/DONE-R16.md`、`Rank-2/接口契约.md` M1 验收项里的翻滚帧口径；③ 更新 `godot/scripts/verify_frame_data.gd` 的期望值为 4/9/9=22 并真跑复跑（贴完整实际 stdout 与 PASS/FAIL）；④ 三段门禁。**不碰 courtyard.tscn**（R19 由 Rank-1 独占）、不改 Boss 数值、不自行 git。完成写 `Rank-2/DONE-R19.md` 与回执到 `teamwork/command_center/ai/2/outbox/`。零付费、不伪造输出。",
   "priority": "normal",
   "note": "GUI 下达",
-  "issued_at": "2026-11-09 09:55:19",
-  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-095518-173-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
+  "issued_at": "2026-11-09 10:23:34",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-102334-084-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
 }

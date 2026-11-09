@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-102334-091-A4",
+  "command_id": "cmd-20261109-102334-091",
+  "ai": 4,
+  "from": "总指挥",
+  "task": "[ROUND=R19] 【R19 · Rank-4 移动档降级实跑】写 `godot/scripts/verify_fx_mobile.gd`（`extends SceneTree`），真跑把 `hd2d_fx.tscn` 切到 `mobile`，确认 4 项光效关闭后画面仍可读（Movie Maker 抓帧 `F:/Game/aierdengfahuan/capture/r19_mobile.png --fixed-fps 30 --quit-after 4`，绝对路径+.png），贴 stdout 与 desktop 档的差异；**不碰 courtyard.tscn**（Rank-1 独占）、不自行 git、零外部素材。完成写 `Rank-4/DONE-R19.md` 与回执。",
+  "priority": "normal",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 10:23:34",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-102334-091-A4\",\"ai\":4,\"status\":\"done\",\"result\":\"...\"}"
+}

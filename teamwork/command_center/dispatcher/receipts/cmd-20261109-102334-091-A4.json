@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-102334-091-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "见 teamwork/Rank-4/DONE-R19.md 实际结论：R19 写 godot/scripts/verify_fx_mobile.gd（extends SceneTree）真跑 RESULT=PASS / pass=47 fail=0；4 个 FX 节点切 mobile 回读 visible=false / _all_on=false / texture_filter=1(Nearest) / fx_profile=mobile / 四项绘制门全 false，再切 desktop 对比回读 visible=true / _all_on=true / 四门全 true / Nearest 并打印两档实际值与差异表；结构真跑核实 hd2d_fx.tscn 整树仅 CanvasLayer+4 Node2D 纯叠加 FX 层、画面主体不依赖 FX 层。三段门禁 G1 --import / G2 --check-only / G3 --quit 与 RUN 全 EXIT=0，grep SCRIPT ERROR|Parse Error|ERROR 0 条。Movie Maker 抓帧 --write-movie F:/Game/aierdengfahuan/capture/r19_mobile.png --fixed-fps 30 --quit-after 4 EXIT=0，产出 4 帧 1280×720 PNG；真实查看画面：蓝天 / 深蓝 HUD 面板「赐福·宁姆格福」文字 / 骑士剪影 / 暖金横砖地面纹理清晰可读、Nearest 锐利、无泛白糊屏，关掉四项低对比叠加光效后主体全部保留 → 移动档画面仍可读。诚实边界（DONE-R19.md §0/§2.5/§3）：courtyard.tscn 的 HD2DFX 默认 desktop 四项全开、R18 运行时自动切档未落盘，本轮受不碰 courtyard.tscn 与可写范围约束未改默认档，故抓帧 4 帧严格为桌面档画面、未直接抓到移动档画面；移动档仍可读由「mobile 回读四项全关不绘制 + 纯叠加层结构 + 桌面档真实画面主体清晰」三条真证据支撑，非移动档画面直接验收，已如实登记待办。零写入 courtyard.tscn（PRE/POST sha256 一致）、不自行 git、零付费 / 零外部素材、中文 UTF-8、Godot 4.7.2 合法语法；既有 WARNING（ChunkManager / 2 ObjectDB leaked）如实登记，未冒充全绿。"
+}

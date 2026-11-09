@@ -1,9 +1,10 @@
 extends SceneTree
-## R18 / cmd-20261109-095518-173-A2 · Rank-2 战斗帧数据核对（真跑）
+## R19 / cmd-20261109-102334-084-A2 · Rank-2 战斗帧数据核对（真跑）
 ##
 ## 真读两份运行权威 .tres，逐项打印「实际值 / 期望值 / PASS|FAIL」：
 ##   组A：与 BOSS-DATA-FINAL.md / 数据表schema.md / motion-mapping.md 文档口径逐项核对
-##   组B：与派单字面期望「4/9/9、22 帧@60」逐项核对（差异只如实登记，不擅改数值）
+##   组B：与 R19 总指挥裁决值「4/9/9=22、无敌[4,13)」逐项核对
+##   （裁决依据 00-汇总.md §5 M1 验收；本轮 .tres 与文档口径均已按裁决修正后复跑）
 ##
 ## 覆盖：Boss 三招 前摇/判定/后摇 + 派生 total/判定区间；翻滚无敌帧 + E-7 等式；
 ##       攻击帧数据(light/heavy) + 派生 total/判定区间；8 条 logic_fps 全等(E-6)。
@@ -13,9 +14,9 @@ extends SceneTree
 ## 运行：godot --headless --path godot --script res://scripts/verify_frame_data.gd
 ## 静态：godot --headless --path godot --check-only --script res://scripts/verify_frame_data.gd
 ##
-## 退出码：quit(0) 仅表示脚本正常执行且数据成功读取；组B 的 FAIL 为「派单字面值
-##        与 .tres 实际值既有差异」的如实登记产物，非脚本/解析/数据损坏错误。
-##        全程不修改任何 .tres 数值、不写 courtyard.tscn。中文 UTF-8 / Godot 4 合法语法。
+## 退出码：quit(0) 表示脚本正常执行且数据成功读取；PASS/FAIL 由逐项「实际值 vs 期望值」
+##        真实计算得出，不伪造、不预设结论。Boss 三招数值本轮未改动，仅核对未受影响。
+##        不写 courtyard.tscn。中文 UTF-8 / Godot 4 合法语法。
 
 const BOSS_TRES := "res://data/combat/boss_01_margit.tres"
 const PLAYER_TRES := "res://data/combat/player_actions.tres"
@@ -27,13 +28,14 @@ const BOSS_MOVES := {
 	"move_03_holy_hammer": {"startup": 42, "active": 9, "recovery": 40, "total": 91, "hit_end": 51}
 }
 # 组A 期望值：翻滚（motion-mapping.md §4.1、战斗系统设计.md §2、schema §7/E-7）
-const ROLL_EXPECTED := {"startup": 4, "active": 12, "recovery": 12, "inv_start": 4, "inv_end": 16, "total": 28, "logic_fps": 60}
+# R19 裁决：改前 4/12/12=28、无敌[4,16) → 改后 4/9/9=22、无敌[4,13)（inv_end=startup+active=13）
+const ROLL_EXPECTED := {"startup": 4, "active": 9, "recovery": 9, "inv_start": 4, "inv_end": 13, "total": 22, "logic_fps": 60}
 # 组A 期望值：攻击帧（motion-mapping.md §4.1）
 const ATTACK_EXPECTED := {
 	"action_05_attack_light": {"startup": 8, "active": 5, "recovery": 14, "total": 27, "hit_end": 13},
 	"action_06_attack_heavy": {"startup": 20, "active": 8, "recovery": 26, "total": 54, "hit_end": 28}
 }
-# 组B 期望值：派单字面「4/9/9、22 帧@60」（inv_end 按 E-7 派生 = startup4+active9 = 13）
+# 组B 期望值：R19 总指挥裁决「4/9/9=22 帧@60、无敌[4,13)」（inv_end 按 E-7 派生 = startup4+active9 = 13）
 const DISPATCH_ROLL := {"startup": 4, "active": 9, "recovery": 9, "total": 22, "inv_end": 13, "logic_fps": 60}
 
 var _doc_pass := 0
@@ -43,12 +45,12 @@ var _disp_fail := 0
 
 
 func _initialize() -> void:
-	print("==== [R18 FRAME DATA VERIFY] START ====")
+	print("==== [R19 FRAME DATA VERIFY] START ====")
 	var boss = load(BOSS_TRES)
 	var player = load(PLAYER_TRES)
 	if boss == null or player == null:
 		print("[FATAL] load() 失败 | boss_null=%s player_null=%s" % [str(boss == null), str(player == null)])
-		print("==== [R18 FRAME DATA VERIFY] RESULT=LOAD_FAILED ====")
+		print("==== [R19 FRAME DATA VERIFY] RESULT=LOAD_FAILED ====")
 		quit(1)
 		return
 	var boss_phases = boss.get("phases")
@@ -68,21 +70,23 @@ func _initialize() -> void:
 	_check_group_a_attack(actions_by_id)
 	_check_group_a_fps(actions_by_id)
 
-	print("---- [4] 组B 与派单字面期望「4/9/9、22 帧@60」逐项核对（差异如实登记）----")
+	print("---- [4] 组B 与 R19 裁决值「4/9/9=22、无敌[4,13)」逐项核对 ----")
 	_check_group_b(actions_by_id)
 
-	print("==== [R18 FRAME DATA VERIFY] SUMMARY ====")
+	print("==== [R19 FRAME DATA VERIFY] SUMMARY ====")
 	print("  组A 文档核对 | DOC_PASS=%d DOC_FAIL=%d -> %s" % [_doc_pass, _doc_fail, "DOC_CONSISTENCY=PASS" if _doc_fail == 0 else "DOC_CONSISTENCY=FAIL"])
-	print("  组B 派单字面 | DISPATCH_PASS=%d DISPATCH_FAIL=%d -> %s" % [_disp_pass, _disp_fail, "MISMATCH_REGISTERED" if _disp_fail > 0 else "MATCH"])
+	print("  组B 裁决值 | VERDICT_PASS=%d VERDICT_FAIL=%d -> %s" % [_disp_pass, _disp_fail, "MATCH" if _disp_fail == 0 else "MISMATCH"])
 	print("  合计 | PASS_COUNT=%d FAIL_COUNT=%d" % [_doc_pass + _disp_pass, _doc_fail + _disp_fail])
 	var verdict := "SEE_ABOVE"
-	if _doc_fail == 0 and _disp_fail > 0:
-		verdict = "DATA_CONSISTENT_WITH_DOCS__DISPATCH_LITERAL_MISMATCH_REGISTERED"
-	elif _doc_fail == 0 and _disp_fail == 0:
+	if _doc_fail == 0 and _disp_fail == 0:
 		verdict = "ALL_MATCH"
+	elif _disp_fail > 0:
+		verdict = "ROLL_FRAME_MISMATCH_VS_R19_VERDICT"
+	elif _doc_fail > 0:
+		verdict = "DOC_CONSISTENCY_FAIL"
 	print("  RESULT=%s" % verdict)
-	print("  NOTE: quit(0)=脚本执行/读取成功；组B FAIL 为派单字面值与实际 .tres 既有差异的如实登记，非脚本/数据错误；不擅改数值。")
-	print("==== [R18 FRAME DATA VERIFY] END ====")
+	print("  NOTE: quit(0)=脚本执行/读取成功；PASS/FAIL 由实际值 vs 期望值真实计算，不预设结论；不写 courtyard.tscn。")
+	print("==== [R19 FRAME DATA VERIFY] END ====")
 	quit(0)
 
 
@@ -180,7 +184,7 @@ func _check_group_a_roll(actions_by_id: Dictionary) -> void:
 	_check("A", "roll.invulnerable_start_frame", ist, int(ROLL_EXPECTED["inv_start"]), src)
 	_check("A", "roll.invulnerable_end_frame", ien, int(ROLL_EXPECTED["inv_end"]), src)
 	_check("A", "roll.logic_fps(@60)", fps, int(ROLL_EXPECTED["logic_fps"]), "schema §7 / E-6")
-	_check("A", "roll.total=4+12+12", total, int(ROLL_EXPECTED["total"]), "战斗系统设计 §2.2 / schema E-7")
+	_check("A", "roll.total=4+9+9", total, int(ROLL_EXPECTED["total"]), "战斗系统设计 §2.2 / schema E-7")
 	_check("A", "E-7 inv_start==startup", ist, s, "schema E-7")
 	_check("A", "E-7 inv_end==startup+active", ien, s + a, "schema E-7")
 	_check("A", "E-7 inv_len(end-start)==active", ien - ist, a, "战斗系统设计 §2.2 / schema E-7")
@@ -227,10 +231,10 @@ func _check_group_a_fps(actions_by_id: Dictionary) -> void:
 	_check("A", "E-6 logic_fps==Engine.physics_ticks_per_second", Engine.physics_ticks_per_second, 60, "schema §7")
 
 
-# ---------------------------------------------------------------- 组B：派单字面核对（差异登记）
+# ---------------------------------------------------------------- 组B：R19 裁决值核对
 func _check_group_b(actions_by_id: Dictionary) -> void:
 	if not actions_by_id.has("action_04_roll"):
-		_check("B", "action_04_roll 存在", "MISSING", "present", "派单字面")
+		_check("B", "action_04_roll 存在", "MISSING", "present", "R19 裁决")
 		return
 	var ac = actions_by_id["action_04_roll"]
 	var s := int(ac.get("startup_frames"))
@@ -239,7 +243,7 @@ func _check_group_b(actions_by_id: Dictionary) -> void:
 	var ien := int(ac.get("invulnerable_end_frame"))
 	var fps := int(ac.get("logic_fps"))
 	var total := s + a + r
-	var src := "派单字面 4/9/9、22帧@60"
+	var src := "R19 裁决 4/9/9=22、无敌[4,13)"
 	_check("B", "roll.startup_frames", s, int(DISPATCH_ROLL["startup"]), src)
 	_check("B", "roll.active_frames", a, int(DISPATCH_ROLL["active"]), src)
 	_check("B", "roll.recovery_frames", r, int(DISPATCH_ROLL["recovery"]), src)

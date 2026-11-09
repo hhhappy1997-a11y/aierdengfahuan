@@ -376,6 +376,8 @@ class_name PlayerActionData
 | `stamina_cost` | float | `0.0` | `[0, 1e4]` | 精力消耗；M1 未启用精力系统，全部填 `0.0` |
 | `cancel_window_frames` | int | `0` | `[0, 600]` | 后摇中允许取消的帧数窗口（从 recovery 起点算） |
 
+> **R19 裁决修正 · 翻滚实例口径（cmd-20261109-102334-084-A2 / 总指挥裁决，依据 `00-汇总.md` §5 M1 验收）**：`action_04_roll` 的字段实例值改前 `startup_frames=4 / active_frames=12 / recovery_frames=12 / invulnerable_start_frame=4 / invulnerable_end_frame=16`（`total=28`、无敌 `[4,16)`）→ 改后 **`startup_frames=4 / active_frames=9 / recovery_frames=9 / invulnerable_start_frame=4 / invulnerable_end_frame=13`**（`total=4+9+9=22`、无敌 `[4,13)`，`logic_fps=60`）。本节字段定义 / 类型 / 取值范围不变；`total_frames` 依 E-2 **不设字段**，由 `startup+active+recovery` 派生，故 `total=22` 为派生值而非新增字段。运行权威件 `godot/data/combat/player_actions.tres` 已同步修正。
+
 ---
 
 ## 8. SpawnRequest（I-3，**3 号定义，2 号只读消费**）
@@ -428,3 +430,5 @@ class_name SpawnRequest
 | E-9 | 所有 `.tres` 中出现字段名 ⊆ 本文件字段集合；`.tres` 中不出现任何字面数值参与逻辑（数值只能在资源字段内） | 破坏「改数值不改代码」 |
 
 > 这些等式由 M5 的 `combat_data_validator.gd`（2 号模块内，非探针 / 非测量脚本，属运行时资源自检）在 `_ready()` 执行；本轮只交付定义与等式，不额外产出校验脚本文件（契约第 5 节：不写探针 / 测量 / preflight 脚本）。
+>
+> **R19 裁决 · E-7 校验口径（cmd-20261109-102334-084-A2）**：E-7 等式本身不变；翻滚实例由 `4/12/12=28、inv_end=16` 改为 **`4/9/9=22、inv_end=13`**（依据 `00-汇总.md` §5 M1 验收裁决）。改后 E-7 逐式仍成立：`total=4+9+9=22`；`invulnerable_start_frame == startup_frames`（`4==4`）；`invulnerable_end_frame == startup_frames + active_frames`（`13 == 4+9`）；`0 <= 4 < 13 <= 22`。`godot/scripts/verify_frame_data.gd` 组A 期望值已同步为裁决值并真跑复跑。

@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261109-102334-086-A1",
+  "command_id": "cmd-20261109-102334-086",
+  "ai": 1,
+  "from": "总指挥",
+  "task": "[ROUND=R19] 【R19 · Rank-1 运行时档位切换落地】本轮**只有你写 `godot/scenes/courtyard.tscn`**。把 `FX-PROFILE-WIRING.md` 的方案变成运行期逻辑：写 `godot/scripts/fx_profile_controller.gd`（`extends CanvasLayer` 或 Node，读 quality preset 的 `low_resolution_size` 判断桌面/移动，调用 `set_fx_profile()` 切换 4 个 FX 子节点）；把它挂到 `HD2DFX` 实例根（script 属性，节点数保持 24），用 SceneTree 脚本 `wire_r19.gd` 真跑保存 + `CACHE_MODE_IGNORE` 回读校验脚本已挂、档位能切换；三段门禁 + 抓帧 `F:/Game/aierdengfahuan/capture/r19_scene.png --fixed-fps 30 --quit-after 6`（绝对路径+.png），贴 stdout。完成写 `Rank-1/DONE-R19.md` 与回执。零付费、不伪造输出、不自行 git。",
+  "priority": "normal",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-09 10:23:34",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261109-102334-086-A1\",\"ai\":1,\"status\":\"done\",\"result\":\"...\"}"
+}
