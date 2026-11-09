@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261109-085736-022-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "R16 构图/UV/角色调优闭环，详见 teamwork/Rank-1/DONE-R16.md（含 §5 复核纠偏章节，结论以 §5 为准）。真源 id=cmd-20261109-085736-022-A1 且含 [ROUND=R16]。交付：godot/scripts/tune_r16.gd（extends SceneTree 幂等）、godot/scenes/courtyard.tscn（23 节点不变、sha256 21fce538…）、_archived_20261108/courtyard.tscn.bak-pre-r16（R15 终态、未被覆盖）、三档分档材质 ground_tile_mat_plate/low/high.tres（uv1_scale 16/3/2，并发初版生成、本轮复用且未新增越界写入）、capture/r1600000000~000005.png（6 帧 1280×720、各 106957 B）+ r16.wav。真跑实际结论：纠偏后 --script EXIT=0 / verify_ok=true，节点数 pack 前 23 / pack 后 23 / CACHE_MODE_IGNORE 磁盘回读 23，OK=true；相机 rot_x -30→-20 度 + origin(0,8,15)、三处 uv1_scale 16/3/2 的 path_ok/uv_ok 全 true；角色改以 scale=(1.6,1.6,1.6) 在运行期真正放大、pixel_size 恢复 0.03125，修正并发初版 pixel_size=0.05 被 HybridSpriteRig._configure_anchor() 的 _ready() 强制重置导致的『落盘达标、运行期失效』缺口；幂等重跑字节级一致、备份未被覆盖。三段门禁 --import / --check-only --script tune_r16.gd / --quit 真实 EXIT 0/0/0、grep 'SCRIPT ERROR|ERROR' 0 条。Movie Maker 按任务给定绝对路径命令重抓帧 EXIT=0（stdout 贴于 DONE-R16.md §5.6），画面：天空带与远景重新露出、砖块分档后大小一致、角色明显放大且未被挤出画面。未完成项与阻塞见 DONE-R16.md §5.8（三份 .tres 位于超出本轮可写范围的 assets/generated/ 属并发初版遗留、画质未 HD-2D 全绿、角色占比非终态、BoxMesh 侧面拉伸、HUD 静态、既有 WARNING 等），不宣称全绿。零付费、默认不刺探、不伪造输出、不冒充全绿、不自行 git。"
+}
