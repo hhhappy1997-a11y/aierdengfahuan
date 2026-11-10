@@ -378,3 +378,235 @@ D:/Godot/Godot_v4.7.2-stable_win64.exe \
 4. 零付费、零外部依赖（本机 ffmpeg 可用）、一次只跑一个 GPU/编码任务；只写 `capture/` 与 `teamwork/Rank-4/`（+ 回执 `command_center/ai/4/outbox/`）；**未写 `project.godot` / `courtyard.tscn` / 任何 `.tres` / `.png` 美术资源，未自行 git**。
 
 完整逐帧目视与差距分析见 `capture/V020-RUNTIME-REVIEW.md`；交付清单与未完成项见 `teamwork/Rank-4/DONE-R24B.md`。
+
+---
+
+## R25 v0.3.0 16 色受控色板重绘 + 录屏输入注入（R25 · Rank-4 独占追加 · 2026-11-10 20:47 · 派单 `cmd-20261110-204604-844-A4`）
+
+> 本节由 **Rank-4 独占追加**。按总指挥裁决 A15（项目级色库 ≥256、单帧 ≤16 色索引），
+> 用本机 PIL 程序化重绘 `godot/assets/generated/r23/` 下三套可发布素材，并在
+> `godot/test/presentation.gd` 注入战斗演示序列；真跑 15 秒录屏 + ViewImage 目视。
+> **结论：新 16 色素材确实进入画面、战斗 HUD 五项数值全部真实推进、47/34 PASS 不回退、
+> 三段门禁 EXIT 0/0/0 且 SCRIPT ERROR=0；HD-2D 全绿仍未达，如实写「未达」。**
+> 完整逐帧目视与差距分析见 `capture/V030-RUNTIME-REVIEW.md`，交付清单见 `teamwork/Rank-4/DONE-R25.md`。
+
+### 1. 重绘口径（A15）与自验
+
+| 项 | 实测 |
+|---|---|
+| 项目级色库 | `teamwork/Rank-4/palette_256_v030.json`：304 项 / **288 唯一色（≥256）**；既有 `palette_256.json` 未改 |
+| 单帧色数 | 13 张 128×128 单帧/tile 非透明唯一 RGB **3~9 色（≤16）**，全部取自色库 16 个基色索引 |
+| 画布 / 缩放 | 128px 基准画布；64×64 原生逻辑网格 **×2 NEAREST**（每 2×2 块同色，全检 PASS） |
+| 硬边 / alpha | 无渐变 / 无 dithering / 无高频噪点；RGBA 二值 alpha（0 或 255），ground 全 255 |
+| 路径不变 | 15 张 PNG + `player_spritesheet.png`(1024×128) / `boss_spritesheet.png`(384×128) 路径逐字不变，只换内容；旧版备份 `r23_pre_v030_backup/`（15 张，可恢复） |
+| 一致性 | spritesheet 逐 128 切片与对应单帧**像素级一致 8/8 + 3/3**；`ground_tile.png` 左右/上下边缘像素**完全一致** |
+| 目视 | `r23_v030_contact.png` 联系表 ViewImage 真看：8 玩家动作帧姿态互异、3 Boss 招式武器各异、4×4 石砖、无破图/空白 |
+
+> 未改 `manifest.json`（R23 历史 provenance 如实保留）、未改任何 `.tres` / `.png.import` / 场景（除 `presentation.gd` 的纯追加）。
+
+### 2. 15 秒录屏产物（真跑）
+
+命令形态复用 R22/R23B/R24B（`--write-movie … --fixed-fps 30 --quit-after 450 --script res://test/presentation.gd res://scenes/courtyard.tscn`）：
+
+| 项 | 实测 |
+|---|---|
+| CAPTURE_EXIT | **0**；`450 frames at 30 FPS (00:00:15:00)` |
+| PNG | **450 张** `v030_demo00000000.png`~`00000449.png`，均 1280×720；首/中/尾 md5 全不同 |
+| MP4 | `v030_demo.mp4` **607,659 B**，`libx264/yuv420p/+faststart`，`FFMPEG_EXIT=0`；ffprobe `nb_frames=450 / duration=15.000000 / 30/1` |
+| WAV | `v030_demo.wav` 5,760,044 B 真实产出，**未混入 MP4**（ffprobe 音频流=0），与 R22~R24B 口径一致、不谎报合并 |
+| 日志 | `v030_capture.log` / `v030_ffmpeg.log` / `v030_gate_g*.log` / `v030_verify_fx_*.log` 共 7 份 |
+
+### 3. 战斗 HUD 数值推进（本轮核心，ViewImage 逐字 + get_snapshot 日志双证）
+
+注入只经 `EncounterDirector` 既有 `debug_*` 接口（`debug_request_action / debug_boss_hit / debug_step / debug_kill_boss`）+ `get_snapshot()`，由导演层自身 `_update_hud()` 刷新 `StatusLabel`，**不写 HUD 文本、不伪造数值**。
+
+| 帧 | 玩家 HP | Boss HP | 动作 | 闪避 | 命中 | 状态 |
+|---|---|---|---|---|---|---|
+| 0 首 | 100/100 | 100% | idle 0/0 | 0 | 0 | 进行中 |
+| 30 | 100/100 | 98% | **attack_light 12/27** | 0 | **1** | 进行中 |
+| 90 | **88/100** | 98% | **roll 5/22** | **1** | 1 | 进行中 |
+| 150 | 88/100 | 98% | **attack_heavy 16/54** | 1 | 1 | 进行中 |
+| 225 中 | 88/100 | **95%** | idle 0/0 | 1 | **2** | 进行中 |
+| 449 尾 | 88/100 | **0%** | idle 0/0 | 1 | **3** | **胜利 · 已落盘** |
+
+五项（玩家 HP / Boss HP / 动作帧 / 闪避 / 命中）**各至少变化一次**，状态亦推进。首/中/尾三帧恰好都落在动作窗口外（idle 0/0），故补看 f30/f90/f150 三个注入帧作为「动作帧变化」目视证据；6 行 `[R25][COMBAT]` 的 `get_snapshot()` 日志与 HUD 文字逐项吻合。
+
+### 4. 新素材进画面 / 行为 / 差距
+
+- **新素材进入画面 = 是**：地面由 R23 不规则密集石砖 → 本轮 4×4 规整大砖 + 整齐砖缝 + 确定性磨损块；骑士由精致多色像素 → 简化 16 色硬边像素骑士（红头巾/白脸/钴蓝甲/白剑），8 pose 可辨。
+- 三段画质切换（medium/desktop → low/mobile → high/desktop）、`set_pose` 切帧、赐福标题三段变化全部保留；既有 `_drive_segment / _drive_pose / _drive_hud_flags` 逐字未改，只追加 `_drive_combat_v030`。
+- **HD-2D 全绿未达**：16 色受控色板相对 R23 ComfyUI 数千色精致素材是**细节降级 / 占位化**（口径取舍，不冒充视觉升级）；景深 / 四项光效仍为 2D `draw_*` 近似，8 pose 各仅 1 帧无逐帧动画，Boss 无可见像素形象（不翻案），段 B 主体静止，左侧深蓝尖锐几何形状来源未追查。本轮只做重绘 + 注入 + 录屏，未精修美术。
+
+### 5. 门禁与回归（真跑，不回退）
+
+- 三段门禁 `--headless --import` / `--headless --check-only --script res://test/presentation.gd` / `--headless --quit`：**EXIT 0 / 0 / 0**。
+- `verify_fx_mobile.gd` **pass=47 fail=0 RESULT=PASS**、`verify_fx_profile.gd` **pass=34 fail=0 RESULT=PASS** → **47 / 34 不回退**。
+- **7 份 `v030_*.log` 的 `SCRIPT ERROR|Parse Error` 逐份 0、合计 0，字面 `SCRIPT ERROR=0`**。
+
+### 6. 未完成项 / 阻塞 / 合规
+
+1. HD-2D 全绿未达成（§4）；16 色重绘为细节降级。
+2. **旧 GPU job 长期阻塞**：`qwen-image --quant nf4` 历史 job 本轮只读核验一次 —— `asset_proof_stdout.txt` 0 B、`asset_proof_stderr.log` 25,320 B，Rank-4 下全部 PNG 最新 mtime 2026-11-09 14:06（R23 旧产出），**无任何 11-10 之后的新 PNG**；无产出可验收，记为长期阻塞，不等待、不重试拉起、**本轮零 GPU 生成任务**。
+3. WAV 未混入 MP4；`128bit` 歧义待用户确认、不消歧、不编码进期望值（A15）；人工试玩属用户侧（A17），本轮只给勾选清单不冒充完成。
+4. 零付费、零外部依赖（本机 PIL/ffmpeg/numpy）；只写 `r23/` PNG、`presentation.gd`、`capture/`、`teamwork/Rank-4/`；**未写** `project.godot` / `courtyard.tscn` / `encounter_director.gd` / 任何 `.tres` / 其它 Rank 工位 / `00-*` 契约总线；未自行 git。
+5. 本轮未生成 `00-汇总.md`、未对跨模块争议裁决。
+
+完整逐帧目视与差距分析见 `capture/V030-RUNTIME-REVIEW.md`；交付清单与未完成项见 `teamwork/Rank-4/DONE-R25.md`。
+
+### 7. 定稿补记（本任务单最终交付口径 · 2026-11-10 21:20 · Rank-4）
+
+> **如实登记并发**：本任务单被两个 Rank-4 实例并发执行。上方 §1~§6 为前次实例（约 20:47，
+> `capture/v030_*.log`，MP4 **607,659 B**）产出；**磁盘最终产物以本定稿第二次真跑（21:18，
+> `capture/r25_*.log`，MP4 **829,818 B**）为准**——本定稿重新串行真跑录屏 + ffmpeg 覆盖了
+> `capture/v030_demo*.png` / `v030_demo.mp4` / `v030_demo.wav`。两版日志与报告并存留证，
+> 不删除前次产物、不臆断并发来源。以下为本定稿实测（详见 `capture/V030-RUNTIME-REVIEW.md` 定稿版、
+> `teamwork/Rank-4/DONE-R25.md` 定稿版）。
+
+**7.1 重绘实测（本机 PIL，零付费 / 零外部素材服务）**
+
+| 项 | 本定稿实测 |
+|---|---|
+| 工具 / 证据 | `teamwork/Rank-4/r25_redraw.py`、`r25_redraw_metrics.json`、`r25_contact_player.png`、`r25_contact_boss_tile.png`、`r25_preview/`（先目视后接入） |
+| 三套可发布素材 | `player_spritesheet.png` **1024×128 / 8 帧**（逐帧 15/15/15/11/15/15/15/11 色）；`boss_spritesheet.png` **384×128 / 3 招**（逐帧 11 色）；`ground_tile.png` **128×128 / 10 色 / alpha 全 255** |
+| 单帧非透明唯一 RGB | player 单帧 **11~15 色**、boss 单帧 **11 色**、ground **10 色**、decor **8 色**，全部 **≤16**；全部落在与 `r23_baseline/player_idle_v1.png` 一致的 16 色板内（`palette_outside={}`） |
+| 网格 / 硬边 | 64×64 逻辑 ×2 NEAREST，全部 `block2_mismatch=0`；无渐变 / 无 dithering / 无高频噪点；RGBA 二值 alpha（0/255，ground 全 255） |
+| tile 无缝 | `LR_mismatch_rows=0` / `TB_mismatch_cols=0` / `four_corners_equal=true` |
+| 姿态互异 | 8 玩家帧、3 Boss 帧 md5 **全不同**（`player_all_distinct=true` / `boss_all_distinct=true`），非复制同一张图 |
+| 路径 / 备份 | 15 张 PNG + 2 spritesheets 路径逐字不变、只换内容；旧版 15 张（Nov 9 时间戳、34877/16733/13605 色）备份于 `teamwork/Rank-4/r23_pre_v030_backup/`，可恢复（本轮 commit 因备份已存在而跳过复制，未破坏） |
+| 未改 | `manifest.json`（R23 历史 provenance）、任何 `.tres` / `.png.import` / 场景 / 契约 / `project.godot` / `encounter_director.gd` |
+
+**7.2 15 秒录屏与 MP4（本定稿真跑）**
+
+`CAPTURE_EXIT=0` / `FFMPEG_EXIT=0`；**450 张** `v030_demo*.png`（1280×720，0..449 连续），
+`450 frames at 30 FPS (00:00:15:00)`；首/中/尾 md5
+`b4dc270e…` / `a090e443…` / `0ceb6d2e…` 全不同；`v030_demo.mp4` **829,818 B**，
+ffprobe `h264 / yuv420p / 1280×720 / 30/1 / nb_frames=450 / duration=15.000000 / +faststart`；
+`v030_demo.wav` **5,760,044 B** 单独保留，**WAV 未混入 MP4**（ffprobe 音频流=0，仅视频轨，如实登记）。
+
+**7.3 战斗 HUD 数值推进（本定稿 `r25_capture.log` 7 行 `[R25][COMBAT]` + ViewImage 逐字双证）**
+
+| 帧 | 事件 | 玩家 HP | Boss HP | 动作 / 帧 | 闪避 | 命中 | 状态 |
+|---:|---|---:|---:|---|---:|---:|---|
+| 0 首 | 初始 | 100/100 | 100% | idle 0/0 | 0 | 0 | 进行中 |
+| 30 | 轻攻击命中 | 100/100 | 98% | attack_light 12 | 0 | 1 | 进行中 |
+| 60 | 玩家受击 | 88/100 | 98% | idle 0 | 0 | 1 | 进行中 |
+| 90 | 翻滚闪避 | 88/100 | 98% | roll 5 | 1 | 1 | 进行中 |
+| 150 | 重攻击命中 | 88/100 | 95% | attack_heavy 20 | 1 | 2 | 进行中 |
+| 220 | 段 B 中段受击 | 76/100 | 95% | idle 0 | 1 | 2 | 进行中 |
+| 225 中 | （HUD 逐字） | 76/100 | 95% | idle 0/0 | 1 | 2 | 进行中 |
+| 300 | 轻攻击再推进 | 76/100 | 94% | attack_light 12 | 1 | 3 | 进行中 |
+| 430 / 449 尾 | 击败 Boss | 76/100 | 0% | idle 0/0 | 1 | 3 | 胜利·已落盘 |
+
+五项（玩家 HP 100→88→76 / Boss HP 100→98→95→94→0% / 动作帧 / 闪避 0→1 / 命中 0→1→2→3）
+**各至少变化一次**；全部经 `EncounterDirector` 既有 `debug_*` 接口 + `get_snapshot()`，
+由导演 `_update_hud()` 刷新，**不写 `StatusLabel.text`、不伪造数值**。相对前次实例，本定稿修正了
+`presentation.gd` 中 `attack_heavy` 的 `debug_step(16)`（startup=20，step 16 不命中）为 `debug_step(20)`，
+并补 f=220 段 B 注入，故 C-04 真实命中、中帧玩家 HP 推进到 76。
+
+**7.4 三帧目视（本定稿 ViewImage 真看）**
+
+- 首帧 0：16 色 `idle` 骑士 + 4×4 规则砖地清晰进入画面，HUD `100/100 | 100% | 闪避0 命中0 | 进行中`。
+- 中帧 225：HUD `76/100 | 95% | 闪避1 命中2 | 进行中` 已推进；但 `death` 横躺贴地暗色融入砖地，
+  **角色不可辨（未达）**；加抽 frame 180（`attack_light` 横斩）骑士清晰，证明非段 B 画质档整体丢失。
+- 尾帧 449：`attack_heavy`（剑高举）骑士清晰，HUD `76/100 | 0% | 闪避1 命中3 | 胜利·已落盘`。
+- 三段画质切换 / pose 切换 / 赐福标题事件驱动 / 深蓝夜景分层远景全部保留；HD-2D 全绿**未达**（景深光效仍 2D 近似、8 pose 各 1 帧、Boss 无可见形象、砖地高倍平铺、death 单帧不可辨），如实写未达、不冒充。
+
+**7.5 门禁与回归（本定稿真跑，不回退）**
+
+| 段 | 日志（`capture/r25_*.log`） | EXIT / 结论 |
+|---|---|---|
+| G1 `--headless --import`（录屏前重导入 15 张新 PNG） | `r25_g1_import.log` | **0** |
+| G2 `--headless --check-only --script res://test/presentation.gd` | `r25_g2_checkonly.log` | **0**（注入脚本语法通过） |
+| G3 `--headless --quit` | `r25_g3_quit.log` | **0**（仅既有 `2 ObjectDB instances were leaked` 非致命 WARNING） |
+| RUN mobile | `r25_verify_fx_mobile.log` | **0** · `pass=47 fail=0 total=47 RESULT=PASS` |
+| RUN profile | `r25_verify_fx_profile.log` | **0** · `pass=34 fail=0 total=34 RESULT=PASS` |
+
+- **7 份 `r25_*.log` 的 `SCRIPT ERROR|Parse Error` 逐份 0、合计 0，字面 `SCRIPT ERROR=0`**；
+  **47 PASS / 34 PASS 不回退**。
+
+**7.6 未完成项**：HD-2D 全绿未达；frame 225 `death` 角色不可辨（单帧可辨识度缺陷，未重绘修复）；
+Boss 无可见像素形象；WAV 未混入 MP4；`128bit` 歧义待用户确认；人工试玩属用户侧；
+双实例并发的两版日志/报告并存（不臆断来源）；未做人工试玩逐帧动态验收；未自行 git（总指挥收尾）。
+
+---
+
+## 8. R25B v0.3.0 定稿（补单 `cmd-20261110-214727-361-A4` · 2026-11-10 21:50~21:55 · Rank-4）
+
+> 四路 R25 已全部 done、工程冻结，本轮只做两件收口：**重录最终画面 + 重导双产物**。
+> 本节为**独占追加**，不改动上方 §1~§7 任何既有正文（含 R25 定稿补记 §7）；两版日志 / 产物并存留证。
+> 日志统一前缀 `capture/r25b_*.log`；完整评审见 `capture/V030-FINAL-REVIEW.md`，交付清单见 `teamwork/Rank-4/DONE-R25B.md`。
+
+**8.1 重录 15 秒最终画面（先 `--import`）**
+
+- `--headless --path <godot> --import`：`IMPORT_EXIT=0` / `SCRIPT ERROR=0`（`r25b_g1_import.log`，16 行）。
+- 录屏：`--write-movie capture/v030_final.png --fixed-fps 30 --quit-after 450 --script res://test/presentation.gd res://scenes/courtyard.tscn`
+  （沿用定稿 `presentation.gd` 输入注入 + 三段画质切换，本轮零改动；不加 `--headless` 保证 Movie Maker 真实渲染）。
+  `CAPTURE_EXIT=0`；**450 张** `v030_final00000000.png`~`v030_final00000449.png`（1280×720 RGBA，0..449 连续）；
+  `450 frames at 30 FPS (00:00:15:00)`；首/中/尾 md5 `95d8b628…` / `8a27bbe9…` / `78c2742b…` 全不同。
+- MP4：`capture/v030_final.mp4` **867,453 B**；`FFMPEG_EXIT=0`；ffprobe `h264 / yuv420p / 1280×720 / 30fps / nb_frames=450 / duration=15.000000 / +faststart`。
+- WAV：`capture/v030_final.wav` **5,760,044 B**（Movie Maker 自动音轨）；**WAV 未混入 MP4**（ffprobe 音频流 = 0，仅视频轨），如实登记、不谎报音视频合并。
+- 与 R25 `v030_demo.mp4`（829,818 B）并存：本轮为**新重录序列**（`v030_final*`），因 Rank-1 Boss 接线最终修正进入工程，画面出现第二个角色，字节数变化如实登记、非旧文件改名。
+
+**8.2 三帧目视（ViewImage 真看原图 + 2× 中央放大裁剪 `r25b_{head,mid,tail}_center_crop.png`）**
+
+| 帧 | Boss 第二角色 | 玩家骑士 | HUD 逐字 | 光效 / 标题 |
+|---|---|---|---|---|
+| 首 0（段 A medium/desktop） | **可见**：金角+白脸+红披风，与骑士并列（与 Rank-1 `v030_boss_00000000.png` 实证形象一致） | 清晰：`idle` 蓝甲 / 蓝盾青宝石 / 竖直亮钢剑 | `100/100 \| 100% \| idle 0/0 \| 闪避0 \| 命中0 \| 进行中` | 光柱+光尘+光池；「赐福 · 宁姆格福」；画质面板在 |
+| 中 225（段 B low/mobile） | **可见且清晰**（金角 / 白脸 / 红披风 / 金肩甲青条 / 金胸甲青宝石） | **不可辨（未达，不翻案）**：`death` 横躺贴地暗色融入砖地 | `76/100 \| 95% \| idle 0/0 \| 闪避1 \| 命中2 \| 进行中` | 四项光效全关、更暗；「赐福 · 巡礼教堂」；画质面板在 |
+| 尾 449（段 C high/desktop） | **可见**：金角+白脸+红披风，与骑士并列 | 清晰：`attack_heavy` 亮钢剑高举过头 | `76/100 \| 0% \| idle 0/0 \| 闪避1 \| 命中3 \| 胜利·已落盘` | 光柱/光尘/光池回归；「赐福 · 希芙拉河井底」暗色；画质面板在 |
+
+- **Boss 第二个角色是否可见：是**（首/尾并列、中帧单独清晰）。相对 R25「Boss 无可见像素形象」为 Rank-1 接线修正带来的真实变化，如实登记、不冒充本轮改工程。
+- **16 色重绘素材进画面：是**（4×4 规则大砖全段可见、干净硬边色块、无渐变/噪点/马赛克）。
+- **三套 HUD 不回退：是**（赐福标题框事件驱动变化 / 画质设置面板三按钮 / 底部战斗 HUD 五项，三帧全程在）。
+- **战斗数值推进**：玩家 HP 100→88→76、Boss HP 100%→98.77%→95.96%→94.74%→0%、闪避 0→1、命中 0→1→2→3、动作帧 attack_light/12→roll/5→attack_heavy/20，
+  由 `r25b_capture.log` 7 行 `[R25][COMBAT]` `get_snapshot()` + 三帧 HUD 逐字双证；**动作帧在三个采样点均显示 `idle 0/0`，推进以全程日志为准，如实登记不粉饰**。
+- **中帧角色不可辨必须写未达**：玩家骑士 `death` 仍不可辨（沿袭 R25 结论、**不翻案**）；Boss 可见为新增事实，二者不互相抵消。经 2× 中央放大复核确认。
+- **HD-2D 全绿未达**：景深/光效仍 2D `draw_*` 近似、Boss 与玩家并列叠合缺纵深站位/遮挡、地面高倍平铺重复、8 pose 各 1 帧、角色仍 3D 贴图像素、16 色为细节降级、death 单帧不可辨、左侧固定深蓝尖锐形状来源未追查。如实写未达、不冒充。
+
+**8.3 重导双产物与验签（`JAVA_HOME=D:/AndroidToolchain/jdk17`、SDK `D:/AndroidToolchain/sdk`、debug.keystore 就位）**
+
+| 命令 | EXIT | 说明 |
+|---|---|---|
+| `--headless --export-release "Windows Desktop"` | **0** | 重生成 `build/Aierdengfahuan.exe` + `.pck` |
+| `--headless --export-debug "Android"`（JAVA_HOME=jdk17） | **0** | 重生成 `.apk` + `.apk.idsig`；签名走 `build-tools/36.1.0/apksigner.bat sign`；stdout 一条既有非致命 `ERROR: No project icon specified`（工程冻结未改图标） |
+
+新旧字节数（旧 = R23B / 14:35~14:36，导出前磁盘实测；新 = R25B / 21:53~21:54）：
+
+| 产物 | R23B 旧 | **R25B 新** | 差异 |
+|---|---:|---:|---:|
+| `Aierdengfahuan.exe` | 109,127,680 B | **109,127,680 B** | 0（`embed_pck=false` 固定 Windows 模板，工程内容全在 `.pck`） |
+| `Aierdengfahuan.pck` | 1,579,332 B | **1,124,888 B** | **-454,444 B** |
+| `Aierdengfahuan.apk` | 29,829,394 B | **29,377,137 B** | **-452,257 B** |
+| `Aierdengfahuan.apk.idsig` | 239,026 B | **239,026 B** | 0（时间戳刷新 21:54，v4 验签 `true` 证明与新 apk 匹配） |
+
+> pck/apk 减小如实归因：R25 三套素材重绘为 16 色（实测 15/11/10 色），PNG 体积大幅下降；
+> `savepack` / `export` 100% 完成、`EXIT=0`、验签通过，非漏打包、非旧文件残留。
+
+验签（`apksigner.bat verify --verbose --print-certs`，JAVA_HOME=jdk17）：`Verifies` / v2=**true** / v3=**true** /
+v3.1=false / v4=false（默认未传 idsig）/ Number of signers: 1，EXIT=0；追加 `--v4-signature-file Aierdengfahuan.apk.idsig`：
+`Verifies` / v2=**true** / v3=**true** / **v4=true**，EXIT=0。`aapt dump badging` 首行包名 **`com.aierdengfahuan.game`**
+（versionCode=1 / versionName=1.0.0 / targetSdkVersion=36）。**Verifies ✓ / v2+v3(+v4) true ✓ / 包名 ✓ 全部达标。**
+
+产物按 `.gitignore`（第 8 行 `build/`、10~13 行 `*.exe`/`*.pck`/`*.apk`/`*.aab`、26 行 `*.log`）排除、不入库；
+**未执行任何 git 写操作**（不自行 git）。
+
+**8.4 三段门禁与 PASS 不回退（真跑）**
+
+| 段 | 日志（`capture/r25b_*.log`） | EXIT / 结论 |
+|---|---|---|
+| G1 | `r25b_g1_import.log`（`--import`） | **0** |
+| G2 | `r25b_g2_checkonly.log`（`--check-only --script res://test/presentation.gd`） | **0** |
+| G3 | `r25b_g3_quit.log`（`--quit`） | **0**（仅既有非致命 `2 ObjectDB instances were leaked` WARNING） |
+| RUN mobile | `r25b_verify_fx_mobile.log` | **0** · `pass=47 fail=0 total=47 RESULT=PASS` |
+| RUN profile | `r25b_verify_fx_profile.log` | **0** · `pass=34 fail=0 total=34 RESULT=PASS` |
+| RUN v010 | `r25b_verify_encounter_v010.log` | **0** · `pass=20 fail=0 RESULT=ALL_MATCH` |
+| RUN v020 | `r25b_verify_encounter_v020.log` | **0** · `pass=45 fail=0 RESULT=ALL_MATCH` |
+
+- **13 份 `r25b_*.log` 的 `SCRIPT ERROR|Parse Error` 逐份 0、合计 0 → 字面 `SCRIPT ERROR=0`**；
+  **47 / 34 / 20 / 45 PASS 不回退**。
+
+**8.5 未完成项**：HD-2D 全绿未达；中帧玩家 `death` 不可辨（不翻案）；Boss 与玩家并列叠合缺纵深站位；
+WAV 未混入 MP4；动作帧三采样点均 `idle 0/0`；Android 导出非致命 `No project icon specified`；
+未做人工试玩逐帧动态验收；`128bit` 歧义待用户确认；未自行 git（总指挥收尾）；
+工程源文件与素材零改动（工程冻结）。**阻塞：无。**
+

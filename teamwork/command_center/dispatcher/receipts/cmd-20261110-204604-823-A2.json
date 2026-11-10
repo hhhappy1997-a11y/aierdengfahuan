@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261110-204604-823-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "实际结论见 teamwork/Rank-2/DONE-R25.md：任务单 ①~⑤ 全部落地并经真跑验证。交付：godot/scripts/combat/encounter_rules_v020.gd（追加 ENCOUNTER_ID 常量）、encounter_director.gd（只追加/补齐 A13 忽略 L1 永久击败 flag、grace.encounter_01.retried/retry_active 两个三段式 flag 经 WorldState.set_flag + commit('grace_retry') 先落盘再改运行时实例、接 CombatResolver 的 compute_poise_after_hit/regen_poise/resolve_poise/apply_status_buildup/can_execute，数值全部来自数据表）、verify_encounter_v030.gd（新写，53 条断言，覆盖 A13 重打/两 flag/削韧归零与回复/异常累积与触发/处决窗口/0血/连点/依赖缺失）。三段门禁真跑：--headless --import EXIT=0、--check-only --script×3 均 EXIT=0、--headless --quit EXIT=0；三段 grep SCRIPT ERROR=0、Parse Error=0。verify 真跑：v010 SUMMARY pass=20 fail=0、v020 pass=45 fail=0（既有 PASS 数全部不回退）、v030 pass=53 fail=0，三者 RESULT=ALL_MATCH、EXIT=0、grep SCRIPT ERROR=0。未完成/如实边界（DONE 第4节）：GRACE §7.1 第1步 Rank-3 登记表追加 2 行因目录所有权未执行（不冒充完成）；128bit 歧义仍待用户确认、未消歧未编码进期望值；A16 main_scene 改指 courtyard.tscn 属 Rank-1 未执行、A17 人工试玩属用户侧不冒充完成；装配期 C++ 层 ERROR/WARNING 为 --script 既有惯例、非 SCRIPT ERROR。未自行 git、未生成 00-汇总.md。"
+}

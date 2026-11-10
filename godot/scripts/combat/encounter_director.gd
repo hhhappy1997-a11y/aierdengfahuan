@@ -60,6 +60,30 @@ var _losses: int = 0
 var _outcome_history: Array[int] = []  # 每次结算的 1/0 快照序列
 var _suppressed_moves: int = 0         # 运行时被规则层抑制的落地招式次数
 
+# ---- R25 [ROUND=R25] 追加：A13 / GRACE-RETRY / CombatResolver 接线 ----
+## 三段式 flag 的模块段 / 状态段；对象段由 EncounterRulesV020.ENCOUNTER_ID 提供
+## （GRACE-RETRY-V020.md §2.3「两边统一、不改数据表 id」对齐口径）。
+const FLAG_MODULE: String = "grace"
+const FLAG_STATE_RETRIED: String = "retried"
+const FLAG_STATE_RETRY_ACTIVE: String = "retry_active"
+const COMMIT_GRACE_RETRY: String = "grace_retry"
+
+# A13：赐福休息时只读记录的 L1 永久击败 flag 快照，绝不写回 / 不清除 / 不用 removals。
+var _l1_defeat_snapshot: Dictionary = {}
+var _l1_defeat_ignored: bool = false
+# GRACE-RETRY 两个 flag 的运行时镜像（真值在 WorldState，镜像仅供快照观测）。
+var _retried_count: int = 0
+var _retry_active: bool = false
+# CombatResolver 接线：全部为 L3 运行时状态，不进任何 flag / SaveDelta。
+var _boss_poise: float = 0.0
+var _poise_break_remaining_sec: float = 0.0
+var _poise_since_last_hit_sec: float = 0.0
+var _last_poise_after_hit: float = 0.0
+var _status_current: Dictionary = {}
+var _status_resistance: Dictionary = {}
+var _status_since_last_sec: Dictionary = {}
+var _execute_available: bool = false
+
 
 func _ready() -> void:
 	_table = load(player_table_path) as Resource
@@ -82,6 +106,7 @@ func _ready() -> void:
 		_bind_boss(_boss)
 	if _boss_data == null:
 		push_warning("[Encounter] boss_data 未加载，防御/掉落数值走 0 降级")
+	_init_combat_state()
 	_update_hud()
 
 
@@ -121,6 +146,7 @@ func _step(delta: float) -> void:
 		_boss.call("advance", delta)
 		if _boss.has_method("get_hp_ratio") and float(_boss.call("get_hp_ratio")) <= 0.0:
 			_finish(true)
+	_tick_combat_state(delta)
 	_update_hud()
 
 
@@ -147,6 +173,8 @@ func _try_player_hit() -> void:
 	if _boss != null and _boss.has_method("apply_damage"):
 		_boss.call("apply_damage", damage)
 		_hits_landed += 1
+		_resolve_poise_on_hit(action)
+		_apply_action_status(action)
 
 
 func _compute_damage(action: PlayerActionData) -> float:
@@ -191,6 +219,7 @@ func _finish(won: bool) -> void:
 	# → SaveDeltaWriter._on_boss_defeated 已完成 I-2 落盘；只有败北补一次。
 	if not won:
 		_commit("encounter_v010_defeat")
+	finish_grace_retry()
 	_update_hud()
 
 
@@ -202,9 +231,13 @@ func _grace_rest() -> void:
 	_last_attack_id = ""
 	_outcome = -1
 	_grace_rests += 1
+	# A13 [ROUND=R25]：只读记录 L1 永久击败 flag（world/combat 两个 key），
+	# 绝不据其阻止重打、绝不写回、绝不清除、不写 removals。
+	_l1_defeat_snapshot = _read_l1_defeat_flags()
 	# v0.2.0：赐福休息真正重置 Boss（HP 回满 / 阶段回 1 / 清除击败态）。
 	if _respawn_boss():
 		_rematch_count += 1
+		_l1_defeat_ignored = _l1_snapshot_has_defeat()
 	if _rules != null:
 		_rules.reset_for_rematch()
 	_commit("grace_rest")
@@ -247,6 +280,16 @@ func _respawn_boss() -> bool:
 	fresh.set_script(boss_script)
 	for key: String in cfg.keys():
 		fresh.set(key, cfg[key])
+	# A13 [ROUND=R25]：赐福休息重建的是 L3 运行时实例，必须忽略 L1 永久击败 flag。
+	# BossController._ready() 读 boss_data.defeated_flag_key（world.<id>.defeated），
+	# 为 true 会保持 IDLE 不再进战斗。这里只给运行时实例一份「去掉 L1 就绪 key」的
+	# 数据表副本（数值逐字复制自原表，数据驱动不变），使本次遭遇可重打；
+	# 绝不清除 world/combat 永久击败记录、不写 removals、不改任何数据表文件。
+	var src_data: BossData = fresh.get("boss_data") as BossData
+	if src_data != null:
+		var rt_data: BossData = src_data.duplicate() as BossData
+		rt_data.defeated_flag_key = ""
+		fresh.set("boss_data", rt_data)
 	parent.add_child(fresh)
 	# --script / SceneTree 模式 add_child 不 flush _ready；is_node_ready() 为假时
 	# 显式补一次。真实运行时 add_child 已触发 _ready，跳过，避免重复初始化。
@@ -387,4 +430,279 @@ func get_snapshot() -> Dictionary:
 		"suppressed_moves": _suppressed_moves,
 		"boss_phase": phase,
 		"boss_defeated": ratio <= 0.0 and _boss != null,
+		# ---- R25 追加（既有键名与取值口径不变） ----
+		"l1_defeat_keys": get_l1_defeat_keys(),
+		"l1_defeat_snapshot": _l1_defeat_snapshot.duplicate(),
+		"l1_defeat_ignored": _l1_defeat_ignored,
+		"retried_count": _retried_count,
+		"retry_active": _retry_active,
+		"boss_poise": _boss_poise,
+		"poise_break_remaining_sec": _poise_break_remaining_sec,
+		"last_poise_after_hit": _last_poise_after_hit,
+		"execute_available": _execute_available,
+		"status_current": _status_current.duplicate(),
 	}
+
+
+# ===========================================================================
+# R25 [ROUND=R25] 追加：A13 落地 / GRACE-RETRY 两个三段式 flag /
+#   CombatResolver 既有能力接线（削韧 / 异常 / 处决）。
+#   既有 v0.1.0 20 条 + v0.2.0 45 条断言与 debug_* 签名逐字不变。
+# ===========================================================================
+
+## I-1：经 Engine.get_main_loop() 取 WorldState，与 _commit() 同一装配口径，
+## --script / SceneTree 验证模式下不触发绝对路径解析错误。
+func _get_world_state() -> Node:
+	var loop: MainLoop = Engine.get_main_loop()
+	if loop is SceneTree:
+		return (loop as SceneTree).root.get_node_or_null("WorldState")
+	return null
+
+
+## 两个三段式 flag 的 key（对象段统一由 EncounterRulesV020.ENCOUNTER_ID 提供）。
+func flag_retried_key() -> String:
+	return "%s.%s.%s" % [FLAG_MODULE, EncounterRulesV020.ENCOUNTER_ID, FLAG_STATE_RETRIED]
+
+
+func flag_retry_active_key() -> String:
+	return "%s.%s.%s" % [FLAG_MODULE, EncounterRulesV020.ENCOUNTER_ID, FLAG_STATE_RETRY_ACTIVE]
+
+
+## A13：L1 永久击败 flag 的两个 key，全部来自数据表 / 数据表 id，不硬编码 id。
+func get_l1_defeat_keys() -> Array[String]:
+	var keys: Array[String] = []
+	if _boss_data != null:
+		if not _boss_data.defeated_flag_key.is_empty():
+			keys.append(_boss_data.defeated_flag_key)
+		keys.append("combat.%s.defeated" % _boss_data.id)
+	return keys
+
+
+## A13：只读取 L1 flag 值，绝不写回、绝不清除、绝不进 removals。
+func _read_l1_defeat_flags() -> Dictionary:
+	var ws: Node = _get_world_state()
+	var result: Dictionary = {}
+	for k in get_l1_defeat_keys():
+		var v: bool = false
+		if ws != null and ws.has_method("get_flag"):
+			v = bool(ws.call("get_flag", k, false))
+		result[k] = v
+	return result
+
+
+func _l1_snapshot_has_defeat() -> bool:
+	for k in _l1_defeat_snapshot.keys():
+		if bool(_l1_defeat_snapshot[k]):
+			return true
+	return false
+
+
+## 任务 ②：发起一次「重复挑战」。顺序严格按 GRACE-RETRY-V020.md §4.2：
+##   先 set_flag 两个三段式 key → commit("grace_retry") 强制落盘 → 才改 L3 运行时实例。
+## 门控：retry_active == true 时拒绝（回合内防重复发起），retried 单调递增不回退。
+func start_grace_retry() -> bool:
+	if _state == null:
+		return false
+	var ws: Node = _get_world_state()
+	if ws == null or not ws.has_method("set_flag"):
+		push_warning("[Encounter] WorldState 不可用，重复挑战未发起")
+		return false
+	if bool(ws.call("get_flag", flag_retry_active_key(), false)):
+		return false
+	var n: int = int(ws.call("get_flag", flag_retried_key(), 0)) + 1
+	ws.call("set_flag", flag_retried_key(), n)
+	ws.call("set_flag", flag_retry_active_key(), true)
+	_commit(COMMIT_GRACE_RETRY)          # ★ 先落盘
+	# 落盘后才改运行时实例（HP / 状态机 / Boss / 规则层 / outcome）。
+	_reset_runtime_for_retry()
+	_retried_count = n
+	_retry_active = true
+	return true
+
+
+## 任务 ②：结算（胜 / 败 / 退出）清理回合并先落盘，再释放运行时状态。
+func finish_grace_retry() -> void:
+	if not _retry_active:
+		return
+	var ws: Node = _get_world_state()
+	if ws != null and ws.has_method("set_flag"):
+		ws.call("set_flag", flag_retry_active_key(), false)
+	_commit(COMMIT_GRACE_RETRY)          # ★ 结算清理先落盘
+	_retry_active = false
+
+
+func _reset_runtime_for_retry() -> void:
+	_player_hp = player_max_hp
+	if _state != null:
+		_state.reset()
+	_last_attack_id = ""
+	_outcome = -1
+	_l1_defeat_snapshot = _read_l1_defeat_flags()
+	if _respawn_boss():
+		_rematch_count += 1
+		_l1_defeat_ignored = _l1_snapshot_has_defeat()
+	if _rules != null:
+		_rules.reset_for_rematch()
+	_init_combat_state()
+
+
+# ---------------------------------------------------------------------------
+# 任务 ③：接 CombatResolver 既有能力到导演层。数值全部来自数据表
+#   （BossData / PhaseData / PoiseConfig / StatusBuildup / PlayerActionData / MoveData），
+#   或由调用方从数据表取得后传入；代码内零战斗数值硬编码。
+# ---------------------------------------------------------------------------
+
+## 当前阶段的韧性配置：阶段 override 优先，否则 Boss 顶层 poise（全部数据表）。
+func _active_poise_config() -> PoiseConfig:
+	if _boss_data == null:
+		return null
+	var idx: int = 0
+	if _boss != null and _boss.has_method("get_phase_index"):
+		idx = int(_boss.call("get_phase_index")) - 1
+	if idx >= 0 and idx < _boss_data.phases.size():
+		var ph: PhaseData = _boss_data.phases[idx] as PhaseData
+		if ph != null and ph.poise_override != null:
+			return ph.poise_override
+	return _boss_data.poise
+
+
+func _init_combat_state() -> void:
+	_boss_poise = 0.0
+	_poise_break_remaining_sec = 0.0
+	_poise_since_last_hit_sec = 0.0
+	_last_poise_after_hit = 0.0
+	_status_current = {}
+	_status_resistance = {}
+	_status_since_last_sec = {}
+	_execute_available = false
+	if _boss_data == null:
+		return
+	var cfg: PoiseConfig = _active_poise_config()
+	if cfg != null:
+		_boss_poise = cfg.max_poise
+		_last_poise_after_hit = cfg.max_poise
+	for entry in _boss_data.status_buildups:
+		var sb: StatusBuildup = entry as StatusBuildup
+		if sb == null:
+			continue
+		_status_current[sb.status_type] = 0.0
+		_status_resistance[sb.status_type] = 0.0
+		_status_since_last_sec[sb.status_type] = 0.0
+
+
+## 削韧：compute_poise_after_hit + resolve_poise（poise_damage 来自数据表动作字段）。
+func _resolve_poise(poise_damage: float) -> Dictionary:
+	if _resolver == null or _boss_data == null:
+		return {}
+	var cfg: PoiseConfig = _active_poise_config()
+	if cfg == null:
+		return {}
+	if _resolver.has_method("compute_poise_after_hit"):
+		_last_poise_after_hit = float(_resolver.call("compute_poise_after_hit", _boss_poise, poise_damage))
+	if not _resolver.has_method("resolve_poise"):
+		return {}
+	var r: Dictionary = _resolver.call("resolve_poise", _boss_poise, poise_damage, cfg, _poise_break_remaining_sec)
+	_boss_poise = float(r.get("poise", _boss_poise))
+	_poise_break_remaining_sec = float(r.get("break_remaining_sec", _poise_break_remaining_sec))
+	_execute_available = bool(r.get("stance_broken", false))
+	_poise_since_last_hit_sec = 0.0
+	return r
+
+
+func _resolve_poise_on_hit(action: PlayerActionData) -> void:
+	_resolve_poise(action.poise_damage)
+
+
+## 异常：apply_status_buildup（三种 status 配置全部来自 BossData.status_buildups）。
+func _apply_status(status_type: String, amount: float, dt: float) -> Dictionary:
+	if _resolver == null or _boss_data == null or not _resolver.has_method("apply_status_buildup"):
+		return {}
+	var sb: StatusBuildup = null
+	for entry in _boss_data.status_buildups:
+		var cand: StatusBuildup = entry as StatusBuildup
+		if cand != null and cand.status_type == status_type:
+			sb = cand
+			break
+	if sb == null:
+		return {}
+	var phase_mult: float = 1.0
+	if _boss != null and _boss.has_method("get_phase_index"):
+		var idx: int = int(_boss.call("get_phase_index")) - 1
+		if idx >= 0 and idx < _boss_data.phases.size():
+			var ph: PhaseData = _boss_data.phases[idx] as PhaseData
+			if ph != null:
+				phase_mult = ph.status_resistance_multiplier
+	var current: float = float(_status_current.get(status_type, 0.0))
+	var resist: float = float(_status_resistance.get(status_type, 0.0))
+	var since: float = float(_status_since_last_sec.get(status_type, 0.0))
+	var r: Dictionary = _resolver.call(
+		"apply_status_buildup",
+		_boss_data.id, status_type, current, amount, sb, resist, phase_mult,
+		_boss_data.max_hp, dt, since)
+	_status_current[status_type] = float(r.get("buildup", current))
+	_status_resistance[status_type] = float(r.get("accumulated_resistance", resist))
+	_status_since_last_sec[status_type] = 0.0
+	return r
+
+
+func _apply_action_status(action: PlayerActionData) -> void:
+	# 数值来自 PlayerActionData 数据表字段（本表当前三条均为 0.0，接入不虚构数值）。
+	if action.status_buildup_bleed != 0.0:
+		_apply_status("bleed", action.status_buildup_bleed, 0.0)
+	if action.status_buildup_poison != 0.0:
+		_apply_status("poison", action.status_buildup_poison, 0.0)
+	if action.status_buildup_frost != 0.0:
+		_apply_status("frost", action.status_buildup_frost, 0.0)
+
+
+## 每逻辑帧：regen_poise 韧性回复 + 崩坏窗口倒计时 + 异常计时（全部数据表配置）。
+func _tick_combat_state(delta: float) -> void:
+	if _resolver == null or _boss_data == null:
+		return
+	var cfg: PoiseConfig = _active_poise_config()
+	if cfg == null:
+		return
+	_poise_since_last_hit_sec += delta
+	if _resolver.has_method("regen_poise"):
+		_boss_poise = float(_resolver.call("regen_poise", _boss_poise, cfg, delta, _poise_since_last_hit_sec))
+	_poise_break_remaining_sec = maxf(0.0, _poise_break_remaining_sec - delta)
+	for k in _status_since_last_sec.keys():
+		_status_since_last_sec[k] = float(_status_since_last_sec[k]) + delta
+
+
+## 处决判定：can_execute（配置 / HP 比例 / 韧性 / 崩坏窗口全来自数据表与运行时；
+## 判定帧、距离、命中登记按设计文档 §3.2 由调用方提供）。
+func check_execute(distance_px: float, hitbox_reach_px: float, attacker_in_hit_window: bool, hit_registered: bool) -> bool:
+	if _resolver == null or not _resolver.has_method("can_execute"):
+		return false
+	var cfg: PoiseConfig = _active_poise_config()
+	if cfg == null:
+		return false
+	var hp_ratio: float = 0.0
+	if _boss != null and _boss.has_method("get_hp_ratio"):
+		hp_ratio = float(_boss.call("get_hp_ratio"))
+	return bool(_resolver.call("can_execute",
+		cfg, _last_poise_after_hit, _poise_break_remaining_sec, hp_ratio,
+		attacker_in_hit_window, distance_px, hitbox_reach_px, hit_registered))
+
+
+# ---- 集成层只读 / 驱动接口（供 verify_encounter_v030.gd；非探针） ----
+
+func debug_resolve_poise(poise_damage: float) -> Dictionary:
+	return _resolve_poise(poise_damage)
+
+
+func debug_apply_status(status_type: String, amount: float, dt: float = 0.0) -> Dictionary:
+	return _apply_status(status_type, amount, dt)
+
+
+func debug_tick_combat(delta: float) -> void:
+	_tick_combat_state(delta)
+
+
+func debug_start_grace_retry() -> bool:
+	return start_grace_retry()
+
+
+func debug_finish_grace_retry() -> void:
+	finish_grace_retry()

@@ -106,6 +106,7 @@ func _on_frame() -> void:
 	_drive_segment(_frame)
 	_drive_pose(_frame)
 	_drive_hud_flags(_frame)
+	_drive_combat_v030(_frame)
 	_frame += 1
 	if _frame == TOTAL_FRAMES:
 		print("==== [R22 presentation] 时间线完成 frame=%d（--quit-after 450 负责退出）====" % _frame)
@@ -193,3 +194,92 @@ func _set_flag(key: String, value: Variant) -> void:
 		return
 	if _world_state.has_method("set_flag"):
 		_world_state.call("set_flag", key, value)
+
+
+## ============================================================================
+## R25 · 战斗 HUD 输入注入（方向 3/5；裁决 A15）—— 本段为纯追加，既有逻辑不改。
+## 只调用 EncounterDirector 既有 debug_* 公共接口 + get_snapshot()，
+## HUD 数值由导演层自身 _update_hud() 刷新，绝不写 StatusLabel 文本、不伪造数值。
+## 三段画质切换（_drive_segment）与 pose 切换（_drive_pose）原样保留。
+## ============================================================================
+
+func _director() -> Node:
+	if _courtyard == null or not is_instance_valid(_courtyard):
+		return null
+	return _courtyard.get_node_or_null("EncounterRoot") as Node
+
+
+func _log_snapshot(tag: String) -> void:
+	var d: Node = _director()
+	if d == null or not d.has_method("get_snapshot"):
+		return
+	var s: Dictionary = d.call("get_snapshot")
+	print("[R25][COMBAT] %s | player_hp=%s boss_hp=%s pose=%s frame=%s dodges=%s hits_landed=%s outcome=%s" % [
+			tag, str(s.get("player_hp", "?")), str(s.get("boss_hp_ratio", "?")),
+			str(s.get("pose", "?")), str(s.get("frame", "?")),
+			str(s.get("dodges", "?")), str(s.get("hits_landed", "?")), str(s.get("outcome", "?"))])
+
+
+func _combat_attack(pose: String, steps: int, tag: String) -> void:
+	var d: Node = _director()
+	if d == null or not d.has_method("debug_request_action"):
+		push_warning("[R25] EncounterDirector 不可用，跳过 %s" % tag)
+		return
+	d.call("debug_request_action", pose)
+	d.call("debug_step", steps)
+	_log_snapshot(tag)
+
+
+func _combat_boss_hit(tag: String) -> void:
+	var d: Node = _director()
+	if d == null or not d.has_method("debug_boss_hit"):
+		push_warning("[R25] EncounterDirector 不可用，跳过 %s" % tag)
+		return
+	d.call("debug_boss_hit")
+	d.call("debug_step", 1)
+	_log_snapshot(tag)
+
+
+func _combat_dodge(tag: String) -> void:
+	var d: Node = _director()
+	if d == null or not d.has_method("debug_request_action"):
+		push_warning("[R25] EncounterDirector 不可用，跳过 %s" % tag)
+		return
+	d.call("debug_request_action", "roll")
+	d.call("debug_step", 4)          # 翻滚无敌窗口 [4,13)
+	d.call("debug_boss_hit")         # 无敌帧内来袭命中 -> 免伤 + dodges
+	d.call("debug_step", 1)
+	_log_snapshot(tag)
+
+
+func _combat_kill(tag: String) -> void:
+	var d: Node = _director()
+	if d == null or not d.has_method("debug_kill_boss"):
+		push_warning("[R25] EncounterDirector 不可用，跳过 %s" % tag)
+		return
+	d.call("debug_kill_boss")
+	_log_snapshot(tag)
+
+
+## 15 秒 450 帧内，战斗 HUD 五项（玩家 HP / Boss HP / 动作帧 / 闪避 / 命中）
+## 各至少推进一次，且三段 A/B/C 均有注入点：
+##   f30 轻攻击命中(命中+/BossHP↓/动作变) -> f60 受击(玩家HP↓) -> f90 翻滚闪避(闪避+)
+##   -> f150 重攻击命中(attack_heavy startup=20，debug_step 须>=20 才在 _frame==20 结算命中)
+##   -> f220 段B中段受击推进 -> f300 轻攻击再推进 -> f430 击败 Boss(BossHP=0/胜利)。
+## 全部为导演层既有 debug_* 真实数值，非文本伪造、不写 StatusLabel.text。
+func _drive_combat_v030(f: int) -> void:
+	match f:
+		30:
+			_combat_attack("attack_light", 12, "C-01 轻攻击命中")
+		60:
+			_combat_boss_hit("C-02 玩家受击")
+		90:
+			_combat_dodge("C-03 翻滚闪避")
+		150:
+			_combat_attack("attack_heavy", 20, "C-04 重攻击命中")
+		220:
+			_combat_boss_hit("C-04b 段B中段受击推进")
+		300:
+			_combat_attack("attack_light", 12, "C-05 轻攻击再推进")
+		430:
+			_combat_kill("C-06 击败 Boss")

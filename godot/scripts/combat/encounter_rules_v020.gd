@@ -23,6 +23,12 @@ class_name EncounterRulesV020
 ## fps<=0 时的降级帧率基准（帧率，不是帧数常量；保证边界不除零）。
 const DEFAULT_FPS: float = 60.0
 
+## R25 [ROUND=R25] 追加：遭遇实例 id（GRACE-RETRY-V020.md §2.3 对象段对齐真源）。
+## 两个三段式 flag `grace.<id>.retried` / `grace.<id>.retry_active` 的对象段由
+## EncounterDirector 据此常量拼接，禁止导演层与口径文档各起一个 id；
+## 数据表 id（boss_01_margit）仍是 §3.1 对账基准，本常量不替代、不修改数据表。
+const ENCOUNTER_ID: String = "encounter_01"
+
 ## 按帧记录的「最近一次被放行的招式 id」。
 var last_move_id: String = ""
 ## 连续同名被抑制的累计次数（任务 ②③ 指定的 retry_count）。

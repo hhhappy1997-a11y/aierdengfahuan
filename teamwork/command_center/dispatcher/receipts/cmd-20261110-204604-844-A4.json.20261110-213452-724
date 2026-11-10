@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261110-204604-844-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "引用 teamwork/Rank-4/DONE-R25.md（定稿版）实际结论：三套素材受控16色重绘完成——player_spritesheet.png 1024×128/8帧(逐帧11~15色)、boss_spritesheet.png 384×128/3招(逐帧11色)、ground_tile.png 128×128/10色；单帧非透明唯一RGB均≤16、64×64逻辑×2 NEAREST硬边(block2_mismatch=0)、RGBA二值alpha、ground四边像素完全一致(LR/TB=0、四角相等)、8玩家帧与3Boss招md5全不同；15张旧版PNG备份 r23_pre_v030_backup/ 可恢复，PNG与.tres/AtlasTexture路径逐字不变，未改任何.tres/场景/契约。真跑录屏450帧15.000000s+v030_demo.mp4 829818B(h264/yuv420p/1280x720/30fps/450帧/+faststart)，v030_demo.wav 5760044B 未混入MP4(音频流=0)。战斗HUD五项经导演层debug_*真实推进：玩家HP 100→88→76、BossHP 100%→98→95→94→0%、动作帧idle→attack_light12→roll5→attack_heavy20、闪避0→1、命中0→1→2→3、状态→胜利·已落盘；ViewImage真看首/中/尾三帧+加抽frame180与get_snapshot日志双证，新16色素材确实进入画面、不伪造HUD文本。三段门禁EXIT 0/0/0、7份r25_*.log SCRIPT ERROR=0、verify_fx_mobile 47 PASS/verify_fx_profile 34 PASS 不回退；V030-RUNTIME-REVIEW.md定稿版、CAPTURE-REPORT.md R25段§7定稿补记、DONE-R25.md定稿版均已写。未完成/未达：HD-2D全绿未达(16色重绘为细节降级/占位化，不冒充视觉升级)、frame225 death横躺角色在砖地不可辨、Boss无可见像素形象、双实例并发(磁盘最终产物以本定稿829818B为准，前次v030_*.log/607659B版本作为并发历史保留、不臆断来源)、128bit歧义待用户确认、人工试玩属用户侧。详见 DONE-R25.md 第1~4节。"
+}

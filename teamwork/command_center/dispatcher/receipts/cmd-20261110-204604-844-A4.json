@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261110-204604-844-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "引用 teamwork/Rank-4/DONE-R25.md 实际结论：① 16 色受控色板重绘完成——项目级色库 288 唯一色(≥256，裁决 A15)、13 张单帧非透明唯一 RGB 3~9 色(≤16)、64×64 逻辑网格 ×2 NEAREST 硬边 RGBA 二值 alpha、ground_tile 四边像素完全一致、spritesheet 逐 128 切片与单帧像素级一致 8/8+3/3，15 张旧版 PNG 已备份 r23_pre_v030_backup/，PNG 与 .tres/AtlasTexture 路径逐字不变。② presentation.gd 纯追加 debug_* 注入，15 秒 450 帧录屏战斗 HUD 五项全部真实推进：玩家 HP 100→88、Boss HP 100%→98%→95%→0%、动作 idle0/0→attack_light 12/27→roll 5/22→attack_heavy 16/54、闪避 0→1、命中 0→1→2→3、状态 进行中→胜利·已落盘；ViewImage 真看首/中/尾+3 注入帧与 get_snapshot 日志双证，新 16 色素材确实进入画面。③ 真跑三段门禁 EXIT 0/0/0、7 份 v030_*.log 的 SCRIPT ERROR 逐份 0 合计 0、verify_fx_mobile 47 PASS / verify_fx_profile 34 PASS 不回退。④ 450 帧=15.000000s 录屏+v030_demo.mp4(607659B)+V030-RUNTIME-REVIEW.md+CAPTURE-REPORT.md 的 R25 v0.3.0 段已写。未完成/阻塞：HD-2D 全绿未达(16 色重绘为细节降级/占位化，不冒充视觉升级)；旧 qwen-image nf4 GPU job 只读核验一次——stdout 0B、stderr 25320B、Rank-4 下全部 PNG 最新 mtime 2026-11-09 14:06、无任何 11-10 后新 PNG，无产出可验收记为长期阻塞，不等待不重试拉起、本轮零 GPU 生成任务；128bit 歧义待用户确认。详见 DONE-R25.md 第 1~4 节。"
+}

@@ -15,6 +15,7 @@
 [ext_resource type="Script" path="res://scripts/quality_settings.gd" id="13_qlsds"]
 [ext_resource type="PackedScene" path="res://scenes/encounter_v010.tscn" id="14_cachm"]
 [ext_resource type="Script" path="res://scripts/combat/encounter_director.gd" id="15_6h4uj"]
+[ext_resource type="SpriteFrames" path="res://assets/generated/boss/boss_spriteframes.tres" id="16_bosssf"]
 
 [sub_resource type="Environment" id="Environment_e34af"]
 background_mode = 1
@@ -122,6 +123,26 @@ pixel_size = 0.03125
 sprite_frames = ExtResource("2_e34af")
 animation = &"idle"
 
+[node name="BossVisual" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1900000003]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.0, 0, 0)
+
+[node name="Hybrid2D3DAnimatedSprite" type="Node3D" parent="SubViewportContainer/SubViewport/BossVisual" unique_id=1900000004]
+script = ExtResource("1_ypt7w")
+auto_aabb = false
+pose_frame_counts = {
+"dagger_slash": 1,
+"holy_hammer": 1,
+"staff_slam": 1
+}
+
+[node name="PixelSprite" type="AnimatedSprite3D" parent="SubViewportContainer/SubViewport/BossVisual/Hybrid2D3DAnimatedSprite" unique_id=1900000005]
+transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, 0, 0, 0)
+centered = false
+offset = Vector2(-16, -48)
+pixel_size = 0.03125
+sprite_frames = ExtResource("16_bosssf")
+animation = &"p1_dagger_slash"
+
 [node name="ChunkRoot" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1849473350]
 
 [node name="FXLayer" type="CanvasLayer" parent="SubViewportContainer/SubViewport" unique_id=995009074]
@@ -164,3 +185,6 @@ offset_left = 24.0
 offset_top = 660.0
 offset_right = 1224.0
 offset_bottom = 692.0
+
+[node name="Boss" parent="EncounterRoot" index="0"]
+sprite_path = NodePath("../../SubViewportContainer/SubViewport/BossVisual/Hybrid2D3DAnimatedSprite")

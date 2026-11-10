@@ -1,0 +1,234 @@
+{
+  "backup_dir": "F:/Game/aierdengfahuan\\teamwork/Rank-4\\r23_pre_v030_backup",
+  "backup_files_written": [],
+  "applied_files": [
+    "boss_p1_dagger_slash.png",
+    "boss_p1_staff_slam.png",
+    "boss_p2_holy_hammer.png",
+    "boss_spritesheet.png",
+    "decor_layer.png",
+    "ground_tile.png",
+    "player_attack_heavy.png",
+    "player_attack_light.png",
+    "player_death.png",
+    "player_hitstun.png",
+    "player_idle.png",
+    "player_roll.png",
+    "player_run.png",
+    "player_spritesheet.png",
+    "player_walk.png"
+  ],
+  "frames": {
+    "player_idle.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 15,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "block2_mismatch": 0
+    },
+    "player_walk.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 15,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "block2_mismatch": 0
+    },
+    "player_run.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 15,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "block2_mismatch": 0
+    },
+    "player_roll.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 11,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "block2_mismatch": 0
+    },
+    "player_attack_light.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 15,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "block2_mismatch": 0
+    },
+    "player_attack_heavy.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 15,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "block2_mismatch": 0
+    },
+    "player_hitstun.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 15,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "block2_mismatch": 0
+    },
+    "player_death.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 11,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "block2_mismatch": 0
+    },
+    "boss_p1_dagger_slash.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 11,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "block2_mismatch": 0
+    },
+    "boss_p1_staff_slam.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 11,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "block2_mismatch": 0
+    },
+    "boss_p2_holy_hammer.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 11,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "block2_mismatch": 0
+    },
+    "ground_tile.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 10,
+      "alpha_values": [
+        255
+      ],
+      "block2_mismatch": 0
+    },
+    "decor_layer.png": {
+      "size": [
+        128,
+        128
+      ],
+      "unique_rgb_visible": 8,
+      "alpha_values": [
+        0,
+        255
+      ],
+      "block2_mismatch": 0
+    }
+  },
+  "sheets": {
+    "player_spritesheet.png": {
+      "size": [
+        1024,
+        128
+      ],
+      "per_frame_unique_rgb": [
+        15,
+        15,
+        15,
+        11,
+        15,
+        15,
+        15,
+        11
+      ],
+      "whole_unique_rgb": 15
+    },
+    "boss_spritesheet.png": {
+      "size": [
+        384,
+        128
+      ],
+      "per_frame_unique_rgb": [
+        11,
+        11,
+        11
+      ],
+      "whole_unique_rgb": 11
+    }
+  },
+  "edges": {
+    "LR_mismatch_rows": 0,
+    "TB_mismatch_cols": 0,
+    "four_corners_equal": true
+  },
+  "distinct": {
+    "player_8_md5": [
+      "32976ea9382320978e38237b785eb53c",
+      "26d7d83955e19cfb399b17afd449c183",
+      "32a3b54551e176d0648d65999defa7c4",
+      "ebcdaf676a1a3da58ffece513503a9df",
+      "b92cc2ba86d852a4a83ab67b3f43e0ab",
+      "a78ab2f8737710db2be902dac8349287",
+      "ada26b182eec7af73ace654b941e3ff4",
+      "88620dd058d17f0f5262c9cfbfd8156b"
+    ],
+    "boss_3_md5": [
+      "acab770092dbf1f458ede5b9cc55e318",
+      "27a671b4a08fff5cfbe762c96db890cf",
+      "50641e21ec5432bd1bc3ef41c449f300"
+    ],
+    "player_all_distinct": true,
+    "boss_all_distinct": true
+  },
+  "palette_outside": {}
+}

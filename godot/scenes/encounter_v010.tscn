@@ -1,28 +1,48 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/combat/encounter_director.gd" id="1_pn2v7"]
-[ext_resource type="Script" path="res://scripts/combat/boss_controller.gd" id="2_fws14"]
-[ext_resource type="Resource" path="res://data/combat/boss_01_margit.tres" id="3_msbsn"]
-[ext_resource type="Script" path="res://scripts/combat/combat_event_bus.gd" id="4_8smvu"]
-[ext_resource type="Script" path="res://scripts/combat/combat_resolver.gd" id="5_ochyd"]
+[ext_resource type="Script" path="res://scripts/combat/encounter_director.gd" id="1_msbsn"]
+[ext_resource type="Script" path="res://scripts/combat/boss_controller.gd" id="2_8smvu"]
+[ext_resource type="Resource" path="res://data/combat/boss_01_margit.tres" id="3_ochyd"]
+[ext_resource type="Script" path="res://scripts/render/hybrid_2d3d_animated_sprite.gd" id="4_tvl2c"]
+[ext_resource type="SpriteFrames" path="res://assets/generated/boss/boss_spriteframes.tres" id="5_2sohq"]
+[ext_resource type="Script" path="res://scripts/combat/combat_event_bus.gd" id="6_ayjnk"]
+[ext_resource type="Script" path="res://scripts/combat/combat_resolver.gd" id="7_d4s2h"]
 
-[node name="EncounterRoot" type="Node" unique_id=475925940]
-script = ExtResource("1_pn2v7")
+[node name="EncounterRoot" type="Node" unique_id=1869144419]
+script = ExtResource("1_msbsn")
 
-[node name="Boss" type="Node3D" parent="." unique_id=1114354399]
-script = ExtResource("2_fws14")
-boss_data = ExtResource("3_msbsn")
+[node name="Boss" type="Node3D" parent="." unique_id=39980656]
+script = ExtResource("2_8smvu")
+boss_data = ExtResource("3_ochyd")
+sprite_path = NodePath("Hybrid2D3DAnimatedSprite")
 
-[node name="CombatEventBus" type="Node" parent="." unique_id=1115673106]
-script = ExtResource("4_8smvu")
+[node name="Hybrid2D3DAnimatedSprite" type="Node3D" parent="Boss" unique_id=1776782603]
+script = ExtResource("4_tvl2c")
+auto_aabb = false
+pose_frame_counts = {
+"dagger_slash": 1,
+"holy_hammer": 1,
+"staff_slam": 1
+}
 
-[node name="CombatResolver" type="Node" parent="." unique_id=1683655630]
-script = ExtResource("5_ochyd")
+[node name="PixelSprite" type="AnimatedSprite3D" parent="Boss/Hybrid2D3DAnimatedSprite" unique_id=745775167]
+transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, 0, 0, 0)
+centered = false
+offset = Vector2(-16, -48)
+pixel_size = 0.03125
+sprite_frames = ExtResource("5_2sohq")
+animation = &"p1_dagger_slash"
 
-[node name="HUD" type="CanvasLayer" parent="." unique_id=448163040]
+[node name="CombatEventBus" type="Node" parent="." unique_id=1377700419]
+script = ExtResource("6_ayjnk")
+
+[node name="CombatResolver" type="Node" parent="." unique_id=274219858]
+script = ExtResource("7_d4s2h")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=502960233]
 layer = 20
 
-[node name="StatusLabel" type="Label" parent="HUD" unique_id=1698859679]
+[node name="StatusLabel" type="Label" parent="HUD" unique_id=2113702545]
 offset_left = 24.0
 offset_top = 20.0
 offset_right = 24.0

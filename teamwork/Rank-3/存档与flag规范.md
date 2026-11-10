@@ -163,6 +163,8 @@ key   := <模块> "." <对象> "." <状态>
 | `dungeon.bellvault.deepest_floor` | int | `0` | 抵达新层 | M3 密度统计用 |
 | `grace.network.last_rest_epoch` | int | `0` | 每次赐福休息 | 见 §4.6 |
 | `grace.network.last_grace_id` | String | `""` | 休息 / 传送落点 | 死亡后复活点 |
+| `grace.encounter_01.retried` | int | `0` | 赐福菜单发起「重复挑战」 | 累计次数，单调递增，永不清除；与 combat.<id>.defeated 无关 |
+| `grace.encounter_01.retry_active` | bool | `false` | 发起 / 结算重复挑战 | 回合内防重复发起；结算或重启恢复置 false |
 
 > 新增 flag 必须在本文登记表追加一行后再使用；禁止在代码里临时拼接未登记 key。
 

@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261110-204604-823-A2",
+  "command_id": "cmd-20261110-204604-823",
+  "ai": 2,
+  "from": "总指挥",
+  "task": "[ROUND=R25] 【R25 · Rank-2 A13 落地 + 削韧/异常/处决接入（方向 4、6）】① 裁决 A13 落地：赐福休息重置 Boss 时，运行时层忽略 L1 永久击败 flag（world.<id>.defeated / combat.<id>.defeated），绝不清除永久记录、不用 removals；只让本次遭遇可重打。② 把 GRACE-RETRY-V020.md 定义的两个三段式 flag（grace.encounter_01.retried 单调递增、grace.encounter_01.retry_active 回合门控）真正写入 WorldState（经 SaveDeltaWriter/commit 或既有 set_flag 入口），顺序遵守「先落盘再改运行时实例」。③ 接 CombatResolver 既有能力到导演层：削韧（compute_poise_after_hit / regen_poise / resolve_poise）、异常状态（apply_status_buildup，bleed/poison/frost）、处决判定（can_execute）；数值全部来自数据表或 @export，不硬编码。④ 新写 godot/scripts/combat/verify_encounter_v030.gd（extends SceneTree）：断言覆盖 A13 重打、两个 flag、削韧归零与回复、异常累积与触发、处决窗口、0 血/连点/依赖缺失；同跑 verify_encounter_v010.gd 20 PASS 与 verify_encounter_v020.gd 45 PASS 不回退；输出 PASS/FAIL 与 RESULT。⑤ 不改 project.godot / 场景 / 素材 / 00-协作契约.md / presentation.gd。\n【公共契约·v0.3.0】直接改、直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；引擎 D:/Godot/Godot_v4.7.2-stable_win64.exe 三段门禁 --headless --import → --check-only --script → --headless --quit，grep SCRIPT ERROR=0；零付费、零外部依赖、不引入任何付费素材生成服务、一次只跑一个 GPU 任务；产出先目视检查再接入，不伪造产物、不谎报成功、不自行 git（总指挥收尾）。完成后写 teamwork/Rank-2/DONE-R25.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/2/outbox/<id>.json（不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":2,\"status\":\"done\",\"result\":\"引用 DONE-R25.md 实际结论\"}。\n【总指挥裁决】A15：用户选第 5 项视为确认美术风格提案 v1，色数口径=项目级色库 ≥256、单帧 ≤16 色索引；`128bit` 歧义仍待用户确认、不得消歧或编码进期望值。A16：run/main_scene 改指 courtyard.tscn，Main.tscn 保留不删。A17：人工试玩属用户侧，本轮只给勾选清单、不冒充完成。\n【目录所有权】godot/project.godot / encounter_v010.tscn / build_encounter_v010.gd / courtyard.tscn 归 Rank-1；encounter_director.gd / encounter_rules_v020.gd / verify_encounter_v030.gd 归 Rank-2；00-协作契约.md / README.md / teamwork/Rank-3/ 归 Rank-3；godot/assets/generated/r23/ 下 PNG / godot/test/presentation.gd / capture/ / teamwork/Rank-4/ 归 Rank-4；任何一方不得写他人独占路径。素材 PNG 路径保持不变（Rank-4 重绘内容、Rank-1 只引用既有 .tres）。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-10 20:46:05",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261110-204604-823-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
+}
