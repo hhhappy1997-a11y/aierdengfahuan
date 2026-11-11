@@ -156,6 +156,10 @@ func _request_action(pose_name: String) -> bool:
 	var accepted: bool = _state.request(pose_name)
 	if accepted:
 		_last_attack_id = ""
+		# R27 [ROUND=R27] 动作帧 HUD 推进：请求被接受的「当帧」就把 PlayerActionState 的
+		# get_current_pose()/get_frame()/get_total() 刷到底部战斗 HUD，不等下一个
+		# _physics_process，确保动作帧从「idle 0/0」立即推进（R25 实机曾恒显示 idle 0/0）。
+		_update_hud()
 	return accepted
 
 
@@ -365,11 +369,14 @@ func _update_hud() -> void:
 		status = "胜利 · 已落盘"
 	elif _outcome == 0:
 		status = "败北 · 按 E 赐福休息"
+	# R27：动作帧三项全部取自本导演内 PlayerActionState 的既有只读接口（pose / frame / total），
+	# 显示到底部战斗 HUD；不改既有 HUD 的其它文本与四套 HUD 位置。
+	var pose: String = _state.get_current_pose() if _state != null else "idle"
+	var frame: int = _state.get_frame() if _state != null else 0
+	var total: int = _state.get_total() if _state != null else 0
 	_label.text = "玩家 HP %d/%d  ｜  Boss HP %d%%  ｜  动作 %s %d/%d  ｜  闪避 %d  ｜  命中 %d  ｜  %s" % [
 		int(_player_hp), int(player_max_hp), int(ratio * 100.0),
-		_state.get_current_pose() if _state != null else "idle",
-		_state.get_frame() if _state != null else 0,
-		_state.get_total() if _state != null else 0,
+		pose, frame, total,
 		_dodges, _hits_landed, status]
 
 

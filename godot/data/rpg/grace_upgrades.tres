@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="GraceUpgradeConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/grace_upgrade_config.gd" id="1_guc"]
+
+[resource]
+script = ExtResource("1_guc")
+upgrades = Array[Dictionary]([{
+"id": "hp_max_bonus",
+"display_name": "赐福·生命上限",
+"cost": 100,
+"effect_key": "hp_max",
+"effect_value": 20.0
+}, {
+"id": "roll_iframe_bonus",
+"display_name": "赐福·翻滚余韵",
+"cost": 200,
+"effect_key": "roll_iframe",
+"effect_value": 1.0
+}, {
+"id": "attack_power_bonus",
+"display_name": "赐福·攻击强化",
+"cost": 300,
+"effect_key": "attack_power",
+"effect_value": 5.0
+}])

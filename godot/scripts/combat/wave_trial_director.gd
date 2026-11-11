@@ -53,6 +53,9 @@ const DEGRADED_POINTS: int = 0
 const K_BEST: String = "dungeon.wave_trial.best_wave"
 const K_COMPLETED: String = "dungeon.wave_trial.completed"
 const K_POINTS: String = "grace.trial.points"
+# R27：Rank-2 赐福兑换累计消费（单调递增）；余额 = grace.trial.points - grace.trial.spent_points。
+# 该 key 由 Rank-2 落盘，本导演只读、带默认 0 降级（Rank-2 未落盘时余额 = 全量 points）。
+const K_SPENT: String = "grace.trial.spent_points"
 const REASON_CLEARED: String = "wave_trial_cleared"
 const REASON_COMPLETED: String = "wave_trial_completed"
 const REASON_SETTLED: String = "wave_trial_settled"
@@ -114,6 +117,8 @@ func _ready() -> void:
 	set_process(true)
 	set_process_unhandled_input(true)
 	_refresh_hud()
+	# R27B 裁决 A24：增益运行时挂载接线（在 _ready 之后经既有公开方法作用到运行时实例）。
+	_apply_grace_runtime()
 	if auto_start:
 		_auto_start_pending = true
 		_auto_start_frames = 0
@@ -566,13 +571,53 @@ func _refresh_hud() -> void:
 	var cd: float = maxf(0.0, _remaining) \
 			if (_state == State.TELEGRAPH or _state == State.WAVE_ACTIVE) else 0.0
 	var shown: int = clampi(_index + 1, 1, _total)
+	# R27 [ROUND=R27] 赐福点数跨局对齐：不再显示本局累计 _points_total，改显示持久化
+	# grace.trial.points 的可用余额 = points - grace.trial.spent_points（Rank-2 兑换消费）。
+	# 直接经 WorldState.get_flag 公开入口读真值（与 Rank-2 消费口径一致），依赖缺失时
+	# 回退运行时镜像 _grace_points、spent 记 0，如实降级、不崩。maxi(0, ·) 防负余额。
+	var points: int = _grace_points
+	var spent: int = 0
+	if _world_state != null and _world_state.has_method("get_flag"):
+		points = int(_world_state.call("get_flag", K_POINTS, _grace_points))
+		spent = int(_world_state.call("get_flag", K_SPENT, 0))
+	var balance: int = maxi(0, points - spent)
 	_label.text = "第 %d/%d 波 ｜ 赐福点数 %d ｜ 倒计时 %.1f ｜ 历史最佳 %d" % [
-		shown, _total, _points_total, cd, _best_wave]
+		shown, _total, balance, cd, _best_wave]
 
 
 # ===========================================================================
 # 5) 集成层只读 / 驱动接口（供 HUD、验证脚本与运行日志；非探针，不含数值口径）
 # ===========================================================================
+
+# ===========================================================================
+# R27B [ROUND=R27B] · 裁决 A24：增益运行时挂载接线（不改 Rank-2 脚本 / 不写 flag）
+#   courtyard.tscn 的 WaveTrialDirector 下新增 GraceUpgradeRuntime 节点，
+#   本导演在 _ready() 末尾经其既有公开方法 apply_purchased(encounter, ws) 把已购
+#   三项（HP 上限 / 翻滚无敌 / 攻击力）作用到运行时实例；ws 传 null → 由 Rank-2
+#   脚本自身按 Engine.get_main_loop() 相对探活 WorldState（--script 模式亦可用）。
+#   依赖缺失（节点 / 方法 / WorldState / 数据表）如实降级打印、不崩、不产生 SCRIPT ERROR。
+#   既有方法 / 信号 / debug_* 签名 / get_snapshot() 键逐字不动。
+# ===========================================================================
+func _apply_grace_runtime() -> void:
+	var rt: Node = get_node_or_null(^"GraceUpgradeRuntime")
+	if rt == null or not rt.has_method("apply_purchased"):
+		print("[WaveTrial] 增益运行时节点缺失 → 数据已落、效果待接（降级，不崩）")
+		return
+	var enc: Node = _encounter
+	if enc == null:
+		enc = get_node_or_null(encounter_director_path)
+	var report: Dictionary = rt.call("apply_purchased", enc, null)
+	print("[WaveTrial] 增益运行时接线：checked=%s applied=%s degraded=%s reasons=%s" % [
+		str(report.get("checked", 0)), str(report.get("applied", 0)),
+		str(report.get("degraded", 0)), str(report.get("reasons", []))])
+	var items: Array = report.get("items", []) as Array
+	for it: Variant in items:
+		var row: Dictionary = it as Dictionary
+		print("[WaveTrial]   · %s %s status=%s before=%s after=%s via=%s" % [
+			str(row.get("id", "")), str(row.get("effect_key", "")),
+			str(row.get("status", "")), str(row.get("before", "-")),
+			str(row.get("after", "-")), str(row.get("via", row.get("reason", "")))])
+
 
 func get_snapshot() -> Dictionary:
 	return {

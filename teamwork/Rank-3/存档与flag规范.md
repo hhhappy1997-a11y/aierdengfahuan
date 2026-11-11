@@ -168,9 +168,12 @@ key   := <模块> "." <对象> "." <状态>
 | `dungeon.wave_trial.best_wave` | int | `0` | 订阅 `wave_cleared` / `trial_completed`，按 `max(旧, 本局最高波次)` 更新 | 历史最高波次，单调递增、只增不减、重启不丢；HUD「历史最佳」读；见 WAVE-TRIAL-GDD.md §6.1 |
 | `dungeon.wave_trial.completed` | bool | `false` | 三波全清置 `true` | 一次性永久成就，只增不减（false→true 单向）；失败 / 重启 / 重复挑战不回退 |
 | `grace.trial.points` | int | `0` | 订阅 `wave_cleared(index,points)` 累加（`reward_points` 读 Rank-2 表） | 赐福点数累计，单调递增、永不清除、休息不清零；HUD「赐福点数」读；同一波重复触发由门控防二次累加 |
+| `grace.trial.spent_points` | int | `0` | 兑换编排在 Rank-2 `grace_upgrade_service.purchase()` 判定通过后，`spent_points = 旧 + cost`，与 `unlocked` 同一 `commit("grace_upgrade_purchased")` 原子先落盘 | 累计消费点数，单调递增、永不清除、重启不丢；**绝不回退 `grace.trial.points`、绝不写 `removals`**；重复购买由门控防二次累加；余额 = `points − spent_points ≥ 0` 硬约束；见 `WAVE-TRIAL-GDD.md` §9.9 |
+| `grace.upgrade_<id>.unlocked` | bool | `false` | 兑换成功置 `true`，与 `spent_points` 同一 `commit(reason)` 原子先落盘 | 永久增益解锁，一次性永久成就，只增不减（false→true 单向）；失败 / 重启 / 重复挑战 / 重复购买无 `false` 回写；`<id>` 为 Rank-2 `id` 占位，任务单四段字面 `grace.upgrade.<id>.unlocked` 收敛为三段式（见 `00-协作契约.md` §3.3 R27 说明段） |
 
 > 新增 flag 必须在本文登记表追加一行后再使用；禁止在代码里临时拼接未登记 key。
 > R26 / v0.4.0：上表 3 个新 key 定义见 `teamwork/Rank-3/WAVE-TRIAL-GDD.md` §6.1 与 `00-协作契约.md` §3.3 登记表；只进 `flags` 字典、不新增顶层字段、`schema_version=3` 不变；`commit(reason)` 强制落盘点与「先落盘再改运行时实例」顺序见 `WAVE-TRIAL-GDD.md` §6.3 / §6.4。
+> R27 / v0.5.0：上表 2 个新 key（`grace.trial.spent_points` / `grace.upgrade_<id>.unlocked`）定义见 `teamwork/Rank-3/WAVE-TRIAL-GDD.md` §9.9 与 `00-协作契约.md` §3.3 登记表；给 `grace.trial.points` 一个单调镜像出口、闭合「消费成长」循环断点；只进 `flags` 字典、不新增顶层字段、`schema_version=3` 不变、旧存档缺 key 回落基线不迁移；**消费绝不写 `removals`、绝不回退 `points`**，余额 = `points − spent_points ≥ 0`；`commit("grace_upgrade_purchased")` 强制落盘点与「先落盘再改运行时实例」顺序见 `WAVE-TRIAL-GDD.md` §9.9；`<id>` 三段式收敛口径与待裁决项见 `00-协作契约.md` §3.3 R27 说明段。
 
 ---
 

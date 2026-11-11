@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261111-083350-232-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "引用 teamwork/Rank-1/DONE-R27.md 实际结论（[ROUND=R27]/v0.5.0）：① SaveSystem 占位接线：save_system.gd._ready() 经既有 WorldState._load() 自动读回磁盘（依赖/模式缺失 push_warning 降级不崩）、提供 is_loaded()；不改 world_state.gd / project.godot autoload 段 / 不新增存档顶层字段 / 不动 schema_version=3。真跑两个独立引擎进程「写→重启读回」：写 pid=14948 落盘 best_wave=7/points=1337/completed=true，读回 pid=23436 经 SaveSystem 自动 _load() 读回 7/1337/true，A8 auto_loaded=true、A9 is_loaded=true，跨进程恢复一致。② 动作帧 HUD 推进：encounter_director.gd 动作请求当帧刷新，底部战斗 HUD 由恒 idle 0/0 推进到 attack_light 0/27→1/27，不改既有 HUD 其它文本与四套 HUD 位置。③ 赐福点数跨局：wave_trial_director.gd 波次 HUD 改显示持久化余额 grace.trial.points-grace.trial.spent_points（1300/1000/新局不归零/非负/降级）。④ 赐福点亮态：hud.gd 读三段式 flag（dungeon.wave_trial.completed / grace.network.last_rest_epoch）由暗灰 DIM 变亮金 GOLD，颜色切换统一 apply_lit_state 不硬编码条件。⑤ 新 verify_persistence_hud_v050.gd：30 PASS / 0 FAIL / RESULT=ALL_PASS（A9/B6/C5/D5/E5）。三段门禁 33 份 r27_*.log TOTAL_SCRIPT_ERROR=0、全 EXIT=0；全回归 20/45/53/34/47/19/31/58/37/23/44 PASS 全不回退（31=r19 20+hud_binding 11；23=wave_flags 三进程 17+3+3）。如实边界：--script 工具模式 SaveSystem 默认降级以保护回归基线（真实场景/带 v050_read 标记才自动读回）；Rank-4 并发改 courtyard.tscn uv 曾致 wave_runtime 中间态 1 FAIL，其稳定后复跑 37 PASS 全不回退；未做实机录屏（不启 GPU job）；spent_points 由 Rank-2 落盘本导演只读；未自行 git、零付费零外部依赖。未完成项与日志清单详见 DONE-R27.md §8。"
+}

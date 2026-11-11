@@ -26,6 +26,23 @@ const SEED: int = 20261109
 const SKY_BANDS: int = 64
 const GROUND_BANDS: int = 8
 
+# ---------------------------------------------------------------------------
+# R27 v0.5.0 · 三波空间节奏（wave_index=1/2/3 · 派单 cmd-20261111-083350-249-A4）
+# 按波次让「远景色带 / 雾密度 / 地面色调」产生可辨差异，零新增素材、零 GPU job：
+#   波1 冷夜起始（原 R23 基准）；波2 深紫浓雾（雾×1.75 / 地面压暗×1.40 / 山影振幅×1.30）；
+#   波3 暖紫雾散（雾×0.60 / 地面偏暖且更亮×0.70 / 山影振幅×0.80 / 地平线暖金高光）。
+# [PLACEHOLDER] 下列色带 / 雾 / 地面数值为演示节奏，待试玩校准；
+#   rationale：三波需在同一场景内靠程序化 2D _draw() 呈现可辨空间变化，不碰素材 PNG / SpriteFrames。
+# ---------------------------------------------------------------------------
+const WAVE_SKY_TOP: Array = ["#04081A", "#050A20", "#1A0C22"]
+const WAVE_SKY_BOT: Array = ["#142B56", "#1E2A58", "#4A2846"]
+const WAVE_FOG_MULT: Array = [1.0, 1.75, 0.60]
+const WAVE_FOG_COLOR: Array = ["#7E96BF", "#8E96C8", "#C08A6A"]
+const WAVE_GROUND_COLOR: Array = ["#0A1836", "#12164A", "#2A1428"]
+const WAVE_GROUND_MULT: Array = [1.0, 1.40, 0.70]
+const WAVE_RIDGE_AMP: Array = [1.0, 1.30, 0.80]
+const WAVE_HORIZON_GLOW: Array = [0.18, 0.10, 0.34]
+
 # 三层远景山影视差系数（远→近，漂移幅度递增，制造平滑景深）
 const P_RIDGE_FAR: float = 0.06
 const P_RIDGE_MID: float = 0.14
@@ -41,6 +58,12 @@ var _far_motes: Array[Dictionary] = []
 var _near_motes: Array[Dictionary] = []
 var _stars: Array[Dictionary] = []
 
+# R27 三波状态：wave_index 对外只读展示；_wave_override>=1 时为 presentation.gd 显式驱动；
+# _w 是 _draw() 内当帧生效波（1-based）。未显式驱动时自动从 WaveTrialDirector 读快照。
+var wave_index: int = 1
+var _wave_override: int = -1
+var _w: int = 1
+
 
 func _ready() -> void:
 	_build_motes()
@@ -50,6 +73,25 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	queue_redraw()
+
+
+## R27：演示序列（presentation.gd）显式设置波次，确定性驱动三波空间变化。
+func set_wave_index(w: int) -> void:
+	_wave_override = clampi(w, 1, 3)
+	wave_index = _wave_override
+	queue_redraw()
+
+
+## R27 自动回退：未显式驱动时，经 WaveTrialDirector 既有 get_snapshot() 读 index（0-based）+1。
+## 节点不存在 / 无接口时静默回退到波 1，绝不臆造数值、不写任何 Label.text。
+func _current_wave() -> int:
+	if _wave_override >= 1:
+		return _wave_override
+	var d: Node = get_tree().root.get_node_or_null("Courtyard/WaveTrialDirector")
+	if d != null and d.has_method("get_snapshot"):
+		var s: Dictionary = d.call("get_snapshot")
+		return clampi(int(s.get("index", 0)) + 1, 1, 3)
+	return 1
 
 
 func _build_stars() -> void:
@@ -115,6 +157,7 @@ func _draw() -> void:
 	# 故纯设计坐标绘制在三档下输出位置 / 尺寸一致。
 	var sc: Vector2 = Vector2(vs.x / BUFFER_W, vs.y / BUFFER_H)
 	draw_set_transform(Vector2.ZERO, 0.0, sc)
+	_w = _current_wave()
 	var t: float = Time.get_ticks_msec() / 1000.0
 	_draw_night_sky()
 	_draw_fog_bands_far(t)
@@ -127,8 +170,8 @@ func _draw() -> void:
 
 # ① 深蓝夜空：64 条色带平滑渐变 + 冷白星点（像素精灵背后的平滑景深底）
 func _draw_night_sky() -> void:
-	var top := Color("#04081A")
-	var bot := Color("#142B56")
+	var top := Color(String(WAVE_SKY_TOP[_w - 1]))
+	var bot := Color(String(WAVE_SKY_BOT[_w - 1]))
 	var band_h: float = HORIZON_Y / float(SKY_BANDS)
 	for i in range(SKY_BANDS):
 		var w: float = float(i) / float(SKY_BANDS - 1)
@@ -163,12 +206,14 @@ func _draw_fog_bands_near(t: float) -> void:
 
 
 func _draw_fog_band_set(bands: Array[Dictionary], t: float) -> void:
+	var fog_mult: float = float(WAVE_FOG_MULT[_w - 1])
+	var fog_hex: String = String(WAVE_FOG_COLOR[_w - 1])
 	for b in bands:
 		var drift: float = sin(t * 0.25 + float(b["y"])) * 4.0
 		for k in range(6):
-			var a: float = float(b["a"]) * (1.0 - float(k) / 6.0)
+			var a: float = clampf(float(b["a"]) * fog_mult * (1.0 - float(k) / 6.0), 0.0, 0.9)
 			draw_rect(Rect2(-8.0 + drift, float(b["y"]) + float(k) * float(b["h"]) / 6.0,
-					BUFFER_W + 16.0, float(b["h"]) / 6.0 + 1.0), _c("#7E96BF", a))
+					BUFFER_W + 16.0, float(b["h"]) / 6.0 + 1.0), _c(fog_hex, a))
 
 
 # ④ 远景山影 3 层：深蓝剪影 + 冷蓝色阶 + alpha 递进 + 分层漂移 → 平滑多层景深
@@ -179,6 +224,7 @@ func _draw_ridges(t: float) -> void:
 		{"base": 90.0, "amp": 20.0, "color": "#0C1C36", "alpha": 0.85, "p": P_RIDGE_MID},
 		{"base": 102.0, "amp": 14.0, "color": "#050D1E", "alpha": 0.95, "p": P_RIDGE_NEAR},
 	]
+	var amp_mult: float = float(WAVE_RIDGE_AMP[_w - 1])
 	for d in ridge_defs:
 		var off: float = sin(t * 0.22 + float(d["p"]) * 7.0) \
 			* (4.0 + float(d["p"]) * 30.0)
@@ -187,7 +233,7 @@ func _draw_ridges(t: float) -> void:
 		for k in range(9):
 			var x: float = -8.0 + float(k) * (BUFFER_W + 16.0) / 8.0
 			var y: float = float(d["base"]) \
-				- absf(sin(float(k) * 0.9 + float(d["p"]) * 8.0)) * float(d["amp"]) + off
+				- absf(sin(float(k) * 0.9 + float(d["p"]) * 8.0)) * float(d["amp"]) * amp_mult + off
 			poly.append(Vector2(x, y))
 		poly.append(Vector2(BUFFER_W + 8.0, HORIZON_Y + 20.0))
 		draw_colored_polygon(poly, _c(str(d["color"]), float(d["alpha"])))
@@ -200,13 +246,19 @@ func _draw_ridges(t: float) -> void:
 #    与 HD2DFX(layer=10) 的暖金体积光 / bloom 形成强对比（光效层在其上，不被压暗）。
 func _draw_ground_grade() -> void:
 	var h: float = (BUFFER_H - HORIZON_Y) / float(GROUND_BANDS)
+	var ground_hex: String = String(WAVE_GROUND_COLOR[_w - 1])
+	var ground_mult: float = float(WAVE_GROUND_MULT[_w - 1])
 	for k in range(GROUND_BANDS):
-		var a: float = 0.06 + 0.20 * (float(k) / float(GROUND_BANDS - 1))
+		var a: float = clampf((0.06 + 0.20 * (float(k) / float(GROUND_BANDS - 1))) * ground_mult,
+				0.0, 0.9)
 		draw_rect(Rect2(-8.0, HORIZON_Y + float(k) * h,
-				BUFFER_W + 16.0, h + 1.0), _c("#0A1836", a))
-	# 地平线冷雾高光（1px，衔接天空 / 地面）
+				BUFFER_W + 16.0, h + 1.0), _c(ground_hex, a))
+	# 地平线高光（1px，衔接天空 / 地面）：波3 转暖金，波1/2 沿用冷雾
+	var glow_hex: String = "#4A6A9C"
+	if _w == 3:
+		glow_hex = "#D89A5A"
 	draw_line(Vector2(-8.0, HORIZON_Y), Vector2(BUFFER_W + 8.0, HORIZON_Y),
-			_c("#4A6A9C", 0.18), 1.0)
+			_c(glow_hex, float(WAVE_HORIZON_GLOW[_w - 1])), 1.0)
 
 
 # ⑥ 分层光尘：远景冷白（小/慢/淡）+ 近景暖金（略大/快/亮），HUD 区逐粒避让

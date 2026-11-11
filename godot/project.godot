@@ -33,6 +33,7 @@ config_version=5
 [application]
 
 config/name="艾尔登法环 · HD-2D"
+config/icon="res://icon.png"
 config/description="2.5D HD-2D 法环同人：3D 地形 + 2D 像素角色"
 run/main_scene="res://scenes/courtyard.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")

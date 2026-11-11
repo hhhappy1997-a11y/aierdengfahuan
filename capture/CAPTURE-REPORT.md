@@ -694,3 +694,84 @@ R26 新增 `verify_wave_trial_v040.gd` **58 PASS**、`verify_wave_runtime_v040.g
 未写 `courtyard.tscn` / `project.godot` / 导演层 / 契约 / README / 其它 `.tres`；未自行 git（总指挥收尾）；
 零 GPU 额外 job、零付费、零外部素材服务（程序化 PIL），录屏与 ffmpeg 编码串行。**阻塞：无。**
 
+---
+
+## 10. R27 v0.5.0 · Rank-4 完善旧内容（派单 `cmd-20261111-083350-249-A4`）
+
+> `[ROUND=R27]` · Rank-4 独占追加 · 引擎 4.7.2.stable / ffmpeg 9.0.2（绝对路径）
+> 逐项实证见 `capture/V050-RUNTIME-REVIEW.md`、`teamwork/Rank-4/DONE-R27.md`、`capture/r27_*.log`。
+> 结论以「跑起来的画面」为准，不粉饰、不谎报。
+
+**10.1 三波空间节奏画面 / 纵深站位**
+
+`hd2d_parallax.gd` 新增 `wave_index`（1/2/3）与 `set_wave_index(w)`，按波次让
+远景色带 / 雾密度 / 地面色调 / 山影振幅 / 地平线高光产生可辨差异：
+波1 冷蓝基准（雾×1.00 / 地面×1.00 / 山影×1.00）；波2 深紫浓雾（雾×1.75 / 地面×1.40 / 山影×1.30）；
+波3 暖紫雾散（雾×0.60 / 地面×0.70 / 山影×0.80 / 地平线暖金 0.34）。
+`presentation.gd` 在 `frame=0/150/300` 与三段画质切换、三波 HUD 对齐驱动，
+`r27_capture.log` 三行 `[R27][SPACE] ... set_wave_index(1/2/3) -> 回读 wave_index=1/2/3` 实证。
+`[PLACEHOLDER]` 色带/雾/地面数值待试玩校准（rationale：零新增素材、零 GPU job，靠 2D `_draw()` 色带与 alpha 叠加呈现三波空间节奏）。
+像素实证（避开 HUD 面板）：天空 (620,60) 波1 `(21,33,60)` → 波2 `(36,44,77)` → 波3 `(51,28,49)` 暖紫红；
+地面 (1000,620) `(60,79,109)` → `(57,72,109)` → `(70,84,111)`。
+`courtyard.tscn` 把 `Player` 移到 `(-3.5, 0, 2.0)`、`BossVisual` 移到 `(0.5, 0, -8.0)`（x 差 4.0 / z 差 10.0），
+三帧实机画面玩家近大、Boss 远小、上下分离，**不再并列叠合**。
+
+**10.2 Android 项目图标 / 导出 stdout**
+
+程序化生成 `godot/icon.png` **128×128 RGBA 金线深蓝**（深蓝底 `#0B1226` + 双金框 + 三重金环 +
+黄金树竖干/放射枝 + 四角金饰 + 金核），先 ViewImage 目视通过再接入；
+`project.godot` 在 `[application]` 段**只加 `config/icon="res://icon.png"` 一行**，其它段逐字不动。
+真跑 `--headless --export-debug "Android"`（`JAVA_HOME=D:/AndroidToolchain/jdk17` /
+`ANDROID_HOME=D:/AndroidToolchain/sdk` / `debug.keystore`）：**EXIT=0**，
+`capture/r27_export_android.log` 中 `No project icon specified` 计数 = **0**（历史对照 `r25b_export_android.log` = 1），
+APK 生成 `res/mipmap-*/icon.webp` 多分辨率图标、`apksigner` 签名 `Signed`、产物 `build/Aierdengfahuan_r27.apk` 29,756,181 B。
+**该历史非致命警告本轮已消除（如实登记，不谎报）。**
+
+**10.3 左侧固定深蓝尖锐几何形状：来源与修复**
+
+受控实验定位（`r27_probe_a/b/c_*.png`）：隐藏 `Terrain` → 形状消失；只隐藏 `TerraceHigh` → 形状消失。
+**来源 = `courtyard.tscn` 的 `SubViewportContainer/SubViewport/Terrain/TerraceHigh`**
+（`MeshInstance3D` + `BoxMesh_k5tdy` size `(8,1.2,8)` + 材质 `StandardMaterial3D_uvhigh`
+`uv1_scale=(1,1,1)` / `ground_tile.png`，位置 `(-9,0.6,-8)`）。
+成因：扁平 BoxMesh 在远处左侧经低俯角相机斜视，侧面/顶角被冷蓝雾 + 暖金光照着色成深蓝双片楔形（约 `#13285A`），
+且 uv 与地面 4 倍平铺尺度不一致，看似孤立尖锐几何而非可辨台面。
+修复：先压扁/统一 uv/降低位置，真跑目视发现宽楔形减弱为一条细斜线但未彻底消失；
+最终设该节点 **`visible = false`** 彻底移除，2 帧对照确认左侧恢复完整连续砖地。
+为兑现 `verify_wave_runtime_v040` 的 `uv_terracehigh_1` 断言与全 PASS 不回退，`uv1_scale` / `size` / transform 恢复原值
+（节点已隐藏、不参与渲染、对画面零影响）。**未改任何素材 PNG / 材质文件、未把未定位说成已解决。**
+
+**10.4 15 秒录屏 / MP4 / WAV / 三帧目视**
+
+| 项 | 实测 |
+|---|---|
+| 录屏 | `--write-movie capture/v050_demo.png --fixed-fps 30 --quit-after 450 --script res://test/presentation.gd res://scenes/courtyard.tscn`（不加 `--headless`），**EXIT=0 / 450 帧 / 1280×720 / 15.000000s**，`SCRIPT ERROR=0` |
+| ffmpeg | 绝对路径 `.../ffmpeg-9.0.2-essentials_build/bin/ffmpeg.exe`，`-framerate 30 -start_number 0 -i v050_demo%08d.png -frames:v 450 -c:v libx264 -pix_fmt yuv420p -movflags +faststart`，**EXIT=0** |
+| **MP4** | `capture/v050_demo.mp4` **751,894 B**；ffprobe `h264 / yuv420p / 1280×720 / 30/1 / nb_frames=450 / duration=15.000000`，`moov` 前置 |
+| **WAV 是否混入 MP4** | **未混入**：ffmpeg 输入仅 PNG 序列、无音频 `-i`，`ffprobe -select_streams a` 音频流计数 = **0**。如实登记 |
+
+`ViewImage` 真看首 0 / 中 225 / 尾 449 三帧（逐帧结论见 `V050-RUNTIME-REVIEW.md` §3）：
+三波画面**有区分**（冷蓝 → 深紫浓雾更暗 → 暖紫红雾散更亮）；纵深站位**改善**（玩家近大、Boss 远小、不叠合）；
+左侧尖锐形状**消失**（三帧该区均为砖地 RGB ~`(71~77,93~98,129~131)`）；
+金色 WaveLabel `第 1/3 波 点数 0` → `第 2/3 波 点数 100` → `第 3/3 波 点数 450`，
+成长兑换 HUD / 赐福标题 / 画质面板 / 底部战斗五项三帧全在且可读。
+**HD-2D 全绿：未达（如实写未达）** —— 景深/光效仍 2D `draw_*` 近似、三波变化是 2D 色带叠加非真 3D 体积雾、
+地面高倍平铺重复、角色仍 `AnimatedSprite3D` billboard、未做人工试玩逐帧动态验收、三采样点动作帧 HUD 仍 `idle 0/0`。
+
+**10.5 三段门禁 / PASS 回归**
+
+G1 `--headless --import` / G2 `--headless --check-only --script res://test/presentation.gd` /
+G3 `--headless --quit` 三段 **EXIT=0**；全部 `capture/r27_*.log` 的 `SCRIPT ERROR|Parse Error` 逐份 0、
+**`TOTAL_SCRIPT_ERROR=0`**；**`47 / 34 / 20 / 45 / 53 / 58 / 37 PASS` 全部不回退**，另 `verify_frame_data` **650 PASS / 0 FAIL**。
+如实登记的额外项：Rank-1 R26B 的 `verify_wave_persist_v040.gd`（不在 R26 回归基线）稳定 `43/1 HAS_FAIL`
+（固有 `D6` 缺 `slot`/`quests`；首次 `36/8` 为存档状态/运行次序依赖），
+**用 R27 改动前 `courtyard.tscn` 备份对照同样 `43/1`，证明非本轮 Rank-4 改动引入**；本轮未写该脚本/存档系统。
+
+**10.6 目录所有权 / 合规 / 未完成项**
+
+只写 `courtyard.tscn` 视觉属性 / `project.godot` 图标一行 / `icon.png` / `hd2d_parallax.gd` /
+`presentation.gd` / `capture/` / `teamwork/Rank-4/`（+ 回执 `command_center/ai/4/outbox/`）；
+未写 `hud.gd` / `save_system.gd` / `wave_trial_director.gd` / 素材 PNG / 两份 `SpriteFrames .tres` / 契约 / README；
+未自行 git（总指挥收尾）。先目视检查再接入、直接改直接真跑、未新建只读探针/巡检脚本；零付费、零外部依赖、不启 GPU job。
+未完成：HD-2D 全绿未达、三波数值 `[PLACEHOLDER]` 待试玩、`128bit` 歧义、人工试玩逐帧动态验收未做、
+额外项 `verify_wave_persist_v040` 稳定 `43/1`。**阻塞：无。**
+

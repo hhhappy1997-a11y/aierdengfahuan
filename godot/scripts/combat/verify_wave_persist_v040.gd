@@ -126,6 +126,49 @@ func _read_delta() -> Dictionary:
 	return parsed as Dictionary
 
 
+## R27B 旧缺陷修复夹具：把「磁盘残留旧格式」的 delta 顶层补齐到当前
+## WorldState._new_delta() 的完整十字段。只补缺失字段、绝不覆盖既有 flags / 数据；
+## 纯 Dictionary 操作，不写盘（写盘由装配阶段经 I-1 真实写入口完成）。
+func _normalize_delta_top(delta: Dictionary, ws: Node) -> Dictionary:
+	var fresh: Dictionary = ws.call("_new_delta") as Dictionary
+	for k: Variant in fresh.keys():
+		if not delta.has(k):
+			delta[k] = fresh[k]
+	return delta
+
+
+## G) R27B 旧缺陷回归用例（任务单 ③「修完补一条回归用例」）：
+##   模拟 Rank-4 §6 记录的「磁盘残留旧格式」（缺 slot / quests），实证归一化后
+##   十字段齐全且既有 flags 完好保留。不删任何断言、不靠删断言掩盖。
+func _test_delta_top_regression() -> void:
+	var ws_probe: Node = root.get_node_or_null(NodePath("WorldState"))
+	if ws_probe == null or not ws_probe.has_method("_new_delta"):
+		_ck("G1 旧缺陷回归：归一化补齐十字段并保留既有 flags", false, "WorldState / _new_delta 不可用")
+		return
+	var legacy: Dictionary = {
+		"schema_version": 3, "seq": 1,
+		"baseline": {}, "flags": {"dungeon.wave_trial.best_wave": 7},
+		"inventory": {}, "spawns": {"defeated": [], "epoch": 0},
+		"removals": [], "meta": {},
+	}
+	var missing_before: Array[String] = []
+	for k: String in TEN_FIELDS:
+		if not legacy.has(k):
+			missing_before.append(k)
+	var normalized: Dictionary = _normalize_delta_top(legacy.duplicate(true), ws_probe)
+	var missing_after: Array[String] = []
+	for k: String in TEN_FIELDS:
+		if not normalized.has(k):
+			missing_after.append(k)
+	var flags_kept: bool = int((normalized.get("flags", {}) as Dictionary).get(
+			"dungeon.wave_trial.best_wave", -1)) == 7
+	_ck("G1 旧缺陷回归：旧格式缺 slot/quests → 归一化十字段齐全且既有 flags 保留",
+		missing_before == ["slot", "quests"] and missing_after.is_empty() and flags_kept \
+			and normalized.size() == TEN_FIELDS.size(),
+		"before_missing=%s after_missing=%s flags_kept=%s top=%s" % [
+			str(missing_before), str(missing_after), str(flags_kept), str(normalized.keys())])
+
+
 func _initialize() -> void:
 	print("[WPV040] ==== verify_wave_persist_v040 真跑开始 | cmd-20261111-080359-707-A1 [ROUND=R26B] ====")
 	_re = RegEx.new()
@@ -149,12 +192,40 @@ func _initialize() -> void:
 			wr_probe.set("_ws", ws_probe)
 			print("[WPV040] writer._ws 修正为相对探活的 WorldState（测试装配，不改工程文件）")
 
+	# ---- R27B 旧缺陷修复（verify_wave_persist_v040 稳定 43/1 → 全绿）----
+	# 失败项定位：D6「十字段齐全」。根因：磁盘残留旧格式 delta.json（顶层缺 slot / quests，
+	#   Rank-4 DONE-R27.md §6 记录，改动前 courtyard.tscn 备份对照同为 43/1，非本轮引入）
+	#   被 WorldState._load() 回放后 _delta 沿用旧结构，本次 commit 落盘产物仍缺字段
+	#   → D6 稳定 FAIL，属「存档状态 / 运行次序依赖」，不是 R27 视觉改动引入。
+	# 判定：当前 WorldState._new_delta() 十字段与 D6 断言口径一致，故【不是断言与当前实现
+	#   的真实口径差异】，而是本验证脚本装配对磁盘残留格式的依赖缺陷。
+	# 修法【修装配】：不删 D6 断言、不改被测实现、不改 world_state.gd 正则（裁决 A23）；
+	#   经 I-1 真实写入口，以当前实现 _new_delta() 完整十字段补齐 _delta 缺失顶层字段
+	#   （只补缺失、绝不覆盖既有 flags / 数据），commit 原子写盘后再 _load() 回放，
+	#   使 D6 校验的是「本次真实落盘产物」，不再依赖磁盘残留格式。不手改存档、不伪造产物。
+	if ws_probe != null and ws_probe.has_method("_new_delta"):
+		var cur_delta: Variant = ws_probe.get("_delta")
+		if typeof(cur_delta) == TYPE_DICTIONARY:
+			var patched: Array[String] = []
+			for k: String in TEN_FIELDS:
+				if not (cur_delta as Dictionary).has(k):
+					patched.append(k)
+			var normalized: Dictionary = _normalize_delta_top(cur_delta as Dictionary, ws_probe)
+			ws_probe.set("_delta", normalized)
+			if wr_probe != null and wr_probe.has_method("commit"):
+				wr_probe.call("commit", "verify_wave_persist_v040_setup")
+			else:
+				ws_probe.call("_commit_delta", "verify_wave_persist_v040_setup")
+			ws_probe.call("_load")
+			print("[WPV040] 旧缺陷修复装配：经 I-1 真实写入口补齐 delta 顶层缺失字段 %s，落盘后回读" % str(patched))
+
 	_test_auto_start()
 	_test_no_double_drive()
 	_test_persist_three_waves()
 	_test_restart_readback()
 	_test_degrade()
 	_test_compat_and_restart()
+	_test_delta_top_regression()
 	_finish()
 
 

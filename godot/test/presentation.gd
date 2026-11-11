@@ -53,6 +53,8 @@ const TOTAL_FRAMES: int = 450
 const RIG_PATH: String = "SubViewportContainer/SubViewport/Player/Hybrid2D3DAnimatedSprite"
 const QUALITY_PATH: String = "QualitySettings"
 const CAMERA_PATH: String = "SubViewportContainer/SubViewport/Camera3D"
+# R27 v0.5.0 · 三波空间节奏：视差远景节点（hd2d_parallax.gd，Rank-4 独占）只读引用
+const PARALLAX_PATH: String = "SubViewportContainer/SubViewport/ParallaxBackdropLayer/ParallaxBackdrop"
 
 # 冻结 pose 子集（与 HybridSpriteRig.FROZEN_POSES / player_spriteframes.tres 对齐）
 const POSES: Array = [
@@ -80,6 +82,8 @@ var _last_segment: int = -1
 # R26 三波试炼导演（防御性解析；Rank-1 未落盘则保持 null，不伪造）
 var _wave: Node = null
 var _wave_ready: bool = false
+# R27 三波空间节奏画面驱动节点（防御性解析）
+var _parallax: Node = null
 
 
 func _initialize() -> void:
@@ -122,6 +126,14 @@ func _initialize() -> void:
 	else:
 		push_warning("[R26][WAVE] 波次导演/HUD 节点未落盘（Rank-1 独占），三波 HUD 驱动将如实跳过")
 
+	# ④b R27 三波空间节奏画面节点（ParallaxBackdrop，hd2d_parallax.gd 既有 set_wave_index 接口）
+	_parallax = _courtyard.get_node_or_null(PARALLAX_PATH) as Node
+	if _parallax != null and _parallax.has_method("set_wave_index"):
+		print("[R27][SPACE] 找到 ParallaxBackdrop name=%s class=%s（三波空间变化可驱动）" % [
+				str(_parallax.name), str(_parallax.get_class())])
+	else:
+		push_warning("[R27][SPACE] ParallaxBackdrop / set_wave_index 不可用，三波空间变化将如实跳过")
+
 	# ⑤ 逐帧驱动：process_frame 每帧一次，帧号与 --quit-after 450 对齐；退出交给 --quit-after。
 	process_frame.connect(Callable(self, "_on_frame"))
 	print("[R22] process_frame 已连接 | TOTAL_FRAMES=%d @--fixed-fps 30 (15s)" % TOTAL_FRAMES)
@@ -135,6 +147,8 @@ func _on_frame() -> void:
 	_drive_hud_flags(_frame)
 	_drive_combat_v030(_frame)
 	_drive_wave_hud(_frame)
+	_drive_wave_space(_frame)
+	_drive_growth_hud(_frame)
 	_frame += 1
 	if _frame == TOTAL_FRAMES:
 		print("==== [R22 presentation] 时间线完成 frame=%d（--quit-after 450 负责退出）====" % _frame)
@@ -403,3 +417,47 @@ func _log_wave(f: int, wave: int) -> void:
 			f, wave, str(s.get("state_name", "?")), str(s.get("index", "?")),
 			str(s.get("total", "?")), str(s.get("points_total", "?")),
 			str(s.get("hud_text", "?"))])
+
+
+## ============================================================================
+## R27 v0.5.0 · 三波空间节奏画面驱动（Rank-4 独占本文件 · 派单 cmd-20261111-083350-249-A4）
+## 三波边界 0 / 150 / 300 与 _drive_segment 段 A/B/C、_drive_wave_hud 波 1/2/3 严格对齐；
+## 只调用 hd2d_parallax.gd 既有公开接口 set_wave_index(w)（has_method 守卫），
+## 让远景色带 / 雾密度 / 地面色调按波次产生可辨变化；不新增素材、不启 GPU job、不写场景。
+## ============================================================================
+func _drive_wave_space(f: int) -> void:
+	var wave: int = 0
+	if f == 0:
+		wave = 1
+	elif f == 150:
+		wave = 2
+	elif f == 300:
+		wave = 3
+	if wave == 0:
+		return
+	if _parallax == null or not is_instance_valid(_parallax) \
+			or not _parallax.has_method("set_wave_index"):
+		push_warning("[R27][SPACE] frame=%d 波%d | ParallaxBackdrop 节点/接口不可用，三波空间变化如实跳过" % [f, wave])
+		return
+	_parallax.call("set_wave_index", wave)
+	print("[R27][SPACE] frame=%d 波%d set_wave_index(%d) -> 回读 wave_index=%s（远景色带/雾密度/地面色调按波切换）" % [
+			f, wave, wave, str(_parallax.get("wave_index"))])
+
+
+## ============================================================================
+## R27 · 成长兑换 HUD 可读性实证（纯读，绝不写 Label.text / 不伪造数值）
+## 三波边界与尾帧读 WaveTrialDirector 既有 get_snapshot() 的赐福点数 / 历史最佳 / hud_text；
+## WaveTrialHud/WaveLabel 位于 CanvasLayer layer=20，视差(layer=5)/光效(layer=10) 均在其下且
+## 光尘逐粒 HUD 避让，三波空间换色不遮挡成长兑换 HUD；赐福点数 0→100→250→450 全程可读。
+## ============================================================================
+func _drive_growth_hud(f: int) -> void:
+	if f != 0 and f != 150 and f != 300 and f != 449:
+		return
+	if not _wave_ready or _wave == null or not is_instance_valid(_wave) \
+			or not _wave.has_method("get_snapshot"):
+		print("[R27][GROWTH] frame=%d 波次导演未落盘（Rank-1 独占），成长兑换 HUD 数值如实跳过" % f)
+		return
+	var s: Dictionary = _wave.call("get_snapshot")
+	print("[R27][GROWTH] frame=%d 成长兑换 HUD 快照 | 赐福点数=%s 历史最佳=%s 波=%s/%s hud_text=%s" % [
+			f, str(s.get("points_total", "?")), str(s.get("best_wave", "?")),
+			str(s.get("index", "?")), str(s.get("total", "?")), str(s.get("hud_text", "?"))])

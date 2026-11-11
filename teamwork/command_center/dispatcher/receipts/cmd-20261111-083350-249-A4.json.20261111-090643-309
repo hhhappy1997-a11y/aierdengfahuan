@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261111-083350-249-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "引用 teamwork/Rank-4/DONE-R27.md 实际结论：① 三波空间画面有可辨差异（冷蓝基准→深紫浓雾更暗→暖紫红雾散更亮，hd2d_parallax.gd 新增 wave_index/set_wave_index + presentation.gd 在 frame=0/150/300 驱动，3 行 [R27][SPACE] 回读 1/2/3 + 像素采样实证）；Boss/玩家纵深站位改善（Player -3.5,0,2.0 / BossVisual 0.5,0,-8.0，x差4.0/z差10.0，三帧不叠合）。② 左侧深蓝尖锐形状定位到 courtyard.tscn 的 Terrain/TerraceHigh（MeshInstance3D + BoxMesh_k5tdy size 8×1.2×8 + StandardMaterial3D_uvhigh uv1_scale=1,1,1，位置 -9,0.6,-8），受控实验隐藏验证后设 visible=false 彻底修复，三帧该区均为完整砖地；未改素材。③ Android：程序化生成 128×128 金线深蓝 godot/icon.png，project.godot 只加 application/config/icon 一行，--export-debug \"Android\" 真跑 EXIT=0、No project icon specified 计数 0（历史对照 r25b 为 1，警告已消除）。④ 15 秒录屏 capture/v050_demo*.png 450 帧 + ffmpeg 合成 capture/v050_demo.mp4 751894 B（h264/yuv420p/1280x720/30fps/450帧/15.000000s），WAV 未混入（ffprobe 音频流计数 0）；ViewImage 真看首0/中225/尾449 三帧：三波有区分、纵深改善、尖锐形状消失、成长兑换 HUD 可读，HD-2D 全绿未达（如实写未达）。⑤ 三段门禁 G1/G2/G3 EXIT=0、TOTAL_SCRIPT_ERROR=0、47/34/20/45/53/58/37 PASS + 650 PASS 全不回退；CAPTURE-REPORT.md 独占追加「R27 v0.5.0」。如实登记的额外项：verify_wave_persist_v040（非 R26 回归基线）稳定 43/1 HAS_FAIL，改动前 courtyard.tscn 对照同为 43/1，非本轮改动引入。未完成项见 DONE-R27.md §8（HD-2D 全绿未达、三波数值 [PLACEHOLDER] 待试玩、人工试玩逐帧验收未做、128bit 歧义、未自行 git）。阻塞：无。"
+}

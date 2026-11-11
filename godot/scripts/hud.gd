@@ -32,6 +32,13 @@ const TITLE_PREFIX: String = "赐福 · "
 const TITLE_PLACEHOLDER: String = "赐福 · 宁姆格福"             # last_grace_id 空值回退占位
 const GOLD: Color = Color(0.83, 0.68, 0.3, 1.0)              # 与 hud.tscn 落盘金色一致
 const DIM: Color = Color(0.45, 0.42, 0.34, 1.0)               # 未点亮运行期暗色
+# R27 [ROUND=R27] 赐福点亮态的三段式 flag 来源（数据驱动，不硬编码颜色切换条件）：
+#   试炼完成：dungeon.wave_trial.completed（bool，false→true 单向）
+#   赐福休息：grace.network.last_rest_epoch（int，每次休息 +1，>0 表示已休息）
+# 只登记「读哪些 flag」，颜色切换统一交给既有 apply_lit_state(lit)（GOLD / DIM）。
+const LIT_FLAG_TRIAL_COMPLETED: String = "dungeon.wave_trial.completed"
+const LIT_FLAG_REST_EPOCH: String = "grace.network.last_rest_epoch"
+const LIT_SOURCE_FLAGS: Array[String] = [LIT_FLAG_TRIAL_COMPLETED, LIT_FLAG_REST_EPOCH]
 # 对齐 chunk_world_bridge.gd:43 const REASON_FAST_TRAVEL
 const REASON_FAST_TRAVEL: String = "grace_fast_travel"
 # R19/R20：SaveDeltaWriter 的 autoload 注册键与 /root 路径。R20 起已正式注册为 autoload，
@@ -40,10 +47,23 @@ const REASON_FAST_TRAVEL: String = "grace_fast_travel"
 const WRITER_AUTOLOAD_KEY: String = "autoload/SaveDeltaWriter"
 const WRITER_ROOT_PATH: String = "/root/SaveDeltaWriter"
 
+# ---- R27B · 赐福成长购买入口（裁决 A23 三段式收敛 / A24 增益运行时接线）----
+const GRACE_CONFIG_PATH: String = "res://data/rpg/grace_upgrades.tres"
+const FLAG_POINTS: String = "grace.trial.points"
+const FLAG_SPENT_POINTS: String = "grace.trial.spent_points"
+## 裁决 A23：grace.upgrade_<id>.unlocked 三段式收敛有效，四段字面废止，不改 world_state.gd 正则。
+const FLAG_UNLOCKED_PREFIX: String = "grace.upgrade_"
+const FLAG_UNLOCKED_SUFFIX: String = ".unlocked"
+const COMMIT_REASON_PURCHASED: String = "grace_upgrade_purchased"
+
 # ==========================================================================
 # 依赖注入 / 运行期引用
 # ==========================================================================
 @export var grace_network_path: String = "res://data/rpg/grace_network.tres"
+## R27B：挂载的增益运行时节点（courtyard.tscn 覆盖真机相对路径）与兑换面板 Label。
+## 默认空 NodePath 使 hud.tscn 的独立实例（既有回归）判空降级，不崩、不改 hud.tscn 结构。
+@export var grace_runtime_path: NodePath = ^""
+@export var shop_label_path: NodePath = ^"GraceShopLabel"
 
 var _world_state: Node = null            # /root/WorldState（autoload）
 var _net: Resource = null                # GraceNetwork（8 节点 / 7 边，运行期唯一数据源）
@@ -62,6 +82,16 @@ var last_commit_reason: String = ""           # 最近一次 commit 的 reason
 var last_commit_ok: bool = false              # 最近一次是否真的先落盘
 var commit_log: Array[String] = []            # 逐次落盘登记（供自检 / 回执引用）
 
+# ---- R27B 购买入口运行期状态（既有 1~7 节逻辑逐字未动）----
+var _shop_label: Label = null                 # courtyard.tscn 新增的 GraceShopLabel
+var shop_open: bool = false                   # 兑换面板开关（仅内存态）
+var shop_message: String = "按 E 打开赐福成长兑换；数字键 1 / 2 / 3 选择"
+var grace_purchase_events: Array[String] = [] # 顺序证据：stage_flags → disk_write → runtime_update
+var _grace_ws: Node = null                    # 注入优先（验证），否则场景探活
+var _grace_writer: Node = null
+var _grace_runtime: Node = null
+var _grace_encounter: Node = null
+
 # ==========================================================================
 # 1) 生命周期 / 依赖绑定
 # ==========================================================================
@@ -69,9 +99,23 @@ var commit_log: Array[String] = []            # 逐次落盘登记（供自检 /
 func _ready() -> void:
 	_title_label = get_node_or_null("TitleLabel") as Label
 	load_grace_network(grace_network_path)
-	bind_world_state(get_node_or_null("/root/WorldState"))
+	# R27B：--script / SceneTree 模式下 add_child 不 flush data.tree，/root/... 绝对路径会触发
+	#   "Can't use get_node() with absolute paths from outside the active scene tree"。
+	#   改用 Engine.get_main_loop() + root.get_node_or_null() 相对探活（项目既有踩坑口径）；
+	#   真机场景等价命中同一 autoload WorldState，既有 30/31 PASS 绑定链路不变。
+	var ml: MainLoop = Engine.get_main_loop()
+	var ws_root: Node = null
+	if ml is SceneTree:
+		ws_root = (ml as SceneTree).root.get_node_or_null(NodePath("WorldState"))
+	bind_world_state(ws_root)
 	# 一次初始化全量刷新：内部所有 WorldState.get_flag(key, default) 均显式传业务默认值
 	refresh_all()
+	# R27B：绑定兑换面板 Label / 增益运行时节点并启用输入；依赖缺失判空降级、不崩。
+	_shop_label = get_node_or_null(shop_label_path) as Label
+	if _grace_runtime == null and not grace_runtime_path.is_empty():
+		_grace_runtime = get_node_or_null(grace_runtime_path)
+	set_process_unhandled_input(true)
+	_refresh_shop_hud()
 
 
 ## 注入 WorldState 引用并连信号；重复绑定先断开旧连接，避免重复回调。
@@ -99,6 +143,10 @@ func load_grace_network(path: String) -> void:
 	_net = null
 	_bound_keys.clear()
 	_bound_keys[LAST_GRACE_KEY] = true
+	# R27：把「试炼完成 / 赐福休息」两段三段式 flag 登记进增量命中集合，
+	# 使其成为事件驱动的点亮来源（订阅 flag_changed，不每帧轮询）。
+	for k: String in LIT_SOURCE_FLAGS:
+		_bound_keys[k] = true
 	if not ResourceLoader.exists(path):
 		push_warning("[HUD] 赐福网络资源不存在：%s" % path)
 		return
@@ -150,6 +198,11 @@ func refresh_label(key: String) -> void:
 	if key == LAST_GRACE_KEY:
 		set_title_from_grace(String(_flag(LAST_GRACE_KEY, "")))   # 显式 default=""
 		return
+	# R27：试炼完成 / 赐福休息 flag 变化 → 读三段式 flag 汇总点亮态，由
+	# apply_lit_state(lit) 统一完成「暗灰 → 亮金」切换（本处不硬编码颜色条件）。
+	if LIT_SOURCE_FLAGS.has(key):
+		apply_lit_state(_read_lit_sources())
+		return
 	for n in _grace_nodes():
 		var node: Resource = n as Resource
 		if node == null:
@@ -199,6 +252,21 @@ func apply_lit_state(lit: bool) -> void:
 	var c: Color = GOLD if lit else DIM
 	if _title_label.get_theme_color("font_color", "Label") != c:
 		_title_label.add_theme_color_override("font_color", c)
+
+
+## R27：点亮态 = 三段式 flag 来源的状态汇总（纯读、事件驱动）。
+## 每个来源经唯一入口 _flag(key, default) 显式传默认值读取；bool 直接取真值，
+## int（赐福休息 epoch）以 >0 表示「已休息」。任一来源为真即点亮。
+## 只产出 bool，颜色切换完全交给 apply_lit_state()，代码内不出现「某 flag → 某颜色」硬编码。
+func _read_lit_sources() -> bool:
+	var lit: bool = false
+	for k: String in LIT_SOURCE_FLAGS:
+		var v: Variant = _flag(k, false)
+		if typeof(v) == TYPE_BOOL:
+			lit = lit or bool(v)
+		elif typeof(v) == TYPE_INT or typeof(v) == TYPE_FLOAT:
+			lit = lit or (int(v) > 0)
+	return lit
 
 # ==========================================================================
 # 4) 赐福菜单（对应 HUD-BINDING.md §2，8 节点 / 7 边数据驱动）
@@ -485,3 +553,231 @@ func get_commit_status() -> Dictionary:
 		"grace_node_count": grace_node_count,
 		"grace_edge_count": grace_edge_count
 	}
+
+
+# ==========================================================================
+# 8) R27B · 赐福成长「购买入口」（裁决 A23 / A24）
+#    交互：E 键 interact（赐福休息）打开 / 关闭兑换面板，数字键 1 / 2 / 3 购买；
+#          HUD 显示三项（名称 / cost / 是否已解锁 / 当前余额）+ 可读提示。
+#    落盘：经 GraceUpgradeService.can_purchase / purchase 幂等判定；成功后写
+#          grace.trial.spent_points（单调递增）与 grace.upgrade_<id>.unlocked（单向），
+#          commit("grace_upgrade_purchased") 严格「先落盘再改运行时实例」；
+#          绝不 removals、绝不回退 grace.trial.points。
+#    兼容：同一 commit 内另写 Rank-2 运行时读取口径 grace.trial.bought_<id>，使挂载的
+#          GraceUpgradeRuntime.apply_purchased() 能读到已购项（裁决 A23 三段式收敛与
+#          Rank-2 内部标记并存，如实登记，不改 Rank-2 脚本）。
+#    既有 1~7 节逻辑逐字未动；依赖缺失一律判空降级、不崩、不产生 SCRIPT ERROR。
+# ==========================================================================
+
+func unlocked_key(upgrade_id: String) -> String:
+	return FLAG_UNLOCKED_PREFIX + upgrade_id + FLAG_UNLOCKED_SUFFIX
+
+
+## 验证 / 装配注入口：注入优先于场景探活（--script 模式可确定性验证落盘时序）。
+func bind_grace_deps(ws: Node, writer: Node, runtime: Node, encounter: Node = null) -> void:
+	_grace_ws = ws
+	_grace_writer = writer
+	_grace_runtime = runtime
+	_grace_encounter = encounter
+
+
+func _grace_state() -> Node:
+	if _grace_ws != null:
+		return _grace_ws
+	if _world_state != null:
+		return _world_state
+	var ml: MainLoop = Engine.get_main_loop()
+	if ml is SceneTree:
+		return (ml as SceneTree).root.get_node_or_null(NodePath("WorldState"))
+	return null
+
+
+func _grace_delta_writer() -> Node:
+	if _grace_writer != null:
+		return _grace_writer
+	var ml: MainLoop = Engine.get_main_loop()
+	if ml is SceneTree:
+		return (ml as SceneTree).root.get_node_or_null(NodePath("SaveDeltaWriter"))
+	return null
+
+
+func _grace_runtime_node() -> Node:
+	if _grace_runtime != null:
+		return _grace_runtime
+	if not grace_runtime_path.is_empty():
+		return get_node_or_null(grace_runtime_path)
+	return null
+
+
+func _grace_encounter_node() -> Node:
+	if _grace_encounter != null:
+		return _grace_encounter
+	return get_node_or_null(^"../../../../EncounterRoot")
+
+
+func _load_grace_config() -> GraceUpgradeConfig:
+	if not ResourceLoader.exists(GRACE_CONFIG_PATH):
+		return null
+	return ResourceLoader.load(GRACE_CONFIG_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as GraceUpgradeConfig
+
+
+## 只读视图：供 HUD 渲染与验证读回（不改 WorldState、不写 flag）。
+func get_shop_view() -> Dictionary:
+	var cfg: GraceUpgradeConfig = _load_grace_config()
+	var state: Node = _grace_state()
+	var points: int = 0
+	var spent: int = 0
+	if state != null and state.has_method("get_flag"):
+		points = int(state.call("get_flag", FLAG_POINTS, 0))
+		spent = int(state.call("get_flag", FLAG_SPENT_POINTS, 0))
+	var balance: int = maxi(0, points - spent)
+	var items: Array[Dictionary] = []
+	if cfg != null:
+		for i: int in range(cfg.upgrade_count()):
+			var u := cfg.get_upgrade(i)
+			if u == null:
+				continue
+			var unlocked: bool = false
+			if state != null and state.has_method("get_flag"):
+				unlocked = bool(state.call("get_flag", unlocked_key(u.id), false)) \
+					or bool(state.call("get_flag", GraceUpgradeService.purchased_flag_key(u.id), false))
+			items.append({
+				"index": i, "id": u.id, "name": u.display_name, "cost": u.cost,
+				"unlocked": unlocked, "affordable": (not unlocked) and balance >= u.cost,
+			})
+	return {"open": shop_open, "balance": balance, "points": points, "spent": spent,
+		"items": items, "message": shop_message}
+
+
+## 渲染三项可兑换增益（名称 / cost / 是否已解锁 / 当前余额）+ 可读提示到 GraceShopLabel。
+func _refresh_shop_hud() -> void:
+	if _shop_label == null:
+		return
+	var v: Dictionary = get_shop_view()
+	if not bool(v.get("open", false)):
+		_shop_label.text = "赐福成长 · 按 E 打开兑换"
+		return
+	var lines: Array[String] = []
+	lines.append("赐福成长 ｜ 当前余额 %d（点数 %d − 已消费 %d） ｜ 1/2/3 兑换" % [
+		int(v.get("balance", 0)), int(v.get("points", 0)), int(v.get("spent", 0))])
+	var items: Array = v.get("items", []) as Array
+	for it: Variant in items:
+		var row: Dictionary = it as Dictionary
+		var state_text: String = "已解锁" if bool(row.get("unlocked", false)) else \
+			("可兑换" if bool(row.get("affordable", false)) else "点数不足")
+		lines.append("  %d. %s ｜ 消耗 %d ｜ %s" % [
+			int(row.get("index", 0)) + 1, str(row.get("name", "")),
+			int(row.get("cost", 0)), state_text])
+	lines.append("提示：" + str(v.get("message", "")))
+	_shop_label.text = "\n".join(PackedStringArray(lines))
+
+
+func _set_shop_message(msg: String) -> void:
+	shop_message = msg
+	_refresh_shop_hud()
+
+
+func _toggle_shop() -> void:
+	shop_open = not shop_open
+	shop_message = "按 E 打开/关闭；数字键 1 / 2 / 3 兑换" if shop_open else ""
+	_refresh_shop_hud()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("interact"):
+		_toggle_shop()
+		return
+	if event is InputEventKey:
+		var k: InputEventKey = event as InputEventKey
+		if k.pressed and not k.echo:
+			var idx: int = -1
+			if k.physical_keycode == KEY_1 or k.keycode == KEY_1:
+				idx = 0
+			elif k.physical_keycode == KEY_2 or k.keycode == KEY_2:
+				idx = 1
+			elif k.physical_keycode == KEY_3 or k.keycode == KEY_3:
+				idx = 2
+			if idx >= 0:
+				if not shop_open:
+					_set_shop_message("请先按 E 打开赐福成长兑换面板")
+					return
+				purchase_upgrade(idx)
+
+
+func _reject_message(svc: GraceUpgradeService, points: int, spent: int, row: Dictionary, u) -> String:
+	var balance: int = maxi(0, points - spent)
+	var id: String = str(row.get("id", ""))
+	if svc.is_purchased(id):
+		return "「%s」已解锁，不能重复购买" % str(u.display_name)
+	if balance < int(row.get("cost", 0)):
+		return "点数不足：%s 需要 %d，当前余额 %d" % [
+			str(u.display_name), int(row.get("cost", 0)), balance]
+	return "输入异常或该项不可兑换，购买被拒绝（余额 %d）" % balance
+
+
+## 一次购买编排（幂等判定 / 落盘 / 运行时接线）。返回 report 供 HUD 与验证读回。
+## 严格「先落盘再改运行时实例」：set_flag 入队 → commit 原子写 → 才 apply_purchased。
+func purchase_upgrade(index: int) -> Dictionary:
+	var cfg: GraceUpgradeConfig = _load_grace_config()
+	if cfg == null:
+		_set_shop_message("兑换表不可用，购买被拒绝（降级，不崩）")
+		return {"ok": false, "reason": "config_unavailable", "committed": false}
+	if index < 0 or index >= cfg.upgrade_count():
+		_set_shop_message("无效选项，请按 1 / 2 / 3 选择")
+		return {"ok": false, "reason": "invalid_index", "committed": false}
+	var u := cfg.get_upgrade(index)
+	if u == null or not cfg.is_upgrade_valid(u):
+		_set_shop_message("该项配置非法，购买被拒绝")
+		return {"ok": false, "reason": "invalid_upgrade", "committed": false}
+	var state: Node = _grace_state()
+	if state == null or not state.has_method("get_flag") or not state.has_method("set_flag"):
+		_set_shop_message("WorldState 不可用，购买未落盘（降级，不崩）")
+		return {"ok": false, "reason": "world_state_unavailable", "committed": false}
+	var points: int = int(state.call("get_flag", FLAG_POINTS, 0))
+	var spent: int = int(state.call("get_flag", FLAG_SPENT_POINTS, 0))
+	var purchased_ids: Array = []
+	for i: int in range(cfg.upgrade_count()):
+		var it := cfg.get_upgrade(i)
+		if it == null:
+			continue
+		if bool(state.call("get_flag", unlocked_key(it.id), false)) \
+				or bool(state.call("get_flag", GraceUpgradeService.purchased_flag_key(it.id), false)):
+			purchased_ids.append(it.id)
+	var row: Dictionary = cfg.make_upgrade(u.id, u.display_name, u.cost, u.effect_key, u.effect_value)
+	var svc: GraceUpgradeService = GraceUpgradeService.new()
+	svc.load_state(spent, purchased_ids)
+	if not svc.can_purchase(points, spent, row):
+		_set_shop_message(_reject_message(svc, points, spent, row, u))
+		return {"ok": false, "reason": "can_purchase_rejected",
+			"balance": maxi(0, points - spent), "committed": false}
+	var r: Dictionary = svc.purchase(points, spent, row)
+	if not bool(r.get("ok", false)):
+		_set_shop_message("幂等判定拒绝购买（%s）" % str(r.get("reason", "")))
+		return {"ok": false, "reason": str(r.get("reason", "")), "committed": false}
+	var new_spent: int = int(r.get("spent_points", spent))
+	# ★ 先落盘：经 I-1 唯一写入口 set_flag 入队 SaveDelta → commit(reason) 原子写。
+	grace_purchase_events.append("stage_flags:" + u.id)
+	state.call("set_flag", FLAG_SPENT_POINTS, new_spent)
+	state.call("set_flag", unlocked_key(u.id), true)
+	# 兼容 Rank-2 运行时读取口径（同一 commit 原子落盘，如实登记）。
+	state.call("set_flag", GraceUpgradeService.purchased_flag_key(u.id), true)
+	var writer: Node = _grace_delta_writer()
+	if writer == null or not writer.has_method("commit"):
+		grace_purchase_events.append("disk_write_downgrade:" + u.id)
+		_set_shop_message("SaveDeltaWriter 未就绪：flag 仅进程内内存、未落盘，增益未作用到运行时（如实降级）")
+		return {"ok": true, "reason": "commit_downgrade", "committed": false,
+			"spent_points": new_spent, "balance": maxi(0, points - new_spent)}
+	writer.call("commit", COMMIT_REASON_PURCHASED)
+	grace_purchase_events.append("disk_write:" + COMMIT_REASON_PURCHASED)
+	# ★ 落盘成功后才改运行时实例（HP 上限 / 翻滚无敌 / 攻击力）。
+	var rt: Node = _grace_runtime_node()
+	if rt != null and rt.has_method("apply_purchased"):
+		var applied: Dictionary = rt.call("apply_purchased", _grace_encounter_node(), state)
+		grace_purchase_events.append("runtime_update:" + str(applied.get("applied", 0)))
+	else:
+		grace_purchase_events.append("runtime_update_downgrade:0")
+	var balance: int = maxi(0, points - new_spent)
+	var msg: String = "兑换成功：%s（消耗 %d，余额 %d）" % [u.display_name, u.cost, balance]
+	_set_shop_message(msg)
+	return {"ok": true, "reason": "ok", "committed": true, "id": u.id,
+		"spent_points": new_spent, "balance": balance, "points": points, "message": msg}

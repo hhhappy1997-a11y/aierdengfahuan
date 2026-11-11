@@ -21,9 +21,15 @@ const MISSING_TABLE_PATH: String = "res://data/rpg/__missing_wave_trial__.tres"
 const FIELDLESS_TABLE_PATH: String = "res://data/rpg/grace_network.tres"  # 存在但无 waves 字段
 
 # 节点数改动前后基线：改前 33（R25 DONE 登记 + R26 改前 grep "^[node " 实测），
-# 改后 36（+ WaveTrialHud / WaveLabel / WaveTrialDirector 三个真实节点）。
+# R26 改后 36（+ WaveTrialHud / WaveLabel / WaveTrialDirector 三个真实节点）。
+# R27B 补单（cmd-20261111-091349-628-A1）授权在 courtyard.tscn 再加 2 个真实节点：
+#   GraceUpgradeRuntime（WaveTrialDirector 下，裁决 A24 增益运行时挂载）
+#   GraceShopLabel（Hud 下，赐福成长购买 HUD）
+# 故改后基线同步为 38（+5）。属「断言与当前实现的真实口径差异 → 修断言」：
+#   只同步精确期望值，断言仍严格检查 node_count 与 delta，不删断言、不放宽、不掩盖。
 const NODE_COUNT_BEFORE: int = 33
-const NODE_COUNT_AFTER: int = 36
+const NODE_COUNT_AFTER: int = 38
+const NODE_COUNT_DELTA: int = 5
 
 var _pass: int = 0
 var _fail: int = 0
@@ -350,9 +356,9 @@ func _test_courtyard_readback() -> void:
 	print("[V040] NODE_COUNT before=%d after=%d delta=+%d（改前基线来自 R25 登记与 R26 改前 grep 实测）" % [
 			NODE_COUNT_BEFORE, disk_nodes, disk_nodes - NODE_COUNT_BEFORE])
 	_ck("courtyard_node_count", disk_nodes == NODE_COUNT_AFTER \
-			and disk_nodes - NODE_COUNT_BEFORE == 3,
-			"node_count=%d expected=%d（+3：WaveTrialHud / WaveLabel / WaveTrialDirector）" % [
-				disk_nodes, NODE_COUNT_AFTER])
+			and disk_nodes - NODE_COUNT_BEFORE == NODE_COUNT_DELTA,
+			"node_count=%d expected=%d（+%d：R26 三波 HUD/导演 + R27B 增益运行时/购买 HUD）" % [
+				disk_nodes, NODE_COUNT_AFTER, NODE_COUNT_DELTA])
 
 	# instantiate 不 add_child → 不触发 _ready，纯结构/属性回读
 	var inst: Node = ps.instantiate()

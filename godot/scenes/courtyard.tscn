@@ -18,6 +18,7 @@
 [ext_resource type="SpriteFrames" path="res://assets/generated/boss/boss_spriteframes.tres" id="16_bosssf"]
 [ext_resource type="Script" path="res://scripts/combat/wave_trial_director.gd" id="17_wtd"]
 [ext_resource type="Texture2D" path="res://assets/generated/r23/ground_tile.png" id="18_tile"]
+[ext_resource type="Script" path="res://scripts/combat/grace_upgrade_runtime.gd" id="19_grt"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uvplate"]
 albedo_texture = ExtResource("18_tile")
@@ -104,6 +105,7 @@ material_override = SubResource("StandardMaterial3D_uvlow")
 mesh = SubResource("BoxMesh_6e1c7")
 
 [node name="TerraceHigh" type="MeshInstance3D" parent="SubViewportContainer/SubViewport/Terrain" unique_id=760291856]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0.6, -8)
 material_override = SubResource("StandardMaterial3D_uvhigh")
 mesh = SubResource("BoxMesh_k5tdy")
@@ -128,6 +130,7 @@ script = ExtResource("11_r23px")
 visible = false
 
 [node name="Player" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=2016855823]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 0, 2.0)
 
 [node name="Hybrid2D3DAnimatedSprite" type="Node3D" parent="SubViewportContainer/SubViewport/Player" unique_id=1034712492]
 script = ExtResource("1_ypt7w")
@@ -141,7 +144,7 @@ sprite_frames = ExtResource("2_e34af")
 animation = &"idle"
 
 [node name="BossVisual" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1900000003]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0, -8.0)
 
 [node name="Hybrid2D3DAnimatedSprite" type="Node3D" parent="SubViewportContainer/SubViewport/BossVisual" unique_id=1900000004]
 script = ExtResource("1_ypt7w")
@@ -171,6 +174,8 @@ visible = false
 [node name="Hud" type="CanvasLayer" parent="SubViewportContainer/SubViewport/FXLayer" unique_id=1276405765 instance=ExtResource("4_6e1c7")]
 layer = 20
 script = ExtResource("5_l1iq4")
+grace_runtime_path = NodePath("../../../../WaveTrialDirector/GraceUpgradeRuntime")
+shop_label_path = NodePath("GraceShopLabel")
 
 [node name="HD2DFX" type="CanvasLayer" parent="SubViewportContainer/SubViewport" unique_id=80156914 instance=ExtResource("8_p30c5")]
 layer = 10
@@ -224,3 +229,16 @@ encounter_director_path = NodePath("../EncounterRoot")
 hud_label_path = NodePath("../WaveTrialHud/WaveLabel")
 auto_start = true
 has_external_driver = false
+
+[node name="GraceUpgradeRuntime" type="Node" parent="WaveTrialDirector" unique_id=1920000001]
+script = ExtResource("19_grt")
+encounter_director_path = NodePath("../../EncounterRoot")
+
+[node name="GraceShopLabel" type="Label" parent="SubViewportContainer/SubViewport/FXLayer/Hud" unique_id=1920000002]
+offset_left = 24.0
+offset_top = 300.0
+offset_right = 1100.0
+offset_bottom = 470.0
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.83, 0.68, 0.3, 1)
+text = "赐福成长 · 按 E 打开兑换"
