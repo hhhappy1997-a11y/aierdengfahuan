@@ -22,6 +22,8 @@ capture/r23_final*.png
 capture/v020_demo*.png
 capture/v030_demo*.png
 capture/v030_final*.png
+capture/v040_demo*.png
+capture/v040_final*.png
 
 # 临时文件
 *.tmp

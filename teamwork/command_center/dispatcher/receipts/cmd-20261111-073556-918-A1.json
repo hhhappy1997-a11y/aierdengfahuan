@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261111-073556-918-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "引用 teamwork/Rank-1/DONE-R26.md 实际结论：[ROUND=R26/v0.4.0] 波次运行时状态机（IDLE→TELEGRAPH→WAVE_ACTIVE→WAVE_CLEARED→NEXT_WAVE/TRIAL_COMPLETED）+ 3 信号（wave_started/wave_cleared/trial_completed）+ 数据表驱动 + 依赖缺失降级单波、既有 encounter_finished(won) 接线、波次 HUD（layer=20，rect 24,232-720,264）、courtyard 三地面 uv1_scale 16/3/2→4/2/1 全部落地。三段门禁 21 份日志 SCRIPT ERROR=0 / Parse Error=0；34/47/19 与 20/45/53 PASS 全不回退；新 verify_wave_runtime_v040.gd 37 PASS / 0 FAIL / RESULT=ALL_MATCH；节点数 33→36(+3)，uv 与既有 HUD 文本、instance 覆盖段经 CACHE_MODE_IGNORE 回读生效。未完成项见 DONE-R26.md §8：运行时 start_trial 自动触发入口未接线、历史最佳未接 Rank-3 持久化 flag、按不启 GPU job 未做录屏目视。"
+}

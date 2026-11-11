@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261111-073556-923-A2",
+  "command_id": "cmd-20261111-073556-923",
+  "ai": 2,
+  "from": "总指挥",
+  "task": "[ROUND=R26] 【R26 · Rank-2 波次数据表、数值假设与校验（新内容）】① 新写 godot/scripts/combat/wave_trial_config.gd（extends Resource，class_name WaveTrialConfig）：@export waves: Array[WaveData] 或等价的三波结构，每波含 enemy_id / hp_multiplier / move_weight / reward_points / telegraph_sec / time_limit_sec；数值全部标 [PLACEHOLDER]，写进文档说明 rationale。② 生成 godot/data/rpg/wave_trial.tres：3 波，hp_multiplier 1.0/1.3/1.6、reward_points 100/150/200、telegraph_sec 1.5、time_limit_sec 30；敌人 id 复用既有 enemy_01_limgrave_soldier / boss_01_margit，不新增数据表。③ 写 teamwork/Rank-2/WAVE-TRIAL-TUNING.md：数值假设表 + 调参位置 + 「broken」定义（例如首波 30 秒打不完=难度过高、三波全清 <15 秒=难度过低、点数通胀=奖励失衡），供人工试玩校准。④ 新写 verify_wave_trial_v040.gd（extends SceneTree）：断言 3 波、倍率与奖励单调递增、第 0/4 波越界拒绝、空表/字段缺失降级、time_limit 与 telegraph 合法；输出 PASS/FAIL 与 RESULT。⑤ 真跑三段门禁 grep SCRIPT ERROR=0；只写自有文件，不改导演层/场景/素材/契约。\n【公共契约·v0.4.0 / godogen + game-development-pro 纪律】用跑起来的画面判断进度而非 clean build；15~20 秒实机录屏并回看；README 长期维护状态表与资产表；所有新数值标 [PLACEHOLDER] 待试玩校准、写清 rationale，不拍脑袋写死；先定调再产出、先目视检查再接入；三段门禁 --headless --import → --check-only --script → --headless --quit，grep SCRIPT ERROR=0；零付费、零外部依赖、不引入付费素材生成服务、不启 GPU job；直接改直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；不伪造产物、不谎报成功、不自行 git（总指挥收尾）。完成后写 teamwork/Rank-2/DONE-R26.md（实际交付清单/真跑输出结论/未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/2/outbox/<id>.json（不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":2,\"status\":\"done\",\"result\":\"引用 DONE-R26.md 实际结论\"}。\n【目录所有权】wave_trial_director.gd / encounter_director.gd / courtyard.tscn 与波次 HUD 归 Rank-1；wave_trial_config.gd / data/rpg/wave_trial.tres / verify_wave_trial_v040.gd / teamwork/Rank-2/ 归 Rank-2；00-协作契约.md / README.md / WAVE-TRIAL-GDD.md / verify_wave_flags_v040.gd / teamwork/Rank-3/ 归 Rank-3；godot/assets/generated/r23/ 下 PNG 与 chars/player_spriteframes.tres、boss/boss_spriteframes.tres、godot/test/presentation.gd / capture/ / teamwork/Rank-4/ 归 Rank-4（本轮独占授权改两份 .tres 的 AtlasTexture region，路径不变）；project.godot / 既有战斗件 / 其余 .tres 本轮任何人都不得写。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-11 07:35:57",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261111-073556-923-A2\",\"ai\":2,\"status\":\"done\",\"result\":\"...\"}"
+}

@@ -610,3 +610,87 @@ WAV 未混入 MP4；动作帧三采样点均 `idle 0/0`；Android 导出非致�
 未做人工试玩逐帧动态验收；`128bit` 歧义待用户确认；未自行 git（总指挥收尾）；
 工程源文件与素材零改动（工程冻结）。**阻塞：无。**
 
+---
+
+## 9. R26 v0.4.0 逐像素精修 16 色角色 / 逐帧动作 / 地面收敛 / 15 秒录屏（Rank-4 独占追加 · 2026-11-11 · 派单 `cmd-20261111-073556-932-A4` · `[ROUND=R26]`）
+
+> 详细运行期目视复核见 `capture/V040-RUNTIME-REVIEW.md`；素材自检见
+> `teamwork/Rank-4/r26_redraw_metrics.json`；交付清单见 `teamwork/Rank-4/DONE-R26.md`。
+> 用户判定「像素化不是马赛克」、R25 16 色重绘又出现「积木感」，本轮做**逐像素精修**。
+
+**9.1 重绘实测（本机 PIL 12.3.0，零付费 / 零外部素材生成服务）**
+
+沿用 `teamwork/艾尔登法环HD2D-美术风格提案.md` 锚点 v1 的 16 色板与外描边 `#0A1020`，
+`r26_redraw.py` 把 R25 的大矩形块改为逐像素轮廓化造型：头盔逐行圆顶 + 金盔脊 +
+面甲(眼缝 T 字/鼻梁/呼吸孔/护颊/高光) + 红缨斜飘、肩甲逐行斜边梯形 + 高光边 + 铆钉、
+披风逐行飘动轮廓 + 明暗褶皱竖条 + 锯齿下摆、胸甲收腰 + 板甲分层线 + 菱形金饰 + 青宝石、
+鸢盾逐行弧边、剑身中脊/刃高光/收尖/金剑格/缠柄/剑首。**消除积木感**。
+
+| 项 | 实测 |
+|---|---|
+| 单帧色数 | 玩家 8 pose **11–16 色**（≤16）；Boss 3 招 **11 色**；地面 **6 色**；装饰 8 色；色板零越界 |
+| 规格 | 64×64 逻辑网格 ×2 NEAREST → 128×128 RGBA；`block2_mismatch=0`（严格 2×2 硬边）；alpha 仅 0/255；无渐变/无 dithering/无噪点 |
+| ★ death | 横躺剪影抬到画面中部、头/躯干/武器分色、主体亮面 `STEEL/WHITE/GOLD/COBALT_L` 与地面 `COBALT/DARK` 分离；`death_avg_luma=81.72` vs `ground_avg_luma=67.77`（delta **+13.95**），不再贴地隐形 |
+| 旧版备份 | `teamwork/Rank-4/v030_pre_v040_backup/`（**17 文件**：15 PNG + 两份 `.tres`），先备份再覆盖 |
+
+**9.2 逐帧动作（8×3=24 帧 / Boss 3×3=9 帧）**
+
+| 项 | 实测 |
+|---|---|
+| `player_spritesheet.png` | **3072×128 / 24 帧**，每帧 ≤16 色；帧物理顺序 `x = action*3*128 + sub*128` |
+| `boss_spritesheet.png` | **1152×128 / 9 帧**，每帧 ≤11 色 |
+| 子帧差异 | 呼吸 `dy` / 武器角度 / 披风褶皱相位 / 腿部步态 / 红缨飘幅；**8 pose + 3 招各 3 子帧 md5 全互异**（`player_all_3_distinct=true / boss_all_3_distinct=true`） |
+| 两份 `.tres` | `chars/player_spriteframes.tres`（8 动画 ×3 帧）、`boss/boss_spriteframes.tres`（3 动画 ×3 帧）；`region.x = action*3*128 + sub*128`；`ext_resource` 的 path/id 与动画名逐字不变、loop 保持；本轮 Rank-4 独占授权 |
+| 单帧 PNG | 8 `player_<pose>.png` + 3 `boss_<move>.png` 同步刷新为对应 pose 第 0 子帧内容，路径不变 |
+
+**9.3 地面收敛 / 裁决 A19**
+
+`ground_tile.png` 去绿(TEAL)/黄(GOLD)杂色点，4×4 大砖保持，明度 4 阶全蓝系
+(`DARK/COBALT/COBALT_L/SKY_L`) + 缝色 `OUT` + 角部 `INK`，6 色、不透明、
+左右/上下边缘像素逐像素完全一致（`LR_mismatch_rows=0 / TB_mismatch_cols=0 / four_corners_equal=true`）。
+
+**裁决 A19：本轮 Rank-4 未写 `courtyard.tscn`**（Rank-1 独占，避免并发覆盖）。
+三处 `uv1_scale` 建议值 **16/3/2 → 4/2/1** 仅在此登记；只读核对当前场景已由 Rank-1 落盘为
+`Vector3(4,4,1) / Vector3(2,2,1) / Vector3(1,1,1)`（x 分量即 4/2/1），与建议值一致。
+
+**9.4 `godot/test/presentation.gd`（Rank-4 独占）**
+
+保留三段画质切换（`_drive_segment` medium→low→high）、赐福 HUD flag、战斗 HUD 注入三套既有 HUD 可读性；
+① `_drive_pose` 改每 5 帧推进子帧、3 子帧(0/1/2)轮转、每 15 帧换 pose，
+使两份 `.tres` 每动画 3 帧在 450 帧录屏中真实可见（`[R26][POSE]` 90 行日志）；
+② 追加 `_drive_wave_hud`（防御性）：并发期间 Rank-1 落盘 `WaveTrialDirector` 后真实命中，
+只经既有公开接口 `start_trial() / debug_advance(sec) / on_encounter_finished(true) / get_snapshot()`
+确定性推进三波，绝不写 `Label.text`、不伪造波次数值。
+`SUBFRAME_INTERVAL=5` 标 [PLACEHOLDER] 待试玩校准。
+
+**9.5 15 秒录屏 / MP4 / WAV（真跑）**
+
+| 项 | 实测 |
+|---|---|
+| 录屏 | `--write-movie capture/v040_demo.png --fixed-fps 30 --quit-after 450 --script res://test/presentation.gd res://scenes/courtyard.tscn`（不加 `--headless`），**EXIT=0 / 450 帧 / 1280×720 / 15.000000s** |
+| 三波 HUD | `r26_capture.log` 三行 `[R26][WAVE]` 与三帧逐字双证：第 1/3 波(点数 0) → 第 2/3 波(100、最佳 1) → 第 3/3 波(250、最佳 2) → 尾帧 450/3 全清 |
+| MP4 | `capture/v040_demo.mp4` **754,476 B**，`libx264 / yuv420p / 1280×720 / 30/1 / nb_frames=450 / +faststart`（`moov` 前置），`FFMPEG_EXIT=0` |
+| **WAV 是否混入 MP4** | **未混入**：ffmpeg 输入仅 PNG 序列、无音频 `-i`，`ffprobe -select_streams a` 音频流计数 = **0**。如实登记，不谎报音视频合并 |
+
+**9.6 三帧目视（ViewImage 真看，结论见 `V040-RUNTIME-REVIEW.md`）**
+
+| 判定 | 结论 |
+|---|---|
+| 角色是否还像积木 | **否（达标）**：面甲/肩甲/披风褶皱/剑盾细节可辨，逐像素轮廓化脱离大方块 |
+| death 是否可辨 | **是（重点修复达标，相对 R25B 翻案）**：中帧 225 横躺人形头/躯干/散落剑盾分色，不再贴地隐形 |
+| 地面是否去杂色 | **是**：干净蓝灰 4×4 砖、无绿/黄杂色点与噪点、无缝 |
+| 波次 HUD 是否可读 | **是**：三波 1/3→2/3→3/3 真实推进，金色 WaveLabel 全程可读；三套既有 HUD 全在 |
+| **HD-2D 全绿** | **未达（如实写未达）**：景深/光效仍 2D `draw_*` 近似、Boss 与玩家并列叠合缺纵深、地面高倍平铺重复、左侧深蓝尖锐形状来源未追查、角色仍是 3D 贴图像素精灵、未做人工试玩逐帧动态验收、动作帧三采样点均 `idle 0/0` |
+
+**9.7 门禁与 PASS 不回退（真跑 `capture/r26_*.log`）**
+
+G1 `--headless --import` / G2 `--headless --check-only --script res://test/presentation.gd` /
+G3 `--headless --quit` 三段 **EXIT=0**；**12 份 `r26_*.log` 的 `SCRIPT ERROR|Parse Error` 逐份 0、合计 0 → 字面 `SCRIPT ERROR=0`**；
+`47 / 34 / 20 / 45 / 53 PASS` **不回退**（v030 实跑即 53）；
+R26 新增 `verify_wave_trial_v040.gd` **58 PASS**、`verify_wave_runtime_v040.gd` **37 PASS** 额外真跑 `ALL_MATCH`。
+
+**9.8 未完成项 / 合规**：HD-2D 全绿未达（§9.6）；三采样点动作帧 HUD 仍 `idle 0/0`；
+未做人工试玩逐帧动态验收；`128bit` 歧义待用户确认；`SUBFRAME_INTERVAL=5` 为 [PLACEHOLDER] 待试玩校准；
+未写 `courtyard.tscn` / `project.godot` / 导演层 / 契约 / README / 其它 `.tres`；未自行 git（总指挥收尾）；
+零 GPU 额外 job、零付费、零外部素材服务（程序化 PIL），录屏与 ffmpeg 编码串行。**阻塞：无。**
+

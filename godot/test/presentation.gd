@@ -32,6 +32,20 @@ extends SceneTree
 ## 目录所有权：本文件是 Rank-4 本轮唯一新增的工程内文件；不写 project.godot /
 ##   courtyard.tscn / quality_settings.* / hud.gd / hd2d_fx.* / verify_frame_data.gd。
 ## 零外部素材 / 零付费 / 零插件 · 中文 UTF-8 · Godot 4.7.2 全静态类型标注。
+##
+## R26 v0.4.0 改动（Rank-4 本轮独占本文件）：
+##   ① 逐帧动作演示：_drive_pose 改为每 5 帧推进一次子帧、3 子帧(0/1/2)轮转、
+##      每 15 帧换 pose，使两份 SpriteFrames 每动画 3 帧在 450 帧录屏中真实可见；
+##      frame_index 与 HybridSpriteRig._clamp_frame_index(帧数=3) 对齐，无越界。
+##   ② 三波试炼 HUD：追加 _drive_wave_hud（防御性），三波段 0/150/300 与三段画质切换对齐；
+##      只调用 WaveTrialDirector 既有公开接口 start_trial() / debug_advance(sec) /
+##      on_encounter_finished(true) / get_snapshot()（has_method 守卫），确定性推进 1→2→3 波，
+##      绝不写 Label.text / 不伪造波次数值（HUD 由导演层自身 _refresh_hud() 刷新）；
+##      若 Rank-1 尚未落盘波次导演/HUD 节点，则如实打印跳过、不冒充已驱动。
+##   ③ 三段画质切换(_drive_segment)、赐福 HUD flag(_drive_hud_flags)、
+##      战斗 HUD 注入(_drive_combat_v030) 逐字保留，保证三套既有 HUD 全程可读。
+##   [PLACEHOLDER] SUBFRAME_INTERVAL=5 为演示节奏，待试玩校准（rationale：
+##      450 帧 / 5 = 90 步，90 / 3 = 30 个 pose 周期，8 pose 循环约 3.75 轮，每 pose 恰好 3 子帧）。
 
 const TOTAL_FRAMES: int = 450
 
@@ -46,6 +60,8 @@ const POSES: Array = [
 	"attack_light", "attack_heavy", "hitstun", "death"
 ]
 const POSE_INTERVAL: int = 15
+# R26 [PLACEHOLDER] 逐帧动作演示节奏：每 5 帧推进一个子帧，3 子帧轮转（待试玩校准）
+const SUBFRAME_INTERVAL: int = 5
 
 # 赐福 flag（三段式，全部符合 WorldState.FLAG_KEY_REGEX；id 取自 grace_network.tres）
 const FLAG_LAST_GRACE: String = "grace.network.last_grace_id"
@@ -61,6 +77,9 @@ var _camera: Camera3D = null
 var _world_state: Node = null
 var _frame: int = 0
 var _last_segment: int = -1
+# R26 三波试炼导演（防御性解析；Rank-1 未落盘则保持 null，不伪造）
+var _wave: Node = null
+var _wave_ready: bool = false
 
 
 func _initialize() -> void:
@@ -95,7 +114,15 @@ func _initialize() -> void:
 	else:
 		push_warning("[R22] /root/WorldState 未就绪，HUD flag 段将跳过")
 
-	# ④ 逐帧驱动：process_frame 每帧一次，帧号与 --quit-after 450 对齐；退出交给 --quit-after。
+	# ④ R26 三波试炼导演（防御性解析；Rank-1 独占 courtyard.tscn，未落盘则保持 null，不伪造）
+	_wave = _find_wave_director()
+	_wave_ready = _wave != null
+	if _wave_ready:
+		print("[R26][WAVE] 找到波次导演 name=%s class=%s" % [str(_wave.name), str(_wave.get_class())])
+	else:
+		push_warning("[R26][WAVE] 波次导演/HUD 节点未落盘（Rank-1 独占），三波 HUD 驱动将如实跳过")
+
+	# ⑤ 逐帧驱动：process_frame 每帧一次，帧号与 --quit-after 450 对齐；退出交给 --quit-after。
 	process_frame.connect(Callable(self, "_on_frame"))
 	print("[R22] process_frame 已连接 | TOTAL_FRAMES=%d @--fixed-fps 30 (15s)" % TOTAL_FRAMES)
 
@@ -107,6 +134,7 @@ func _on_frame() -> void:
 	_drive_pose(_frame)
 	_drive_hud_flags(_frame)
 	_drive_combat_v030(_frame)
+	_drive_wave_hud(_frame)
 	_frame += 1
 	if _frame == TOTAL_FRAMES:
 		print("==== [R22 presentation] 时间线完成 frame=%d（--quit-after 450 负责退出）====" % _frame)
@@ -147,21 +175,23 @@ func _set_quality(preset: String) -> void:
 	print("[R22] set_quality(%s)+apply() done | get_quality_preset()=%s" % [preset, readback])
 
 
-## 每 15 帧切一次 pose，frame_index 逐次递增（HybridSpriteRig 内部 clamp；接口真实调用）
+## R26 v0.4.0 逐帧动作演示：每 SUBFRAME_INTERVAL(5) 帧推进一次子帧，
+## 3 子帧(0/1/2)轮转、每 15 帧换 pose；frame_index 与两份 SpriteFrames 每动画 3 帧对齐，
+## HybridSpriteRig._clamp_frame_index 会把上限 clamp 到帧数-1(=2)，无越界、无 SCRIPT ERROR。
 func _drive_pose(f: int) -> void:
-	if f % POSE_INTERVAL != 0:
+	if f % SUBFRAME_INTERVAL != 0:
 		return
-	var step: int = f / POSE_INTERVAL
-	var idx: int = step % POSES.size()
+	var step: int = f / SUBFRAME_INTERVAL
+	var idx: int = (step / 3) % POSES.size()
 	var pose: String = String(POSES[idx])
-	var frame_index: int = step % 4
+	var frame_index: int = step % 3
 	if _rig == null or not is_instance_valid(_rig) or not _rig.has_method("set_pose"):
 		return
 	_rig.call("set_pose", pose, frame_index)
 	var cur_pose: String = "?"
 	if _rig.has_method("get_current_pose"):
 		cur_pose = str(_rig.call("get_current_pose"))
-	print("[R22][POSE] frame=%d set_pose(%s, %d) -> get_current_pose()=%s" % [
+	print("[R26][POSE] frame=%d set_pose(%s, %d) -> get_current_pose()=%s" % [
 			f, pose, frame_index, cur_pose])
 
 
@@ -283,3 +313,93 @@ func _drive_combat_v030(f: int) -> void:
 			_combat_attack("attack_light", 12, "C-05 轻攻击再推进")
 		430:
 			_combat_kill("C-06 击败 Boss")
+
+
+## ============================================================================
+## R26 v0.4.0 · 三波试炼 HUD 驱动（纯追加，防御性；不改导演层 / 场景 / 既有 HUD）
+## 三波段落边界 0 / 150 / 300 与 _drive_segment 三段画质切换对齐。
+## 波次 HUD 数值一律由 WaveTrialDirector 既有接口自身刷新；本脚本不写任何 Label.text、
+## 不伪造波次计数。若 Rank-1 尚未落盘波次导演/HUD 节点，则如实打印跳过、不冒充已驱动。
+## ============================================================================
+
+## 防御性解析波次导演节点（courtyard.tscn 由 Rank-1 独占，本脚本只读引用、不写）。
+func _find_wave_director() -> Node:
+	if _courtyard == null or not is_instance_valid(_courtyard):
+		return null
+	for p in ["WaveTrialRoot", "WaveTrialDirector", "WaveTrial",
+			"EncounterRoot/WaveTrialDirector", "EncounterRoot/WaveTrialRoot"]:
+		var n: Node = _courtyard.get_node_or_null(NodePath(String(p))) as Node
+		if n != null:
+			return n
+	return null
+
+
+func _drive_wave_hud(f: int) -> void:
+	# 三波段落边界（与 _drive_segment 段 A/B/C 对齐）；非边界帧不驱动，避免每帧轮询
+	var wave: int = 0
+	if f == 0:
+		wave = 1
+	elif f == 150:
+		wave = 2
+	elif f == 300:
+		wave = 3
+	if wave == 0:
+		return
+	if not _wave_ready or _wave == null or not is_instance_valid(_wave):
+		print("[R26][WAVE] frame=%d 波%d 段开始 | 波次导演未落盘（Rank-1 独占），三波 HUD 仅以段 A/B/C + 既有 HUD 呈现（不伪造数值）" % [f, wave])
+		return
+	_drive_wave_to(wave, f)
+
+
+## 只经 WaveTrialDirector 既有公开接口推进到目标波的 TELEGRAPH，绝不写 Label.text：
+##   start_trial() / debug_advance(sec) / on_encounter_finished(true) / get_snapshot()。
+## 状态机 IDLE→TELEGRAPH→WAVE_ACTIVE→WAVE_CLEARED→NEXT_WAVE→下一波 TELEGRAPH；
+## 每步都实时读 get_snapshot() 自适应（导演层 _process 也在自动推进，故不假设当前状态）。
+## 波次数值 / 倒计时 / 赐福点数全部由导演层自身 _refresh_hud() 刷新，本脚本不构造。
+func _drive_wave_to(wave: int, f: int) -> void:
+	if not _wave.has_method("get_snapshot"):
+		return
+	if wave == 1:
+		if _wave.has_method("start_trial"):
+			_wave.call("start_trial")
+		_log_wave(f, wave)
+		return
+	var guard: int = 0
+	while guard < 16:
+		guard += 1
+		var s: Dictionary = _wave.call("get_snapshot")
+		var idx: int = int(s.get("index", 0))
+		var st: int = int(s.get("state", 0))
+		if (idx >= wave - 1 and st == 1) or st == 5:  # 目标波 TELEGRAPH / TRIAL_COMPLETED
+			break
+		if st == 0:                                   # IDLE -> 开试炼
+			if _wave.has_method("start_trial"):
+				_wave.call("start_trial")
+			else:
+				break
+		elif st == 1:                                 # TELEGRAPH -> 越过入场预告
+			if _wave.has_method("debug_advance"):
+				_wave.call("debug_advance", float(s.get("remaining", 0.0)) + 0.01)
+			else:
+				break
+		elif st == 2:                                 # WAVE_ACTIVE -> 结算清波
+			if _wave.has_method("on_encounter_finished"):
+				_wave.call("on_encounter_finished", true)
+			else:
+				break
+		elif st == 3 or st == 4:                       # WAVE_CLEARED / NEXT_WAVE -> 下一波
+			if _wave.has_method("debug_advance"):
+				_wave.call("debug_advance", 0.0)
+			else:
+				break
+		else:
+			break
+	_log_wave(f, wave)
+
+
+func _log_wave(f: int, wave: int) -> void:
+	var s: Dictionary = _wave.call("get_snapshot")
+	print("[R26][WAVE] frame=%d 波%d 驱动完成 | state=%s index=%s/%s points=%s hud_text=%s" % [
+			f, wave, str(s.get("state_name", "?")), str(s.get("index", "?")),
+			str(s.get("total", "?")), str(s.get("points_total", "?")),
+			str(s.get("hud_text", "?"))])

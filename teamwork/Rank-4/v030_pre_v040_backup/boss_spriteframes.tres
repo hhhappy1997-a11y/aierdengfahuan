@@ -1,0 +1,42 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/generated/r23/boss_spritesheet.png" id="1_cvjv7"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_k74id"]
+atlas = ExtResource("1_cvjv7")
+region = Rect2(0, 0, 128, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6o2sr"]
+atlas = ExtResource("1_cvjv7")
+region = Rect2(128, 0, 128, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bae6q"]
+atlas = ExtResource("1_cvjv7")
+region = Rect2(256, 0, 128, 128)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_k74id")
+}],
+"loop": 0,
+"name": &"p1_dagger_slash",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6o2sr")
+}],
+"loop": 0,
+"name": &"p1_staff_slam",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bae6q")
+}],
+"loop": 0,
+"name": &"p2_holy_hammer",
+"speed": 1.0
+}]

@@ -706,3 +706,17 @@ func debug_start_grace_retry() -> bool:
 
 func debug_finish_grace_retry() -> void:
 	finish_grace_retry()
+
+
+# ===========================================================================
+# R26 [ROUND=R26] 追加：赐福试炼波次导演桥接
+#   （既有方法 / 信号 / debug_* 签名逐字未动；v010 20 / v020 45 / v030 53 PASS 不回退）
+#   波次导演 wave_trial_director.gd 订阅本文件既有的 encounter_finished(won) 信号推进波次；
+#   败北 / 超时后「回赐福休息」由本入口复用既有 _grace_rest() 全链路完成。
+#   本段不定义任何数值、不写 flag、不改存档口径；flag 与持久化仍归 Rank-3。
+# ===========================================================================
+
+## 供波次导演编排「失败回赐福休息」：复用既有 _grace_rest()
+## （HP 回满 / 状态机重置 / Boss 重建 / 落盘 / grace_rested 信号），零新数值。
+func trial_grace_rest() -> void:
+	_grace_rest()

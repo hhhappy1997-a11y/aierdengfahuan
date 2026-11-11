@@ -2,39 +2,89 @@
 
 [ext_resource type="Texture2D" path="res://assets/generated/r23/boss_spritesheet.png" id="1_cvjv7"]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_k74id"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_a0_s0"]
 atlas = ExtResource("1_cvjv7")
 region = Rect2(0, 0, 128, 128)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_6o2sr"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_a0_s1"]
 atlas = ExtResource("1_cvjv7")
 region = Rect2(128, 0, 128, 128)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_bae6q"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_a0_s2"]
 atlas = ExtResource("1_cvjv7")
 region = Rect2(256, 0, 128, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_a1_s0"]
+atlas = ExtResource("1_cvjv7")
+region = Rect2(384, 0, 128, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_a1_s1"]
+atlas = ExtResource("1_cvjv7")
+region = Rect2(512, 0, 128, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_a1_s2"]
+atlas = ExtResource("1_cvjv7")
+region = Rect2(640, 0, 128, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_a2_s0"]
+atlas = ExtResource("1_cvjv7")
+region = Rect2(768, 0, 128, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_a2_s1"]
+atlas = ExtResource("1_cvjv7")
+region = Rect2(896, 0, 128, 128)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_a2_s2"]
+atlas = ExtResource("1_cvjv7")
+region = Rect2(1024, 0, 128, 128)
 
 [resource]
 animations = [{
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_k74id")
+"texture": SubResource("AtlasTexture_a0_s0")
+},
+{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_a0_s1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_a0_s2")
 }],
 "loop": 0,
 "name": &"p1_dagger_slash",
 "speed": 1.0
-}, {
+},
+{
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_6o2sr")
+"texture": SubResource("AtlasTexture_a1_s0")
+},
+{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_a1_s1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_a1_s2")
 }],
 "loop": 0,
 "name": &"p1_staff_slam",
 "speed": 1.0
-}, {
+},
+{
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_bae6q")
+"texture": SubResource("AtlasTexture_a2_s0")
+},
+{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_a2_s1")
+},
+{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_a2_s2")
 }],
 "loop": 0,
 "name": &"p2_holy_hammer",

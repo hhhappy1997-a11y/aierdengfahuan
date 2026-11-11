@@ -165,8 +165,12 @@ key   := <模块> "." <对象> "." <状态>
 | `grace.network.last_grace_id` | String | `""` | 休息 / 传送落点 | 死亡后复活点 |
 | `grace.encounter_01.retried` | int | `0` | 赐福菜单发起「重复挑战」 | 累计次数，单调递增，永不清除；与 combat.<id>.defeated 无关 |
 | `grace.encounter_01.retry_active` | bool | `false` | 发起 / 结算重复挑战 | 回合内防重复发起；结算或重启恢复置 false |
+| `dungeon.wave_trial.best_wave` | int | `0` | 订阅 `wave_cleared` / `trial_completed`，按 `max(旧, 本局最高波次)` 更新 | 历史最高波次，单调递增、只增不减、重启不丢；HUD「历史最佳」读；见 WAVE-TRIAL-GDD.md §6.1 |
+| `dungeon.wave_trial.completed` | bool | `false` | 三波全清置 `true` | 一次性永久成就，只增不减（false→true 单向）；失败 / 重启 / 重复挑战不回退 |
+| `grace.trial.points` | int | `0` | 订阅 `wave_cleared(index,points)` 累加（`reward_points` 读 Rank-2 表） | 赐福点数累计，单调递增、永不清除、休息不清零；HUD「赐福点数」读；同一波重复触发由门控防二次累加 |
 
 > 新增 flag 必须在本文登记表追加一行后再使用；禁止在代码里临时拼接未登记 key。
+> R26 / v0.4.0：上表 3 个新 key 定义见 `teamwork/Rank-3/WAVE-TRIAL-GDD.md` §6.1 与 `00-协作契约.md` §3.3 登记表；只进 `flags` 字典、不新增顶层字段、`schema_version=3` 不变；`commit(reason)` 强制落盘点与「先落盘再改运行时实例」顺序见 `WAVE-TRIAL-GDD.md` §6.3 / §6.4。
 
 ---
 
