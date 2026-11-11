@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="CodexConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/codex_config.gd" id="1_cc"]
+
+[resource]
+script = ExtResource("1_cc")
+entries = Array[Dictionary]([{
+"id": "tutorial_complete",
+"title": "赐福图鉴·初谒",
+"description": "完成赐福引导三步教学，点亮图鉴第一页。",
+"condition_kind": "bool_true",
+"condition_value": {
+"flag": "grace.tutorial.completed"
+},
+"reward_points": 30
+}, {
+"id": "wave_trial_clear",
+"title": "赐福图鉴·破阵",
+"description": "三波试炼全清，留下第一场完整的胜利记录。",
+"condition_kind": "bool_true",
+"condition_value": {
+"flag": "dungeon.wave_trial.completed"
+},
+"reward_points": 50
+}, {
+"id": "all_grace_upgrades",
+"title": "赐福图鉴·满愿",
+"description": "解锁全部三项赐福增益，集齐成长分支。",
+"condition_kind": "all_of",
+"condition_value": {
+"flags": ["grace.upgrade_hp_max_bonus.unlocked", "grace.upgrade_roll_iframe_bonus.unlocked", "grace.upgrade_attack_power_bonus.unlocked"]
+},
+"reward_points": 80
+}, {
+"id": "best_wave_3",
+"title": "赐福图鉴·登峰",
+"description": "最高波次达到 3，抵达试炼顶端。",
+"condition_kind": "int_at_least",
+"condition_value": {
+"flag": "dungeon.wave_trial.best_wave",
+"threshold": 3
+},
+"reward_points": 120
+}])

@@ -883,3 +883,52 @@ G1 `--headless --import` / G2 `--headless --check-only --script res://test/prese
 先目视检查再接入（30 帧短跑 + ViewImage + 像素 A/B 判定 shader 生效 → 正式 450 帧 → 三帧 ViewImage + 像素采样后才写结论）、直接改直接真跑、未新建只读探针/巡检脚本（短跑复用同一脚本、临时 PNG 已清理）；零付费、零外部依赖、不启 GPU job。
 未完成：HD-2D 全绿未达、真 3D 光效未实现、降级 `_draw()` 层未启用未目视、`[PLACEHOLDER]` 数值待试玩校准、未做人工试玩逐帧动态验收、未自行 git。**阻塞：无。**
 
+---
+
+## 13. R30 v0.8.0 · Rank-4 降级层开关目视 + 地面平铺精修 + uv 微调 + 15 秒录屏（派单 `cmd-20261111-125001-360-A4`）
+
+> `[ROUND=R30]` · Rank-4 独占追加 · 引擎 4.7.2.stable / ffmpeg 9.0.2（绝对路径）
+> 逐项实证见 `capture/V080-RUNTIME-REVIEW.md`、`teamwork/Rank-4/DONE-R30.md`、`capture/r30_*.log`。
+> 结论以「跑起来的画面」为准，不粉饰、不谎报。
+
+**13.1 A37 降级层开关验证（验证完恢复 shader 默认档，不回退、不谎称降级层是默认效果）**
+
+把 `hd2d_parallax.gd::GRADE_FORCE_DRAW_FALLBACK` 临时 `false→true`，以同一 `presentation.gd` 真跑一次 450 帧 `_r29_draw_grade()` 降级层录屏（EXIT=0 / 450 帧 / `SCRIPT ERROR=0` / 日志 `[R29][GRADE] … 降级为程序化 _draw() 强化`），保留首 0 / 中 225 / 尾 449 三帧留证（中间帧已清理）；随后 **立即恢复 `false`**，正式录屏日志出现 `[R29][GRADE] shader 小样已挂载` → shader 默认档生效，`v080_demo.mp4` 为 shader 档画面。
+像素 A/B（降级层 vs shader 档）：首 `mean_abs=11.834 / 差异像素58.52%`、中 `5.651 / 42.30%`、尾 `13.340 / 58.93%`；尾帧暖金区 `(904,184)` shader `(255,218,104)` vs 降级 `(86,83,76)`，边缘/下部降级层普遍亮 `+18~+39` → **降级层暗角更弱更平、暖金收束显著弱、观感更「分层矩形/同心圆/draw_arc 圆弧」**，与 shader 的平滑径向暗角 + 一次全屏 screen-reading 明显不同。
+**适用场景**：Compatibility 后端 `hint_screen_texture` 失效（shader 加载/编译失败、屏读不支持）时兜底四项观感，保证画面不空白、不遮 HUD；R29/R30 实测屏读可用，平时不启用。**代价**：无 screen-reading 只能 2D 程序化分层（暗角/暖光明显弱、更生硬）；`_draw()` 每帧 CPU 重绘 draw call 多于 shader 一次 GPU pass；参数仍同源 `depth_profile.tres` 双档；品质下降属「降级」，不得计入默认效果。
+
+**13.2 地面平铺精修 + uv 微调（降低高倍平铺重复感）**
+
+旧版先备份 `teamwork/Rank-4/v070_pre_v080_backup/ground_tile.png`（673 B / 6 色 / 128 / 无缝）再覆盖。重绘脚本 `teamwork/Rank-4/r30_ground_tile_redraw.py` 保持 **6 色受控板 / 128×128 RGBA / 4×4 大砖(16 块) / 左右上下边缘 diff=0（无缝）**，新增：① 砖块色阶微扰（16 砖 `base=[1,3,2,3,1,1,3,3,2,3,2,1,1,2,3,2]`、`steps=[5,3,4,5,4,3,4,5,3,4,3,5,5,5,4,5]`，重复周期 32px→128px）；② 磨损用受控色短划痕 / 2×2 色块（每砖 2 处、板内色、非噪点）；③ 每砖恰好 **3/4/5 阶明度**（同心方框梯度）。实测 `unique_colors=6`、`left_right_edge_diff=0`、`top_bottom_edge_diff=0`、`ASSERT=ALL PASS`。3×3 平铺目视旧版每砖完全相同、重复感极强；新版砖块明暗/图案各异、重复感明显降低，冷蓝夜色与 4×4 大砖/缝隙保持。
+`courtyard.tscn` 三个地面材质 `uv1_scale` **4/2/1 → 2/1/1**（GroundPlate 4→2、TerraceLow 2→1、TerraceHigh 1 保持），标 `[PLACEHOLDER]` + rationale 于 `;` 注释（G1 import EXIT=0 验证可解析），**不新增 `[node`、磁盘节点数恒 41**（A35 独占视觉属性）。
+
+**13.3 15 秒录屏 / MP4 / WAV / 三帧目视**
+
+| 项 | 实测 |
+|---|---|
+| 录屏 | `--write-movie …/capture/v080_demo.png --fixed-fps 30 --quit-after 450 --script res://test/presentation.gd res://scenes/courtyard.tscn`（不加 `--headless`），**EXIT=0 / 450 帧（序号 0..449 连续）/ 1280×720 / 15.000000s**，`SCRIPT ERROR=0` |
+| ffmpeg | 绝对路径 9.0.2，`-framerate 30 -start_number 0 -i v080_demo%08d.png -frames:v 450 -c:v libx264 -pix_fmt yuv420p -movflags +faststart`，**EXIT=0** |
+| **MP4** | `capture/v080_demo.mp4` **1,022,776 B**；ffprobe `h264 / yuv420p / 1280×720 / 30/1 / nb_frames=450 / duration=15.000000` |
+| **WAV 是否混入** | **未混入**：Movie Maker 生成 `v080_demo.wav`（5,760,044 B），但 ffmpeg 输入仅 PNG 序列、无音频 `-i`，`ffprobe -select_streams a` 音频流 = **0**。如实登记 |
+
+`ViewImage` 真看首 0 / 中 225 / 尾 449（逐帧结论见 `V080-RUNTIME-REVIEW.md §4`）：
+
+- **地面重复感改善：是** —— 三帧砖块浅/中/深蓝交错、带深色短划痕磨损，不再是每块完全相同；配合 uv 倍率减半，高倍平铺重复感明显降低（仍保留 4×4 大砖周期，属硬约束）。
+- **图鉴面板：未出现（未落盘）** —— 开跑前 `find -iname "*codex*"` 无结果、`hud.gd` 无 codex/Tab 关键字；三帧均只有赐福标题 / 画质面板 / 兑换面板 / HUD。按并发时序**不等待、不伪造**。
+- **兑换面板 / HUD / 赐福标题：可读** —— 中/尾帧 5 行清晰（归 Rank-1 `hud.gd` 迁出 SubViewport，不冒领）；首帧 `动作 attack_light 1/27`、尾帧 `胜利 · 已落盘`、画质面板三帧均在；HUD 未被全屏层遮挡。
+- **点亮态 / 收束：达标** —— 三帧赐福标题亮金；尾帧一次明显暖金收束光晕；不闪烁。
+- **HD-2D 全绿：未达（如实写未达）** —— 景深/光效仍 2D screen-reading 后处理 + `draw_*` 近似、地面仍 4×4 大砖平铺、billboard 像素精灵、`[PLACEHOLDER]` 待试玩、未做人工试玩逐帧动态验收。
+
+**13.4 三段门禁 / PASS 回归（如实登记未完全达成）**
+
+G1 `--headless --import` / G2 `--headless --check-only --script res://test/presentation.gd` / G3 `--headless --quit` **EXIT=0/0/0**；`r30_g1/g2/g3` + `r30_capture` + `r30_ffmpeg` + `r30_fallback_capture` 六份日志逐份 `SCRIPT ERROR|Parse Error` = 0 → 字面 **`SCRIPT ERROR=0`**。
+回归 12 项：**11 项全 PASS = 1136 PASS / 0 FAIL**（`47/34/20/45/53/58/650/64/86/31/48`）+ `verify_wave_runtime_v040` **35 PASS / 2 FAIL · RESULT=FAILED**（重跑同值）→ **合计 1171 PASS / 2 FAIL**（R29 基线 1173 / 0）。
+**2 个 FAIL 根因（不掩盖、不放宽、不改断言）**：按 A35 把 uv 改为 2/1/1 后，`verify_wave_runtime_v040.gd` 两条硬编码旧期望 `uv_groundplate_4 expected=(4,4,1)` / `uv_terracelow_2 expected=(2,2,1)` 未同步（实测 `(2,2,1)` / `(1,1,1)`）→ 断言字面过期；**`courtyard_node_count=41 expected=41` 仍 PASS、`uv_terracehigh_1` 仍 PASS、其余 11 项零回退**，属预期内断言期望值冲突、非功能回退。按公共契约与目录所有权 Rank-4 **未写该验证脚本**；建议脚本所有者把期望 `4→2 / 2→1` 同步后复跑即恢复 `37/0`、合计回到 `1173 PASS`（R28 同类 node_count 过期、R29 同步归零，先例一致）。
+
+**13.5 目录所有权 / 合规 / 未完成项**
+
+只写 `ground_tile.png` / `hd2d_parallax.gd`（A37 开关临时切换后恢复 + R30 注释）/ `courtyard.tscn` 3 处 uv 视觉属性 + `;` `[PLACEHOLDER]` 注释 / `capture/` / `teamwork/Rank-4/`（+ 回执 `teamwork/command_center/ai/4/outbox/`）；
+未写 `hd2d_fx.gd` / `hud.gd` / `presentation.gd`（Rank-1 只读）/ 导演脚本 / `verify_*` 验证脚本 / shader 文件 / 角色 PNG / SpriteFrames `.tres` / `project.godot` / `depth_profile.tres`（Rank-2 只读）/ 契约 / README；未自行 git（总指挥收尾）。
+先目视检查再接入（3×3 平铺旧/新对照 + 首版偏亮微调 → 才覆盖；地面/uv 改完才录正式 450 帧；降级层三帧 + shader 三帧 ViewImage + 像素 A/B 后才写结论）、直接改直接真跑、未新建只读探针/巡检脚本（降级层短跑复用同一脚本、临时 PNG 已清理）；零付费、零外部依赖、不启 GPU job。
+未完成：HD-2D 全绿未达、图鉴面板（Rank-1 Tab 注入）未落盘未出现在录屏、`verify_wave_runtime_v040` 2 个 uv 断言期望值过期待同步、`[PLACEHOLDER]` 数值待试玩校准、未做人工试玩逐帧动态验收 / 全片 450 帧逐帧目视、真 3D 光效未实现、未自行 git。**阻塞：无**（2 个 FAIL 为已登记的断言期望值过期项，非功能阻塞）。
+

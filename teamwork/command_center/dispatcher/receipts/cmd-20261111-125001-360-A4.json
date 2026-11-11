@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261111-125001-360-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "引用 teamwork/Rank-4/DONE-R30.md 实际结论：① A37 降级层开关验证完成（GRADE_FORCE_DRAW_FALLBACK false→true 跑 450 帧目视留证 → 恢复 false），与 shader 默认档首/中/尾像素 A/B mean_abs 11.834/5.651/13.340、差异像素 42%~59%，降级层暗角更弱、暖金收束显著弱、更程序化分层；验证完恢复 shader 默认档、未回退画面、降级层非默认效果，适用场景为 Compatibility screen texture 失效，代价为无屏读/每帧 CPU 重绘/品质下降。② 地面重绘实测 6 色受控板 / 128×128 RGBA / 4×4 大砖(16 块) / 左右边缘 diff=0、上下边缘 diff=0 完全无缝 / 每砖 3–5 阶明度 / 16 砖色阶微扰 / 受控色磨损，旧版已备份 v070_pre_v080_backup/。③ uv1_scale 4/2/1→2/1/1（标 [PLACEHOLDER]），节点数保持 41、41 断言不回退。④ 真跑录屏 450 帧(0..449 连续) + v080_demo.mp4 1,022,776 B（h264/1280×720/30fps/15s），WAV 生成但未混入 MP4（ffprobe 音频流=0）。⑤ 三帧 ViewImage 目视：地面重复感改善、图鉴面板未落盘未出现（不等待不伪造）、HD-2D 全绿未达（如实）。⑥ 三段门禁 EXIT=0/0/0、六份日志 SCRIPT ERROR=0；回归 11 项全 PASS 1136 + verify_wave_runtime_v040 35/2 → 合计 1171 PASS / 2 FAIL，2 个 FAIL 均为 uv 断言期望值硬编码过期(expected 4/2/1 vs actual 2/1/1)、非功能回退，Rank-4 未写该验证脚本、建议脚本所有者同步期望值后复跑恢复 1173 PASS。未完成项见 DONE-R30.md §8；阻塞：无。"
+}

@@ -5,7 +5,7 @@ extends SceneTree
 ##       --script res://scripts/combat/verify_wave_runtime_v040.gd
 ## 断言：三波推进 / 超时 / 失败 / 重复触发 / 依赖缺失降级 / encounter_finished 接线 /
 ##       失败回赐福休息 / courtyard.tscn 节点数改动前后比对 + CACHE_MODE_IGNORE 回读
-##       （三个地面 uv1_scale 4/2/1、波次 HUD、既有 HUD 文本、instance 覆盖段）。
+##       （三个地面 uv1_scale 2/1/1（R30 地面精修后）、波次 HUD、既有 HUD 文本、instance 覆盖段）。
 ## 逐条输出 PASS/FAIL 与 RESULT，失败 quit(1)，不伪造 PASS。
 ## 装配惯例同 v010/v020/v030：--script 模式 add_child 不 flush _ready，需显式 call("_ready")；
 ##   /root/... 绝对路径不可用，用 root.get_node_or_null() 与相对 NodePath。
@@ -389,7 +389,7 @@ func _test_courtyard_readback() -> void:
 			and txt.contains("倒计时") and txt.contains("历史最佳"),
 			"text=%s" % txt)
 
-	# 三个地面 MeshInstance3D 的 uv1_scale：16/3/2 → 4/2/1（只改这三处属性）
+	# 三个地面 MeshInstance3D 的 uv1_scale：16/3/2 → 4/2/1 → 2/1/1（R30 地面精修，A38 同步断言期望值）
 	var tpath: String = "SubViewportContainer/SubViewport/Terrain/"
 	var gp: MeshInstance3D = inst.get_node_or_null(tpath + "GroundPlate") as MeshInstance3D
 	var tl: MeshInstance3D = inst.get_node_or_null(tpath + "TerraceLow") as MeshInstance3D
@@ -397,8 +397,8 @@ func _test_courtyard_readback() -> void:
 	var uv_p: Vector3 = _uv_of(gp)
 	var uv_l: Vector3 = _uv_of(tl)
 	var uv_h: Vector3 = _uv_of(th)
-	_ck("uv_groundplate_4", uv_p.is_equal_approx(Vector3(4, 4, 1)), "uv1_scale=%s expected=(4,4,1)" % str(uv_p))
-	_ck("uv_terracelow_2", uv_l.is_equal_approx(Vector3(2, 2, 1)), "uv1_scale=%s expected=(2,2,1)" % str(uv_l))
+	_ck("uv_groundplate_2", uv_p.is_equal_approx(Vector3(2, 2, 1)), "uv1_scale=%s expected=(2,2,1)" % str(uv_p))
+	_ck("uv_terracelow_1", uv_l.is_equal_approx(Vector3(1, 1, 1)), "uv1_scale=%s expected=(1,1,1)" % str(uv_l))
 	_ck("uv_terracehigh_1", uv_h.is_equal_approx(Vector3(1, 1, 1)), "uv1_scale=%s expected=(1,1,1)" % str(uv_h))
 
 	# 既有 HUD 文本与 instance 内部属性覆盖段未回退

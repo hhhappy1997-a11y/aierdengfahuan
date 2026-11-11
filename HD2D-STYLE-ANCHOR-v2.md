@@ -309,7 +309,73 @@ warm_glow_color = Color(depth_profile.warm_gold_key_color)     # Color(String(v)
 3. **真源唯一**：`cool_fog_color` / `warm_glow_color` 等色 uniform 的取值以 `depth_profile.tres` 锚点色为准（§8.1 公式）；`hd2d_parallax.gd::_r29_base_defaults()` 的 `cool_fog_color=Color(0.12,0.22,0.40)` / `warm_glow_color=Color(1.0,0.72,0.32)` 是参数表未落盘时的 `[PLACEHOLDER]` 安全默认、非色板色，不得当作新色号引用。
 4. **不得改 `godot/` 工程文件**：本段为文档级登记；`depth_profile.tres` / `v070_depth_grade.gdshader` / `hd2d_parallax.gd` / `palette_256.json` / `verify_depth_profile_v070.gd` 的修正与派生公式补登记属 Rank-2 / Rank-4 工程写入、经总指挥裁决，Rank-3 本轮一律未动。
 
-### 8.4 未完成 / 待登记（如实）
+### 8.4 派生显示色四要素登记（R30 · A34 补齐；如实、非 v2 新色板）
 
-- `#2B3A5C` / `#F0A94C` 目前**缺**「由锚点 `#1B2A4A` / `#C99A3A` 经何种公式派生」的规范公式（实测来自另一套 32 色板的独立灰阶档）。若 Rank-4 需继续把它们作为 shader 显示中间调，须按 §8.3 第 1 条补齐四要素、交总指挥裁决是否并入受控板；在此之前按「历史显示色、非 v2 色板成员」如实登记。
-- 与 A30「不谎称 shader 生效 / 不把 2D 近似包装成 HD-2D 全绿」纪律一致：本段不改变 §3 差距清单、§4 判据、§5 色板与 §7 边界的任何既有结论，README「还差什么」第 2 / 12 项保持未达。
+> 触发：R29C / 裁决 A32 在 §8.3 第 1 条立下「派生 / 显示色登记须写明 **① 来源锚点 hex ② 派生公式 ③ 结果 hex ④ rationale** 四要素」，并把本子节登记为「未完成 / 待登记」。本轮 A34 按任务单把 `#2B3A5C` / `#F0A94C` 的四要素补齐。**只改写本子节，不改 §8.1 / §8.2 / §8.3 逐字结论、不改 §2.2 / §5.2 / §5.3 / §7、不改任何 `godot/` 工程文件**（`depth_profile.tres` / `v070_depth_grade.gdshader` / `hd2d_parallax.gd` / `palette_256.json` / `verify_depth_profile_v070.gd` 一律未动）。
+
+#### ① 来源锚点 hex
+
+| 系 | v2 语义锚点（§2.2 / §5.2 唯一锚点，逐字冻结） | 明度档 | 32 色板灰阶目标档（真源，`palette_256.json`） | `gray_pct` |
+|---|---|---:|---|---:|
+| 冷夜雾 | `cold_night_fog_hex = #1B2A4A` = sRGB `(27, 42, 74)`（§5.2 第 2 色） | L≈22 | `L3 = #2B3A5C` = `colors[8]`，属 `cold_night_fog` indices `[5,6,7,8,9,10]` | **28%** |
+| 暖金主光 | `warm_gold_key_hex = #C99A3A` = sRGB `(201, 154, 58)`（§5.2 第 7 色） | L≈65 | `L7 = #F0A94C` = `colors[2]`，属 `warm_gold_key` indices `[0,1,2,3,4]` | **85%** |
+
+- **真源补注（任务单要求明确）**：`#2B3A5C` / `#F0A94C` **来自** Rank-4 `teamwork/Rank-4/palette_256.json`（`palette_id = hd2d_index_256_v1`、`color_count = 32`、`status = frozen_temporary_R2`）的 `luma_l0_l8` 灰阶档 `L3 = {index:8, hex:#2B3A5C, gray_pct:28}` / `L7 = {index:2, hex:#F0A94C, gray_pct:85}`，两 hex 亦逐字落在 `colors[8]` / `colors[2]`。它们是 **32 色板历史显示色 / 独立灰阶档**，与 §8.2 如实登记一致（「与锚点 `#1B2A4A` / `#C99A3A` 无逐字派生关系」「各自色板独立灰阶档、非同一公式产物」）。同一组值亦为 `godot/scripts/verify_depth_profile_v070.gd` 的 `FALLBACK_COLD_GROUP` / `FALLBACK_WARM_GROUP` 降级常量。
+- **v2 语义锚点只作「色族 / 明度档对照」**，不是结果色的生成源：`#1B2A4A` / `#C99A3A` 是 `depth_profile.tres` 的 `cold_night_fog_color` / `warm_gold_key_color`（§8.1 uniform 真源），desktop / mobile 两档同值。
+
+#### ② 派生公式（锚点色 → 灰阶插值 / 亮度提升 → 结果色，含中间计算）
+
+> 公式定位：**登记式表达**（把 v2 锚点明度档对齐到 32 色板 L3 / L7 冻结显示档），用于让四要素可复算、可核对；**不是**宣称「v2 锚点色经连续数学函数派生出结果色」。两套色板刻度独立、结果 hex 逐字取自 32 色板冻结档（见下方步骤 C 反证）。
+
+**步骤 A · 明度档灰阶对齐（灰阶插值）**
+
+- 冷：锚点明度档 `L≈22`（§2.2 / §5.2）→ 32 色板目标档 `L3 = 28%`；亮度提升 `ΔL = 28 − 22 = +6`。
+- 暖：锚点明度档 `L≈65` → 32 色板目标档 `L7 = 85%`；亮度提升 `ΔL = 85 − 65 = +20`。
+- 注：`L≈22 / L≈65` 是 v2 §5.2 的明度档编号，`28% / 85%` 是 32 色板 `luma_l0_l8.gray_pct`；**两套刻度独立、只做档位对齐、不做跨板数值换算**（§8.2「各自色板独立灰阶档」）。
+
+**步骤 B · 亮度提升（逐通道 Δ，精确可复算）**
+
+```
+冷  A_cold = #1B2A4A = (27, 42, 74)
+    Δ = L3 − A_cold = (43−27, 58−42, 92−74) = (+16, +16, +18)
+    (27+16, 42+16, 74+18) = (43, 58, 92)
+    → 0x2B 0x3A 0x5C = #2B3A5C   ✓ 精确复现 colors[8]
+
+暖  A_warm = #C99A3A = (201, 154, 58)
+    Δ = L7 − A_warm = (240−201, 169−154, 76−58) = (+39, +15, +18)
+    (201+39, 154+15, 58+18) = (240, 169, 76)
+    → 0xF0 0xA9 0x4C = #F0A94C   ✓ 精确复现 colors[2]
+```
+
+- `Δ` 是**两套历史色板色号的逐字通道差**（非连续函数的系数 / 非 `[PLACEHOLDER]` 调参量）。步骤 A + 步骤 B 合起来即「锚点色 → 灰阶插值 / 亮度提升 → 结果色」的登记式公式，中间计算如上、任何人可逐通道复算。
+
+**步骤 C · 反证：冻结档不可由相邻灰阶档线性插值生成（如实登记，证明「非同一公式产物」）**
+
+- 用 `luma_l0_l8` 相邻档按 `gray_pct` 插值 `L3(28%)`：`t = (28−18)/(40−18) = 10/22 ≈ 0.4545`；`L2 = #16233F = (22,35,63)` → `L4 = #4A6089 = (74,96,137)`：
+  - `R = 22 + 52×0.4545 ≈ 45.6 → 0x2E`；`G = 35 + 61×0.4545 ≈ 62.7 → 0x3F`；`B = 63 + 74×0.4545 ≈ 96.6 → 0x61` ⇒ `#2E3F61`，与冻结档 `#2B3A5C` 差 `(3,5,5)`。
+- `L7(85%)` 的相邻档 `L6(70%, #C6BBA4 中性石材族)` / `L8(96%, #FFF0C2 暖金高光)` **跨色族**，`luma_l0_l8` 是全局明度阶梯而非单色族连续灰阶；按 `t = 15/26 ≈ 0.5769` 插值得 `#E7DAB5`，与 `#F0A94C` 差更远。
+- **结论**：32 色板是**手绘冻结色阶**，`L3` / `L7` 不能由相邻档线性插值精确复现，必须逐字取自 `palette_256.json`。这正好印证 §8.2「无逐字派生关系、非同一公式产物」，因此本公式只做档位对齐 + 逐字通道差登记，**不构成「锚点色经数学函数派生出结果色」的宣称**。
+
+#### ③ 结果 hex
+
+| 系 | 结果 hex | sRGB | 逐字来源 | 语义 |
+|---|---|---|---|---|
+| 冷夜雾 | **`#2B3A5C`** | `(43, 58, 92)` | `palette_256.json` `L3` / `colors[8]` / `luma_l0_l8.L3.hex` | 冷夜雾中间调（历史显示色 / 降级分支常量） |
+| 暖金主光 | **`#F0A94C`** | `(240, 169, 76)` | `palette_256.json` `L7` / `colors[2]` / `luma_l0_l8.L7.hex` | 暖金受光主色（历史显示色 / 降级分支常量） |
+
+#### ④ rationale
+
+- **为什么出现在 shader 报告（§8.2 依据 Rank-2 如实纠错登记）**：`teamwork/Rank-2/DONE-R29.md` 文首 / `DEPTH-PROFILE-TUNING.md` §3 记载 —— Rank-2 早期用 Glob `**/HD2D-STYLE-ANCHOR*` 未匹配到工程**根级**文件，一度误判锚点文档「未落盘」，`depth_profile.tres` **首版**曾采用 `palette_256.json` 的 `#2B3A5C` / `#F0A94C`（暗角 `0.32`）；真跑 `FileAccess.file_exists` 返回 `exists=true` 纠正后，**最终 `.tres` 色号改回锚点 `#1B2A4A` / `#C99A3A`**、暗角改 `0.24`，verify 重写为「已落盘 → v2 板 / 未落盘 → 降级板」双分支，首版 46 PASS 不作最终结论。Rank-4 录屏 / shader 报告的显示色沿该**历史首版 / 降级分支**口径，故与最终 `.tres` 真源不一致。
+- **本轮登记 rationale**：把「历史显示色」按 §8.3 第 1 条补齐四要素、钉死可复算公式，目的是**消除「派生色来源不明 / 可能被误升格为新色板」的歧义**，而非把它们纳入 v2 受控板。公式中的「亮度提升 / 灰阶插值」是**两套历史色板之间的档位对照**，不是 shader 内的数值运算（shader 色 uniform 按 §8.1 仍是 `Color(String(v))` 逐字直取、零数值派生）。
+- **不升格 / 不并入 / 真源不变**（A32 裁决核心，本轮重申，见下三条声明）。
+
+#### 三条声明（A32 裁决核心 · 本轮重申）
+
+1. **不是 v2 新色板**：`#2B3A5C` / `#F0A94C` 是 `palette_256.json` 32 色板的历史显示色 / 独立灰阶档，**不是 v2 新增色板、不是第三套色板、不是 v2 锚点 `#1B2A4A` / `#C99A3A` 的合法派生**；不得改写 §2.2 唯一锚点色号、不得改写 §5.3 可机器解析常量块（`colors_16` / `cold_night_fog_hex=#1B2A4A` / `warm_gold_key_hex=#C99A3A` / `high_saturation_allowlist` / `wave_band_hex` 逐字冻结）。
+2. **不并入 §5.2 16 色受控表**：§5.2 逐字冻结 13 色继承 + 3 个 `[PLACEHOLDER]` 雾带色，本轮**不增、不删、不改**任何一行；扩展新色须走「扩展新色须经裁决统一并入、单资产不得私加」（§5.1 / §8.3 第 2 条）流程，本登记**不触发**该流程、不请求并入。
+3. **uniform 真源仍是 `depth_profile.tres` 锚点色**：`cool_fog_color` / `warm_glow_color` 等色 uniform 取值以 `godot/data/render/depth_profile.tres` 的 `cold_night_fog_color = "#1B2A4A"` / `warm_gold_key_color = "#C99A3A"`（desktop / mobile 两档同值）为准，按 §8.1 公式 `Color(String(v))` hex→vec3 逐字直取；`hd2d_parallax.gd::_r29_base_defaults()` 的 `Color(0.12,0.22,0.40)` / `Color(1.0,0.72,0.32)` 是参数表未落盘时的 `[PLACEHOLDER]` 安全默认、非色板色。**本段不改变 `depth_profile.tres` 的任何色号语义，也不改变 shader 的取色路径**。
+
+#### 边界（不改其它历史条款）
+
+- 与 A30「不谎称 shader 生效 / 不把 2D 近似包装成 HD-2D 全绿」纪律一致：本段不改变 §3 差距清单、§4 判据、§5 色板、§7 边界、§8.1 / §8.2 / §8.3 的任何既有结论；`README.md`「还差什么」第 2 项（真 HDR bloom / 3D 体积光 / SSR）/ 第 12 项（HD-2D 全绿未达）保持未达。
+- 本段为文档级登记；`depth_profile.tres` / `v070_depth_grade.gdshader` / `hd2d_parallax.gd` / `palette_256.json` / `verify_depth_profile_v070.gd` 的修正与派生公式补登记属 Rank-2 / Rank-4 工程写入、经总指挥裁决，Rank-3 本轮一律未动、未新建任何探针 / 巡检脚本。

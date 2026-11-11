@@ -72,6 +72,16 @@ extends SceneTree
 ##   _drive_real_input 的 f=0 J / f=6 Space / f=20 E 教学三步时间线逐字保留，
 ##   预热 J 只额外消费一次 light_attack（教学第 2 步期待 Space，重复 J 不推进教学、不破坏闭环）。
 ##   [PLACEHOLDER] 预热键位 J 与既有教学第一步一致，待试玩校准（rationale：不引入新动作）。
+##
+## R30 [ROUND=R30] 赐福图鉴 Tab 演示注入（Rank-1 本轮独占本文件）：
+##   在 15 秒 450 帧序列里【注入一次】KEY_TAB（CODEX_TAB_FRAME=210），经既有
+##   _inject_key() → Input.parse_input_event(InputEventKey) 真实输入路由交引擎分发到
+##   CodexDirector._unhandled_input，打开赐福图鉴面板，让录屏证明图鉴可打开。
+##   Tab(KEY_TAB=4194306) 不与教学 T 键 / interact(E) / 数字键冲突；
+##   绝不写任何 Label.text、不调 debug_* 伪造数值、不改四套 HUD 文本。
+##   只读回读：_log_input_evidence 在关键帧读 CodexDirector.is_panel_open() 留证（不写）。
+##   [PLACEHOLDER] CODEX_TAB_FRAME=210 为演示节奏（rationale：留 ≥15 帧输入 flush 余量，
+##   使 f=225 / f=449 的 EVIDENCE 稳定读回 panel_open=true，避开 R29 实证的 1 帧输入延迟）。
 
 const TOTAL_FRAMES: int = 450
 
@@ -96,6 +106,8 @@ const KEY_J: int = 74            # light_attack（J）
 const KEY_SPACE: int = 32        # roll（Space）
 const KEY_E: int = 69            # interact（E）
 const KEY_1: int = 49            # 兑换选项 1（hud.purchase_upgrade(0)）
+const KEY_TAB_CODE: int = 4194306 # KEY_TAB（R30，赐福图鉴开关；不与教学 T 键 84 冲突）
+const CODEX_TAB_FRAME: int = 210  # [PLACEHOLDER] R30 注入一次 Tab 的帧，待试玩校准
 const ACTION_INTERVAL: int = 6   # [PLACEHOLDER] 动作注入周期（帧），待试玩校准
 const E_OPEN_FRAME: int = 20     # 教学第 3 步：注入 E（J→Space→E 顺序），同时打开兑换面板并保持全片展开
 const BUY_FRAME: int = 170       # 注入数字键 1 购买一项（教学奖励 + 波次结算已累积赐福点数）
@@ -614,6 +626,10 @@ func _drive_real_input(f: int) -> void:
 	if f == BUY_FRAME:
 		_inject_key(KEY_1)
 		print("[R28][INPUT] frame=%d 注入真实按键 1 -> hud.purchase_upgrade(0) 购买一项" % f)
+	# ③b R30：注入一次 Tab，走真实 Input.parse_input_event 路由打开赐福图鉴（录屏留证）。
+	if f == CODEX_TAB_FRAME:
+		_inject_key(KEY_TAB_CODE)
+		print("[R30][CODEX][INPUT] frame=%d 注入真实按键 Tab(KEY_TAB=%d) -> Input.parse_input_event(InputEventKey) -> CodexDirector._unhandled_input 打开赐福图鉴面板" % [f, KEY_TAB_CODE])
 	# ④ 教学闭环监测 + 兜底：用 is_tutorial_active()/force_complete() 避免教学冻结与波次驱动双驱动。
 	if f == TUTORIAL_GUARD_FRAME:
 		_guard_tutorial(f)
@@ -656,5 +672,11 @@ func _log_input_evidence(f: int) -> void:
 	var status: String = "n/a"
 	if _status_label != null and is_instance_valid(_status_label):
 		status = _status_label.text
-	print("[R28][EVIDENCE] frame=%d shop_open=%s shop_message=%s | StatusLabel=%s" % [
-			f, shop_open, shop_msg, status])
+	# R30：只读回读图鉴面板开关态（不写 HUD 文本 / 不伪造数值）。
+	var codex_open: String = "n/a"
+	if _courtyard != null and is_instance_valid(_courtyard):
+		var cd: Node = _courtyard.get_node_or_null("CodexDirector") as Node
+		if cd != null and cd.has_method("is_panel_open"):
+			codex_open = str(cd.call("is_panel_open"))
+	print("[R28][EVIDENCE] frame=%d shop_open=%s shop_message=%s | StatusLabel=%s | codex_panel_open=%s" % [
+			f, shop_open, shop_msg, status, codex_open])

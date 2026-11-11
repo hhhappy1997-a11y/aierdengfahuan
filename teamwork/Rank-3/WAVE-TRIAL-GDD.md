@@ -586,7 +586,7 @@ R26 §2 的四环节循环在「目标」之后直接回到「再行动」，中
 
 | key | 类型 | 读写方 | 单调性 |
 |---|---|---|---|
-| `grace.tutorial.completed` | bool（基线 `false`） | 写：Rank-3（订阅三步全完成信号置 `true`，与末次 `step_index` 同一 `commit("tutorial_completed")` 原子先落盘）／读：赐福点亮态、老玩家跳过教学门控、回放断言（纯读 `get_flag`） | **只增不减（false → true 单向）**：失败 / 超时 / 主动退出 / 重启 / T 重开教学 / 重复挑战均无 `false` 回写路径，一次性永久成就 |
+| `grace.tutorial.completed` | bool（基线 `false`） | 写：**Rank-1 `tutorial_director.gd`**（A26 落地口径 / R30 按 A34 统一：三步全完成置 `true`，与末次 `step_index` 同一 `commit("tutorial_completed")` 原子先落盘、T-P2 沿用不改；每步 `step_index` / 本步 `grace.trial.points` 奖励由同一运行时代理合并入 `commit("tutorial_step_reward")`、见 `step_index` 行）／读：赐福点亮态、老玩家跳过教学门控、回放断言（纯读 `get_flag`）；**A26 落地口径四要素**：写方 Rank-1 `tutorial_director.gd`、落盘 reason `tutorial_completed`（每步 `tutorial_step_reward`）、教学 HUD 读运行时游标、**世界 flag 只作历史进度**（R28 原登记「写方 Rank-3 订阅三步全完成信号」已废止，逐处改前→改后见 `teamwork/Rank-3/DONE-R30.md`） | **只增不减（false → true 单向）**：失败 / 超时 / 主动退出 / 重启 / T 重开教学 / 重复挑战均无 `false` 回写路径，一次性永久成就 |
 | `grace.tutorial.step_index` | int（基线 `0`） | 写：Rank-1 `tutorial_director.gd`（裁决 A26 运行时代理：按 `max(旧值, 本步序号)` 推进，`set_flag` 与本步赐福点数奖励合并入同一次 `commit("tutorial_step_reward")` 先落盘、**不新增落盘点**）／读：**世界 flag 只作历史进度**（重启恢复 / 回放断言纯读 `get_flag`）；**教学 HUD 读运行时游标**（`TutorialDirector.get_snapshot()["step_index"]` / `hud.gd read_tutorial_progress()`）、**绝不读世界 flag** | **单调递增、只增不减**：`0→1→2→3`，重启不丢、赐福休息不清零；T 重开教学属 Rank-1 运行时状态机复位，持久化 flag **不回写更小值**（与 §4.4「quest_stages 取较大值」同机制） |
 
 - 两 key 均通过 §2 三段式正则 `^(world|quest|combat|grace|dungeon)\.[a-z0-9_]+\.[a-z0-9_]+$`：`grace` 前缀、`tutorial` 对象段、`completed` / `step_index` 状态段合法；`world_state.gd` 的 `FLAG_KEY_REGEX` 无需修改、无需迁移、不改 `schema_version`。
@@ -635,6 +635,11 @@ R26 §2 的四环节循环在「目标」之后直接回到「再行动」，中
 > - **五步顺序第 ④ 步**：`emit flag_changed（教学 HUD 进度 / 赐福点亮态增量刷新）` → **赐福点亮态增量刷新；教学 HUD 进度取运行时游标、不随世界 flag 刷新**。
 > - **口径差异登记 / T-V8**：「待裁决的口径差异」「待总指挥裁决」 → **A26 已裁决落地、A28 全文统一**（世界 flag 只作历史进度 / HUD 读运行时游标 / 写方 Rank-1 / reason `tutorial_step_reward`），不再待裁决。
 > - **未动（不改动其它历史条款）**：`grace.tutorial.completed` 整行、T-P2 / T-P3 / T-P4 三行、§10.8 之外的 §10.1~§10.7 / §10.9 及全部历史章节（含 §10.6 事件输入表「Rank-3 订阅信号写 / Rank-1 不写 flag」等 R28 登记口径）**一律未改**，按任务单「只统一 §10.8」与「不改动其它历史条款」保留，并在 `DONE-R29.md` 如实登记为已知残留口径差异、供总指挥裁决；契约 §3.3 与工程根 README 的同类统一见各自 R29 段 / `DONE-R29.md`。
+
+> **R30 / v0.8.0 追加（A34 残留清除 · 按裁决 A26 落地口径）**：R29C 曾把本节 `grace.tutorial.completed` 行「写方 Rank-3」如实登记为授权边界外的残留口径差异、交总指挥裁决（见 `teamwork/Rank-3/DONE-R29C.md`）；本轮 A34 按任务单把该行就地统一为 A26 落地口径，逐处改前 → 改后：
+> - **新 flag 表 `grace.tutorial.completed` 行「写」**：`写：Rank-3（订阅三步全完成信号置 true，与末次 step_index 同一 commit("tutorial_completed") 原子先落盘）` → **`写`：Rank-1 `tutorial_director.gd`（A26 运行时代理；三步全完成 `commit("tutorial_completed")` 沿用 T-P2 不改；每步 `step_index` / 本步 `points` 由同一代理合并入 `commit("tutorial_step_reward")`）**，并补 A26 落地口径四要素注记（写方 Rank-1 `tutorial_director.gd` / 落盘 reason `tutorial_completed`、每步 `tutorial_step_reward` / 教学 HUD 读运行时游标 / **世界 flag 只作历史进度**），与契约 §3.3 登记表 `completed` 行（R29C / A31 已统一）逐字对齐。
+> - **契约 §3.3 对应行（若有）**：核对 `00-协作契约.md` §3.3 登记表 `grace.tutorial.completed` 行 —— 该行已由 R29C / 裁决 A31 统一为 A26 落地口径（写方 Rank-1 `tutorial_director.gd` / reason `tutorial_completed` / 世界 flag 只作历史进度），**本轮无需再改、如实登记为「已一致」**；契约 §3.3 追加 R30 说明段同步登记本轮 GDD 侧清除。
+> - **未动（不改动其它历史条款）**：`grace.tutorial.step_index` 整行、T-P1 / T-P2 / T-P3 / T-P4 四行、五步顺序段、§10.8 的 R29 追加段（其「`completed` 整行未改」为 R29 当时的历史如实登记、保留不改）、口径差异登记 / T-V1~T-V10 校对清单、§10.8 之外的 §10.1~§10.7 / §10.9 及全部历史章节**一律未改**；本轮只改 `completed` 一行文字 + 追加本 R30 说明段。工程根 `README.md` 的同步见其 R30 段 / `DONE-R30.md`。
 
 ### 10.9 关联
 

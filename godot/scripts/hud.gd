@@ -116,6 +116,14 @@ const SHOP_RECT_TOP: float = 358.0
 const SHOP_RECT_RIGHT: float = 1276.0
 const SHOP_RECT_BOTTOM: float = 568.0
 
+# ---- R30 [ROUND=R30] · 赐福图鉴运行时挂载（最小接线，裁决 A35）----
+# 只做「运行时 new + call_deferred add_child」，不写 courtyard.tscn 任何场景节点
+#   （静态节点数保持 41）、不改既有兑换逻辑、不改四套 HUD 文本。
+# 独立 hud.tscn 实例（--script 验证）祖先链无 SubViewportContainer → 直接判空返回、
+#   不建节点，保护既有 58 / 30 / 11 / 127 PASS 逐字不回退。
+const CODEX_DIRECTOR_PATH: String = "res://scripts/combat/codex_director.gd"
+const CODEX_DIRECTOR_NAME: String = "CodexDirector"
+
 # ==========================================================================
 # 依赖注入 / 运行期引用
 # ==========================================================================
@@ -178,6 +186,8 @@ func _ready() -> void:
 		_grace_runtime = get_node_or_null(grace_runtime_path)
 	set_process_unhandled_input(true)
 	_refresh_shop_hud()
+	# R30：运行时挂赐福图鉴导演（不改场景节点 / 不动兑换逻辑与四套 HUD 文本）。
+	_ensure_codex_director()
 
 
 ## 注入 WorldState 引用并连信号；重复绑定先断开旧连接，避免重复回调。
@@ -1006,3 +1016,35 @@ func purchase_upgrade(index: int) -> Dictionary:
 	_set_shop_message(msg)
 	return {"ok": true, "reason": "ok", "committed": true, "id": u.id,
 		"spent_points": new_spent, "balance": balance, "points": points, "message": msg}
+
+
+# ==========================================================================
+# 9) R30 [ROUND=R30] · 赐福图鉴运行时挂载（唯一新增接线，1~8 节逐字未动）
+# ==========================================================================
+## 只在「真实 courtyard 场景」里挂 CodexDirector：沿父链找到 SubViewportContainer，
+## 取其父节点（Courtyard，SubViewport 之外，与 QualitySettings / 兑换层同级）作挂载根。
+## call_deferred 避开 _ready() 传播期 "Parent node is busy setting up children"（R29 实证）。
+## 独立 hud.tscn 实例无 SubViewportContainer → 降级不建节点、不崩、既有回归不回退。
+func _ensure_codex_director() -> void:
+	var container: SubViewportContainer = null
+	var p: Node = get_parent()
+	while p != null:
+		if p is SubViewportContainer:
+			container = p as SubViewportContainer
+			break
+		p = p.get_parent()
+	if container == null:
+		return
+	var mount: Node = container.get_parent()
+	if mount == null or mount.get_node_or_null(NodePath(CODEX_DIRECTOR_NAME)) != null:
+		return
+	var script: Script = load(CODEX_DIRECTOR_PATH) as Script
+	if script == null:
+		push_warning("[HUD] CodexDirector 脚本不可用，赐福图鉴降级（不崩）")
+		return
+	var director: Node = script.new() as Node
+	if director == null:
+		return
+	director.name = CODEX_DIRECTOR_NAME
+	mount.call_deferred("add_child", director)
+	print("[R30][HUD] 运行时挂载 %s → Courtyard（独立 CanvasLayer 由导演自建，不写 courtyard.tscn）" % CODEX_DIRECTOR_NAME)

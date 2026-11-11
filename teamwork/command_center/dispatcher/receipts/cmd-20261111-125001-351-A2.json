@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261111-125001-351-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "引用 DONE-R30.md 实际结论：①~⑤ 全部落地并经真跑验证。① codex_config.gd（extends Resource / class_name CodexConfig）与 codex_entries.tres 于 12:55:40 尽早落盘供 Rank-1 读取，新增 class_name 已 --headless --import 注册（global_script_class_cache.cfg:27）；4 项成就 tutorial_complete/bool_true/30、wave_trial_clear/bool_true/50、all_grace_upgrades/all_of/80、best_wave_3/int_at_least(threshold=3)/120，condition_kind 只用既有 flag 语义 bool_true/int_at_least/all_of，奖励严格单调 30<50<80<120 合计 280，数值全 [PLACEHOLDER] 并写 rationale，调参唯一入口 codex_entries.tres。② verify_codex_reward_v080.gd 124 PASS/0 FAIL/RESULT=PASS/EXIT=0，覆盖 4 项条件、奖励单调、重复领取拒绝、余额非负、grace.trial.points 只增不减、commit 先落盘、异常输入拒绝。③ step_index 三态全流程 21 PASS/0 FAIL 补跑：selftest 15（pid=28336）/ write 3（pid=24800）/ read 3（pid=9396），跨进程读回 completed=true/step_index=3/points=3 一致；脚本用独立 user:// 状态文件、三进程串行天然一致，共享存档初态抖动条件未触发，故 R29 独立 PID 临时槽隔离本轮未启用并如实登记，未改 world_state.gd 与生产存档逻辑。④ CODEX-TUNING.md：数值假设表 + broken 4 定义（门槛过高/奖励通胀/条件不可达/重复领取）+ 调参唯一入口。⑤ 三段门禁 G1 import/G2 check-only/G2 run/G3 quit 全 EXIT=0，11 份 R30 日志 grep SCRIPT ERROR|Parse Error=0、PASS=false=0。未完成项：人工试玩校准、Rank-1 运行时接线与 Tab 面板、15~20 秒实机录屏、既有全量回归（均如实登记于 DONE-R30.md §4，无功能性阻塞）。"
+}

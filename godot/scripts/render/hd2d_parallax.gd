@@ -74,6 +74,9 @@ const GRADE_LAYER_NAME: String = "V070DepthGradeLayer"
 const GRADE_RECT_NAME: String = "V070DepthGradeRect"
 const GRADE_CANVAS_LAYER: int = 12
 # 短跑目视 + 编译日志判定后切换：false=尝试 shader / true=降级 _draw（A30 不谎称）
+# [R30 A37] 降级层开关验证已完成：R30 临时置 true 跑过一次 _r29_draw_grade() 目视留证后
+#   已恢复 false = shader 默认档（裁决 A37：preserve shader 默认档、不回退画面、不谎称降级层是默认效果）。
+#   _draw() 降级层仅作 Compatibility screen texture 失效时的备用路径，平时不启用。
 const GRADE_FORCE_DRAW_FALLBACK: bool = false
 const FINALE_DELAY_SEC: float = 4.0
 const FINALE_DURATION_SEC: float = 2.0

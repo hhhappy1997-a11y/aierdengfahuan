@@ -21,14 +21,18 @@
 [ext_resource type="Script" path="res://scripts/combat/grace_upgrade_runtime.gd" id="19_grt"]
 [ext_resource type="Script" path="res://scripts/combat/tutorial_director.gd" id="20_tut"]
 
+; [R30 v0.8.0 · A35 Rank-4 独占视觉属性] [PLACEHOLDER] uv1_scale 4/2/1 → 2/1/1，待试玩校准
+; rationale：与 ground_tile.png 精修(16 砖色阶微扰/受控磨损)配套降低高倍平铺重复感；
+;   GroundPlate 平铺倍率减半(4→2)、TerraceLow 减半(2→1)、TerraceHigh 本已 1 保持不变；
+;   仅改三个地面材质视觉属性，不新增 [node 条目（磁盘节点数恒 41）。
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uvplate"]
 albedo_texture = ExtResource("18_tile")
-uv1_scale = Vector3(4, 4, 1)
+uv1_scale = Vector3(2, 2, 1)
 texture_filter = 0
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uvlow"]
 albedo_texture = ExtResource("18_tile")
-uv1_scale = Vector3(2, 2, 1)
+uv1_scale = Vector3(1, 1, 1)
 texture_filter = 0
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uvhigh"]
