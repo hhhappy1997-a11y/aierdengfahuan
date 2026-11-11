@@ -775,3 +775,57 @@ G3 `--headless --quit` 三段 **EXIT=0**；全部 `capture/r27_*.log` 的 `SCRIP
 未完成：HD-2D 全绿未达、三波数值 `[PLACEHOLDER]` 待试玩、`128bit` 歧义、人工试玩逐帧动态验收未做、
 额外项 `verify_wave_persist_v040` 稳定 `43/1`。**阻塞：无。**
 
+---
+
+## 11. R28 v0.6.0 · Rank-4 真实按键注入录屏 + 点亮态画面 + 景深评估（派单 `cmd-20261111-095602-831-A4`）
+
+> `[ROUND=R28]` · Rank-4 独占追加 · 引擎 4.7.2.stable / ffmpeg 9.0.2（绝对路径）
+> 逐项实证见 `capture/V060-RUNTIME-REVIEW.md`、`TECHNICAL-ART-DEPTH-v060.md`、`teamwork/Rank-4/DONE-R28.md`、`capture/r28_*.log`。
+> 结论以「跑起来的画面」为准，不粉饰、不谎报。
+
+**11.1 真实输入事件注入（本轮核心，全部经既有输入路由）**
+
+`godot/test/presentation.gd` 新增 `_inject_key()` / `_drive_real_input()`：构造 `InputEventKey`（`physical_keycode` + `keycode`、`pressed+released` 配对），经 **`Input.parse_input_event()`** 注入引擎输入系统，由引擎分发到既有 `_unhandled_input()` 路由；**不写 `Label.text`、不调 `debug_*` 伪造数值、不直接改 HUD**。
+`J(74)=light_attack` / `Space(32)=roll` → `EncounterDirector._request_action()` 当帧 `_update_hud()`；`E(69)=interact` → `hud._toggle_shop()` / `encounter._grace_rest()` / `wave.interact_restart()`；`1(49)` → `hud.purchase_upgrade(0)`。
+`[PLACEHOLDER] ACTION_INTERVAL=6`（450/6=75 次注入，待试玩校准）；`f=0 J → f=6 Space → f=20 E` 严格按教学三步顺序，`f=170` 购买；E 只注入一次，面板全片保持展开。
+**tutorial 接口并发时序（如实）**：开跑最初全工程无 tutorial 文件；执行期间 Rank-1 落盘 `tutorial_director.gd` + `courtyard.tscn` 的 `TutorialHud/TutorialLabel/TutorialDirector` 三节点。故本轮探测到接口**已落盘**（未走「接口缺失降级」），逐帧 `is_tutorial_active()` 监测、`force_complete()` 仅作兜底，**实测未触发**；未谎称接口缺失、也未谎称教学由强制跳过证明。`Input.parse_input_event` 有 **1 帧延迟**（f=6 注入 E → f=7 `shop_open=true`），首帧 0 尚未反映注入，如实登记。
+
+**11.2 教学 → 波次衔接（真实按键三步闭环，非 force_complete 跳过）**
+
+`r28_capture.log`：`[Tutorial] 步骤完成 step=light_attack reward=20 → STEP_ROLL` → `step=roll reward=30 → STEP_GRACE_SHOP` → `step=grace_shop reward=50 → COMPLETED`；`step_events=["light_attack","roll","grace_shop"]`、`total_reward=100`、`wave_started=true`。
+教学完成 → `[WaveTrial] 教学完成 → 自动进第 1 波：start_trial()=true（index=1/3）` → `begin_wave_after_tutorial()=true`；随后既有 `_drive_wave_hud` 在 `f=150/300` 推进到 **第 2/3 波 / 第 3/3 波**（`[R26][WAVE]` 三行 + `[R27][GROWTH]` hud_text `第 1/3 → 2/3 → 3/3 波`，历史最佳 0→1→2→3、赐福点数 0→100→250→450）。
+`[R28][TUTORIAL] frame=40 教学已由真实按键 J→Space→E 三步完成并自动衔接到第 1 波（force_complete 未触发）`。额外佐证：v060 教学验证 `verify_tutorial_v060` 64 PASS、`verify_tutorial_reward_v060` 86 PASS、`verify_save_isolation_v060` 31 PASS 全 ALL_PASS/ALL_MATCH。
+
+**11.3 15 秒录屏 / MP4 / WAV / 三帧目视**
+
+| 项 | 实测 |
+|---|---|
+| 录屏 | `--write-movie capture/v060_demo.png --fixed-fps 30 --quit-after 450 --script res://test/presentation.gd res://scenes/courtyard.tscn`（不加 `--headless`），**EXIT=0 / 450 帧 / 1280×720 / 15.000000s**，`SCRIPT ERROR=0` |
+| ffmpeg | 绝对路径 `.../ffmpeg-9.0.2-essentials_build/bin/ffmpeg.exe`，`-framerate 30 -start_number 0 -i v060_demo%08d.png -frames:v 450 -c:v libx264 -pix_fmt yuv420p -movflags +faststart`，**EXIT=0** |
+| **MP4** | `capture/v060_demo.mp4` **897,681 B**；ffprobe `h264 / yuv420p / 1280×720 / 30/1 / nb_frames=450 / duration=15.000000`，`moov` 前置 |
+| **WAV 是否混入 MP4** | **未混入**：输入仅 PNG 序列、无音频 `-i`，`ffprobe -select_streams a` 音频流计数 = **0**。如实登记 |
+
+`ViewImage` 真看首 0 / 中 225 / 尾 449（+ 面板区裁剪放大 `r28_panel_head/mid/tail.png` + 像素采样，逐帧结论见 `V060-RUNTIME-REVIEW.md §3/§4`）：
+
+- **动作帧 HUD 推进：是（本轮修复 R27 遗留「恒 idle 0/0」）** —— 中帧 `动作 roll 6/22`、尾帧 `动作 roll 8/22`（非 idle），全片 J/Space 真实按键经 `_request_action → _update_hud` 驱动；首帧仍 `idle 0/0`（输入 1 帧延迟，如实）。
+- **兑换面板展开：是** —— `shop_open` 从 frame 22 起持续 true 到 449；尾帧 449 清晰可辨 5 行（含「兑换成功：赐福·生命上限（消耗 100，余额 0）」、三项增益、余额），购买真实成功且 `玩家 HP 100/100 → 120/120`（增益运行时生效）。如实登记：首帧为未展开提示态；中帧 225 段 B `low/mobile` 下 `SubViewport` 缩放使面板文字目视不可清晰辨认，不谎称三帧均清晰。
+- **赐福标题点亮：是** —— 三帧标题区像素实测最亮 `(212,174,76)` = GOLD、`dim_px=0`；经 `WorldState.set_flag → flag_changed → HUD.refresh_label → apply_lit_state(GOLD)` 既有事件路由，不写 `Label.text`。
+- **HD-2D 全绿：未达（如实写未达）** —— 景深/光效仍 2D `draw_*` 近似、三波变化是 2D 色带叠加、地面高倍平铺、角色仍 `AnimatedSprite3D` billboard、段 B 面板不可辨、首帧 idle、未做人工试玩逐帧动态验收、数值 `[PLACEHOLDER]`。
+
+**11.4 景深技术评估（只写文档、未改渲染件）**
+
+新增 `TECHNICAL-ART-DEPTH-v060.md`：`gl_compatibility` 下真 3D 景深 / 体积光 / 湿地倒影 / bloom **当前均不可直接依赖**——`Environment.glow` 历史实测/显式关闭不支持、`volumetric_fog` 属 Compatibility 后端能力缺口、`DoF/SSR` 需 Forward+ 后处理链、SubViewport 分层与切 `forward_plus` 后端代价（帧时间 / 录制确定性 / 输入穿透 / 缩放错位 / 断言回归）大于收益。给零付费替代方案与优先级 P0（定调）→ P1（强化既有 2D `draw_*` 伪景深/光锥/倒影参数）→ P2（一次全屏 `BackBufferCopy` shader，须真跑帧时间）→ P3（切后端/多 SubViewport，不推荐）。**未实现、未谎称实现任何真 3D 光效。**
+
+**11.5 三段门禁 / PASS 回归**
+
+G1 `--headless --import` / G2 `--headless --check-only --script res://test/presentation.gd` / G3 `--headless --quit` 三段 **EXIT=0**；`r28_g1/g2/g3`、`r28_capture`、`r28_ffmpeg` 逐份 `SCRIPT ERROR|Parse Error` = 0、**合计 0 → 字面 `SCRIPT ERROR=0`**。
+回归 `47 / 34 / 20 / 45 / 53 / 58 / 650 PASS`（7 项基线合计 **907 PASS 全不回退**）+ 本轮 v060 教学验证 `31 / 86 / 64 PASS`（181 PASS 全 ALL_PASS/ALL_MATCH）；全部 `r28_verify_*.log` `SCRIPT ERROR|Parse Error` 合计 **0**。
+**如实登记的 1 项 FAIL（非 Rank-4 引入）**：`verify_wave_runtime_v040` 稳定 `pass=36 fail=1 RESULT=FAILED`（重跑同值），失败断言 `courtyard_node_count PASS=false | node_count=41 expected=38`。根因：Rank-1 本轮并发在 `courtyard.tscn` 新增 `TutorialHud/TutorialLabel/TutorialDirector` 3 节点使 `[node` 数 38→41，脚本硬编码 `NODE_COUNT_AFTER=38` 未同步（R27 基线为 `36/36 PASS`；本轮开跑前已更新为 `38` 且当时 PASS）。Rank-4 本轮只写 `presentation.gd` / `capture/` / 评估文档 / `teamwork/Rank-4/`，**未写场景、未写验证脚本、不改断言不放宽不掩盖**；建议由脚本所有者同步期望值为 41 后复跑。本轮不谎称「全 PASS」。
+
+**11.6 目录所有权 / 合规 / 未完成项**
+
+只写 `godot/test/presentation.gd` / `capture/` / `TECHNICAL-ART-DEPTH-v060.md` / `teamwork/Rank-4/`（+ 回执 `teamwork/command_center/ai/4/outbox/`）；
+未写 `courtyard.tscn` / `tutorial_director.gd` / `wave_trial_director.gd` / `hud.gd` / `encounter_director.gd` / 素材 PNG / `.tres` / `project.godot` / 契约 / README / 任何验证脚本；未自行 git（总指挥收尾）。
+先目视检查再接入（20/60 帧短验输入生效与教学闭环 → 正式 450 帧 → 三帧 ViewImage + 裁剪 + 像素采样后才写结论）、直接改直接真跑、未新建只读探针/巡检脚本（短跑复用同一脚本，临时 PNG 已清理）；零付费、零外部依赖、不启 GPU job。
+未完成：HD-2D 全绿未达、段 B 面板不可辨、首帧 idle、`verify_wave_runtime_v040` 36/1（并发断言过期）、数值 `[PLACEHOLDER]` 待试玩、真 3D 光效仅评估未实现、未自行 git。**阻塞：无。**
+

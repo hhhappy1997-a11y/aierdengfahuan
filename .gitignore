@@ -26,6 +26,8 @@ capture/v040_demo*.png
 capture/v040_final*.png
 capture/v050_demo*.png
 capture/v050_final*.png
+capture/v060_demo*.png
+capture/v060_final*.png
 
 # 临时文件
 *.tmp

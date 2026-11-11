@@ -19,6 +19,7 @@
 [ext_resource type="Script" path="res://scripts/combat/wave_trial_director.gd" id="17_wtd"]
 [ext_resource type="Texture2D" path="res://assets/generated/r23/ground_tile.png" id="18_tile"]
 [ext_resource type="Script" path="res://scripts/combat/grace_upgrade_runtime.gd" id="19_grt"]
+[ext_resource type="Script" path="res://scripts/combat/tutorial_director.gd" id="20_tut"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uvplate"]
 albedo_texture = ExtResource("18_tile")
@@ -242,3 +243,20 @@ offset_bottom = 470.0
 theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.83, 0.68, 0.3, 1)
 text = "赐福成长 · 按 E 打开兑换"
+
+[node name="TutorialHud" type="CanvasLayer" parent="." unique_id=1930000001]
+layer = 21
+
+[node name="TutorialLabel" type="Label" parent="TutorialHud" unique_id=1930000002]
+offset_left = 24.0
+offset_top = 520.0
+offset_right = 1100.0
+offset_bottom = 556.0
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.83, 0.68, 0.3, 1)
+text = "赐福引导 · 准备中"
+
+[node name="TutorialDirector" type="Node" parent="." unique_id=1930000003]
+script = ExtResource("20_tut")
+wave_director_path = NodePath("../WaveTrialDirector")
+tutorial_label_path = NodePath("../TutorialHud/TutorialLabel")

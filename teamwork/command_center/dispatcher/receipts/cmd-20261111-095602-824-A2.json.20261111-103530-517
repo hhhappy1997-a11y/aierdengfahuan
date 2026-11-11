@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261111-095602-824-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "见 teamwork/Rank-2/DONE-R28.md 实际结论：①~⑤ 全部落地并经真跑。① tutorial_config.gd(class_name TutorialConfig) + tutorial_steps.tres 三步 J/Space/E 奖励 20/30/50、单步 timeout 15s，全数值标 [PLACEHOLDER] 并写 rationale；② verify_tutorial_reward_v060.gd 86 PASS/0 FAIL/RESULT=ALL_MATCH（奖励单调/余额非负/重复领取拒绝/超时不重复发奖/points 只增不减/commit 先落盘）；③ 双写收敛：grace_upgrade_service.gd 集中式 purchased_flag_key() 统一为 grace.upgrade_<id>.unlocked 唯一权威件、bought_<id> 仅兼容读取不再新写，F1~F8 逐字未动、既有存档可读，影响范围（7 文件 26 处调用点/2 处写入点/0 处 bought_ 直接写）与遗留项如实登记；④ 存档初态隔离前后对照：BEFORE 9/2（并发污染，A1+A2 FAIL）、10/1、并发 26/5~24/7 抖动 → AFTER 唯一 PID 独立槽 31 PASS 并发 3 轮全稳定、串行写基线后既有回归 11/0；⑤ 三段门禁 --headless --import → --check-only --script ×9 → --headless --quit 全 EXIT=0，全量日志 grep SCRIPT ERROR/Parse Error=0，新增 class_name 已 --import 注册。既有 127/58/11 PASS 全不回退。未完成项：教学真机接线未装配、增益真机自动生效未接通（沿用 A22）、纯 bought_ 旧档兼容调用的调用方接入、既有脚本文案滞后、人工试玩校准未执行，均如实登记于 DONE-R28.md §4。"
+}

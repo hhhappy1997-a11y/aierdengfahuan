@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="TutorialConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/tutorial_config.gd" id="1_tc"]
+
+[resource]
+script = ExtResource("1_tc")
+steps = Array[Dictionary]([{
+"step_id": "step_01_light_attack",
+"prompt": "按 J 发动一次轻攻击",
+"expected_action": "J",
+"reward_points": 20,
+"timeout_sec": 15.0
+}, {
+"step_id": "step_02_roll",
+"prompt": "按 Space 翻滚一次",
+"expected_action": "Space",
+"reward_points": 30,
+"timeout_sec": 15.0
+}, {
+"step_id": "step_03_interact",
+"prompt": "按 E 与赐福交互",
+"expected_action": "E",
+"reward_points": 50,
+"timeout_sec": 15.0
+}])

@@ -445,3 +445,193 @@ R26 §2 的四环节循环在「目标」之后直接回到「再行动」，中
 - `wave_trial_director.gd` / 赐福成长界面 / 波次 HUD（Rank-1 并发产出）
 - `teamwork/00-协作契约.md` §3.3（三段式 flag 登记表）、`teamwork/Rank-3/存档与flag规范.md` §3.1 / §3.3 / §4.1 / §4.4 / §4.7 / §4.8（flag 与十字段真源）
 - `teamwork/Rank-3/WAVE-TRIAL-SPATIAL.md`（R27 三波空间节奏 blockout）、`verify_grace_flags_v050.gd`（R27 自测载体）、`DONE-R27.md`（真跑结论）、`verify_wave_flags_v040.gd`（R26 自测先例）、工程根 `README.md`（状态表）
+
+---
+
+## 10. 赐福引导 · 三步教学（v0.6.0 / R28 追加章节 · Game Designer 格式）
+
+> 工位：Rank-3（RPG / 世界 / 存档）｜轮次：`[ROUND=R28]`｜任务单：`cmd-20261111-095602-827-A3`｜日期：2026-11-11
+> 文档性质：**Game Designer 入口引导补全规格 + 核心循环「前 30 秒」设计口径**，与 §0~§9 同为设计口径、不是实现件、不是数值表、不是存档实现；**不产生任何 `godot/` 工程文件写入**。空间 / 视觉引导 blockout 规格另见同轮新建 `TUTORIAL-BLOCKOUT.md`。
+> 与 §0~§9 的关系：§2 的 v0.4.0 四环节、§9 的 v0.5.0 五环节描述的是**「已经在打」**的循环；本节补的是**「开局还没学会怎么打」**之前的入口层，即 `teamwork/迭代-v0.4.0-试炼与精修.md` §1 诊断表第 4 个断点「前 30 秒无引导」。§0~§9 原样保留、不改写、不冒充 v0.6.0 已实现。
+> 数值纪律：本节**不写任何具体数值**；教学三步的步数 / 文案 / 奖励 / 超时一律引用 Rank-2 本轮 `tutorial_config.gd` / `godot/data/rpg/tutorial_steps.tres` 的 `[PLACEHOLDER]` 表，波次数值引用已落地的 `teamwork/Rank-2/WAVE-TRIAL-TUNING.md`，成长 / 兑换数值引用已落地的 `teamwork/Rank-2/GRACE-UPGRADE-TUNING.md`；**Rank-3 不填数字、不另造数值、不改 Rank-2 数据表**。零付费、零外部依赖、不伪造产物、不谎报成功、不自行 git。
+
+### 10.1 purpose
+
+把开局「前 30 秒无引导」的空白，从「自动开打 + 常驻 HUD 数字」升级为「被牵着做对三次操作再开打」，让新玩家在**进入三波计时之前**就掌握最小可玩操作集。设计目的有三：
+
+1. **补断点（本节核心）**：`迭代-v0.4.0-试炼与精修.md` §1 把「前 30 秒无引导」诊断为「玩家不知道要做什么」，v0.4.0 的补法是「自动开始 +『第 N/3 波｜倒计时｜历史最佳』常驻提示」—— 这只回答了**「我在打第几波 / 还剩多久」**，没有回答**「按哪个键、怎么动、赐福怎么用」**。玩家仍要在 `time_limit_sec` 倒计时压迫下自己摸索 `J / Space / E`，「被打断的学习」与「看不见就死」叠加，入口流失点没被真正堵上。三步教学把「读 HUD」变成「示范→操作→反馈」的主动引导：每一步只教一个既有输入，做对了立刻给可见回执与点数，三步走完才把玩家交还给三波试炼。
+2. **与三波目标梯度衔接而不抢跑**：教学期间**不推进三波、不起 `time_limit_sec` 倒计时、不生成伤害判定**（Rank-1 `tutorial_director.gd` 状态机口径）；三步全完成自动进入第 1 波 `TELEGRAPH`，复用 §4.1 入场读秒 / §4.2 敌人可见预告 / §4.3 退避空间。于是「学会操作」是「开始被计时」的前置条件，§2 / §9 的核心循环与 §3 / §9.8 的目标梯度**原样保留、不因加教学而改写**。
+3. **把引导本身接进奖励节奏与留存钩子**：每步完成给赐福点数奖励（`grace.trial.points` 只增不减，沿用 R26 §6.1）、三步完成写 `grace.tutorial.completed`（bool 单向）与赐福点亮态，使「第一次打开游戏」就有入账、有成就、有可读进度；老玩家由 `completed` 跳过教学、想复习按 T 重开，不被强制重复。引导不是一段可跳过的过场，而是循环的第一个正反馈节点。
+
+### 10.2 player experience goal
+
+玩家每一刻都清楚四件事：**我现在该按哪个键 / 我做对了没有 / 做完能拿到什么 / 三步做完就自动开打**。理想体验是「开局先看到一句金色提示与按键示范 → 照着按对 → 提示变成『做对了 + 点数入账 + 进度 1-3』 → 下一步自动示范 → 三步走完金色提示收束、赐福标题由暗灰转亮金 → 无缝进第 1 波读秒」。核心情绪是**「被牵着走的第一分钟」**：不是被丢进战场自己试错，也不是长篇文字说明书；失败也应是「按错了，再按一次就好」，而非死亡、扣点或倒计时归零（§10.6 不惩罚原则）。
+
+**数值引用表（本节唯一允许的数值来源）**
+
+> 全部条目引用 Rank-2 `[PLACEHOLDER]` 表；**Rank-3 不填数字、不另造数值、不改 Rank-2 数据表**。教学字段键名按 Rank-2 本轮 `tutorial_config.gd` 约定（`step_id / prompt / expected_action / reward_points / timeout_sec`）；波次 / 成长字段按已落地两份 TUNING.md 约定。
+
+| 设计维度 | 引用 Rank-2 `[PLACEHOLDER]` 键 | 本节用法 | rationale（待人工试玩校准，不写死） |
+|---|---|---|---|
+| 教学三步结构 | `step_id` / `prompt` / `expected_action`（`tutorial_config.gd` / `tutorial_steps.tres`，本轮并发） | §10.3 输入、§10.4 输出、§10.7 三步节奏 | 步数与输入映射须覆盖「攻击 / 翻滚 / 赐福交互」最小可玩集；过多稀释、过少仍不会打。每步只挂一个既有 input action，不新增输入 |
+| 每步奖励点数 | `reward_points`（教学表 `tutorial_steps.tres`；与 `WAVE-TRIAL-TUNING.md` 三波 `reward_points` **同名不同语义域**，落地后校对） | §10.4 奖励节奏、§10.7 留存钩子 | 与清波奖励同向但量级更小，形成「教学即小额入账 → 试炼递增 → 成长消费」的连续曲线；防开局点数通胀（§10.6 T-F2） |
+| 单步超时 | `timeout_sec`（教学表） | §10.5 T-E3、§10.6 不惩罚 | 给「找不到键」的玩家一个不惩罚的兜底；过长拖节奏、过短制造焦虑，且**不得引入死亡 / 扣点** |
+| 三波结构 / 时限 / 预告 / 清波奖励 | `waves` / `time_limit_sec` / `telegraph_sec` / `reward_points` / `hp_multiplier` / `move_weight` / `enemy_id`（`WAVE-TRIAL-TUNING.md`，已落地） | §10.7 与三波目标梯度衔接 | 教学完成即进第 1 波 `TELEGRAPH`；教学期间不占用 `time_limit_sec`、不改三波倍率 / 奖励梯度 |
+| 兑换成本 / 增益幅度 | `id` / `cost` / `effect_key` / `effect_value`（`GRACE-UPGRADE-TUNING.md`，已落地） | §10.7 奖励节奏出口 / 留存钩子 | 教学点数与试炼点数同进 `grace.trial.points`，最终由 `cost` 出口兑现为永久增益（§9 既有闭环），引导不是孤立奖励 |
+| broken / 防刷判据 | `WAVE-TRIAL-TUNING.md` B1/B2/B3、`GRACE-UPGRADE-TUNING.md` F1~F8 与 `broken` 定义 | §10.6 失败态 | 阈值以 Rank-2 表为准，本 GDD 不写数字、不另造判据 |
+
+> **如实登记（不伪造）**：Rank-3 产出本节时，Rank-2 本轮 `tutorial_config.gd` / `tutorial_steps.tres` 及教学 `[PLACEHOLDER]` 表属**并发产出、尚未落地**（开工定向核对 1 次），故教学相关条目为**字段名引用式占位**，不引用具体数值、不猜数字；`WAVE-TRIAL-TUNING.md` / `GRACE-UPGRADE-TUNING.md` **已落地**（R26 / R27 后），其键名按上表引用、数值仍不填。待教学表落地后按 §10.8 T-V6 校对键名 / rationale / broken 定义一致性，若键名不一致**改本 GDD 引用段、不改 Rank-2 数据表**。
+> 文中「三步」「前 30 秒」「三波」「进度 1-3」为任务单与 `迭代-v0.4.0` §1 给定的**结构 / 目标梯度描述**，不是 Rank-3 新造数值；其具体步数 / 秒数 / 奖励值一律以 Rank-2 `[PLACEHOLDER]` 表为准（同 §0.1 脚注口径）。
+
+### 10.3 inputs
+
+| 类别 | 输入 | 来源 | 口径 |
+|---|---|---|---|
+| 玩家输入 | `J` 轻攻击 / `Space` 翻滚 / `E` 赐福交互（既有 input action `light_attack` / `roll` / `interact`）；`T` 重开教学 | 既有玩家状态机 + Rank-1 `tutorial_director.gd` | **不新增输入、不改既有战斗件**；`expected_action` 只对应该步允许的 action，错误按键不推进（§10.5 T-E1） |
+| 时序输入 | `NOT_STARTED → STEP_LIGHT_ATTACK → STEP_ROLL → STEP_GRACE_SHOP → COMPLETED` | **Rank-1** `tutorial_director.gd` 状态机 | 只读编排，教学期间不推进三波、不起倒计时、不生成伤害判定；Rank-3 不定义状态机实现 |
+| 事件输入 | `tutorial_step_completed(step_id, reward)`（每步完成）/ 三步全完成信号 | **Rank-1** 导演层信号 | Rank-3 订阅信号写 `grace.tutorial.step_index` / `grace.tutorial.completed` 并累加 `grace.trial.points`（I-1）；**Rank-1 不写 flag** |
+| 数据输入 | 三步 `tutorial_steps.tres`（`step_id / prompt / expected_action / reward_points / timeout_sec`） | **Rank-2** 数据表 | 全 `[PLACEHOLDER]`，见 §10.2；空表 / 字段缺失 / 非法 `expected_action` 按 §10.5 T-E4 降级 |
+| 存档输入 | 三段式 flag 基线 `grace.tutorial.step_index`（`0`）/ `grace.tutorial.completed`（`false`）/ 既有 `grace.trial.points` | **Rank-3** 契约 §3.3 / `存档与flag规范.md` §3.3 | `get_flag(key, default)` 纯读（INV-3）；老玩家 `completed=true` 跳过教学 |
+| 衔接输入 | 第 1 波 `TELEGRAPH`（`telegraph_sec` `[PLACEHOLDER]`） | **Rank-1** `wave_trial_director.gd`（R26 既有） | 教学 `COMPLETED` 后自动进入，不改写 §4.1 读秒规格 |
+
+### 10.4 outputs
+
+| 类别 | 输出 | 消费方 | 口径 |
+|---|---|---|---|
+| 屏幕反馈 | 教学 HUD 一行金色引导提示（步骤文案 `prompt` / 进度 1-3 / 本步奖励点数） | 玩家 | Rank-1 教学 HUD；**避开既有五套 HUD 占位**（赐福 / 画质 / 底部战斗 / 波次 / 兑换提示，见 `TUTORIAL-BLOCKOUT.md` §2），不改既有 HUD 文本 |
+| 即时反馈 | 每步正确操作 → 确认 + `reward_points` 入账（HUD 点数跳动）+ 进度 +1 + 下一步示范；三步完成 → 金色提示收束 + 赐福标题由暗灰转亮金 | 玩家 | 由 Rank-1 状态机 / HUD + Rank-2 数据表驱动，Rank-3 不实现 |
+| 存档输出 | `grace.tutorial.step_index`（int 单调递增 `0→1→2→3`）、`grace.tutorial.completed`（bool 只增不减）、`grace.trial.points`（int 单调递增，既有） | `WorldState.flags` → `SaveDelta` → `delta.json` | 三段式、经 I-1 `set_flag`、强制 `commit(reason)` 先落盘，见 §10.8；**教学奖励只累加 `points`、不写 `removals`、不回退 `points`** |
+| 系统输出 | 三步全完成 `COMPLETED` → 自动进第 1 波 `TELEGRAPH`；教学期间三波保持 `IDLE`、不计时 | Rank-1 导演层 | 教学完成才解除「不推进三波」约束；失败 / 退出不自动进波 |
+| 奖励节奏输出 | 每步 `reward_points`（教学表 `[PLACEHOLDER]`）→ 三波 `reward_points` 递增（`WAVE-TRIAL-TUNING.md`）→ `cost` 出口（`GRACE-UPGRADE-TUNING.md`） | 玩家 / 成长界面 | 三段连续、全程只增不减，§10.7 详述 |
+
+### 10.5 edge cases
+
+| # | 边界 | 期望处理 | 归属 |
+|---|---|---|---|
+| T-E1 | 错误按键 / 非本步 `expected_action` | **不推进、不发奖、不写 flag、不惩罚**；HUD 保持当前示范 | Rank-1 状态机 / Rank-3 落盘口径 |
+| T-E2 | 同一步重复触发 `tutorial_step_completed` | 幂等门控：`step_index` 按 `max(旧, 本步序号)` 不二次推进，`points` 不二次累加，`completed` 不翻转 | Rank-1 门控 / Rank-3 登记口径 |
+| T-E3 | 单步 `timeout_sec` 超时未按对 | **不惩罚**：不死亡、不扣点、不写脏 flag；保持当前步或回退到当前步重来（运行时），可继续重试 / 按 T 重开 | Rank-1（引用 `timeout_sec [PLACEHOLDER]`）/ Rank-3 |
+| T-E4 | `tutorial_steps.tres` 空表 / 字段缺失 / `expected_action` 非法 / `reward_points` 非法 | 按 Rank-2 `verify_tutorial_reward_v060.gd` 降级口径拒绝该步、不写脏 flag；依赖缺失时教学安全停在 `NOT_STARTED`、不崩、不把降级态判为通过 | Rank-2 数据校验 / Rank-1 / Rank-3 |
+| T-E5 | 已有存档 `grace.tutorial.completed=true` | **跳过教学**，直接进第 1 波 `TELEGRAPH`；不重发教学奖励、不改 `step_index` | Rank-1 门控（读 flag）/ Rank-3 基线 |
+| T-E6 | `T` 强制重开教学 | 运行时状态机复位重走三步；**持久化 `step_index` / `completed` 不回退**（单调不变量，见 §10.8 口径差异登记）；不重复发已入账的点数 | Rank-1 运行时 / Rank-3 落盘口径 |
+| T-E7 | 中途退出 / 主动退出 / 进程被杀 | 已 `commit(reason)` 的步数与点数不丢；未落盘的运行时增量允许丢弃（以磁盘为准，见 §10.8 顺序） | Rank-3 |
+| T-E8 | 重启读回 | 新实例 `_load()` 从磁盘重建；`step_index` / `completed` / `points` 逐项一致、不回退、不重置 | Rank-3 `verify_tutorial_flags_v060.gd` |
+| T-E9 | `step_index` 越界 / `null` / 类型不符 / 非法 key | 按 §3.3 登记类型（int）与 value 白名单（bool/int/float/String）丢弃非法行并告警，不写脏 key | Rank-3 |
+| T-E10 | 教学与第 1 波 / 读秒同帧竞争 | 以 Rank-1 状态机单帧仲裁为准：教学期间三波保持 `IDLE`，只有 `COMPLETED` 后才进 `TELEGRAPH`；Rank-3 只消费最终结算结果 | Rank-1 |
+| T-E11 | 教学 HUD 读 flag 时存档未加载完 | `get_flag(key, default)` 给基线（`step_index=0` / `completed=false` / `points=0`），不阻塞、不显示未定义值 | Rank-1 HUD / Rank-3 基线 |
+| T-E12 | 旧存档（R27 及以前）无 `grace.tutorial.*` | `get_flag(key, default)` 回落基线 `0` / `false`；**不触发迁移、不改 `schema_version`**，老玩家按 T-E5 判定（未完成 → 进教学） | Rank-3 |
+
+### 10.6 failure states
+
+| # | 失败 / 失衡态 | 判据 | 处置 |
+|---|---|---|---|
+| T-F1 | **玩家失败态**：教学期间按错 / 超时 / 中途退出 | T-E1 / T-E3 / T-E7 | **不惩罚原则**：无死亡、无扣血、无扣点、无倒计时失败结算；错一步只回到当前步重来，已入账点数 / 已完成步数不回退（§10.7 不惩罚原则） |
+| T-F2 | **数值 broken · 教学奖励失衡（点数通胀）** | 引用 Rank-2 `WAVE-TRIAL-TUNING.md` B3 / `GRACE-UPGRADE-TUNING.md` `broken` 定义（教学 `reward_points` 与清波 / 兑换成本失配） | 只调 Rank-2 `[PLACEHOLDER]` 数值，不改代码、不改 GDD 结构；`points` 只增不减，通胀靠调表而非回滚存档 |
+| T-F3 | **数值 broken · 教学冗长 / 过短** | 引用教学表 `timeout_sec` / 步数 `[PLACEHOLDER]` 与人工试玩观测 | 同上；`broken` 判据与阈值以 Rank-2 表为准，本 GDD 不写数字、不另造判据 |
+| T-F4 | **系统降级态**：导演层 / 教学数据表 / WorldState 未就绪或非法 | T-E4 | 安全停在 `NOT_STARTED` 或只读降级，不写 flag、不自动进波、不谎报通过；如实登记日志 |
+| T-F5 | **衔接失败态**：教学完成后未进第 1 波 / 教学期间误起倒计时 | T-E10 / Rank-1 状态机仲裁 | 归 Rank-1 运行时接线，Rank-3 只登记「教学不推进三波、完成即衔接」口径，**不代验、不宣称已接通** |
+| T-F6 | **引导未达态**：教学 HUD 未落地 / 赐福点亮态未接通 / 跳过门控缺失 | 工程根 `README.md`「还差什么」第 15 项 | 属 Rank-1 HUD / 点亮态与 Rank-4 视觉，Rank-3 不代验、不宣称完成 |
+| T-F7 | **视觉未达态**：HD-2D 全绿未达 | 工程根 `README.md`「还差什么」第 12 项（R24 目视回看实证） | 属 Rank-4 素材 / 用户侧人工试玩，Rank-3 不代验、不宣称完成 |
+
+> T-F2 / T-F3 的具体阈值**全部引用 Rank-2 `[PLACEHOLDER]` 表与 `broken` 定义**，本 GDD 不写数字、不另造判据。
+
+### 10.7 「前 30 秒」断点定位、三波目标梯度衔接、奖励节奏与留存钩子
+
+**（1）断点定位：为什么 v0.4.0 的补法不够**
+
+| 版本 | 对「前 30 秒无引导」的补法 | 回答了什么 | 仍缺什么 |
+|---|---|---|---|
+| v0.4.0（R26） | 自动开始 +「第 N/3 波｜倒计时｜历史最佳」常驻提示 | 「我在打第几波 / 还剩多久 / 历史最好多少」 | **没教按键与操作**：玩家在 `time_limit_sec` 倒计时下自己摸索 `J / Space / E`，试错与计时压迫叠加，入口流失点未堵 |
+| v0.6.0（R28，本节） | 三步「示范→操作→反馈」教学，完成自动进第 1 波 | 「按哪个键 / 做对没 / 拿到什么 / 何时开打」 | 视觉引导 / 点亮态 / 数据表落地归 Rank-1 / Rank-2 / Rank-4 并发实现，Rank-3 只给规格 |
+
+**（2）与三波目标梯度衔接**（沿用 §3 / §9.8，教学是**新增的最前置一层**，不改写既有梯度）
+
+| 梯度 | 时间尺度 | 目标 | 对应持久化量 | 反馈位置 |
+|---|---|---|---|---|
+| **引导（R28 新增）** | 开局前置、无 `time_limit_sec` 压迫 | 做对三步最小操作集 | `grace.tutorial.step_index`（int 单调递增）、`grace.tutorial.completed`（bool 单向） | 教学 HUD 金色提示（步骤 / 进度 1-3 / 奖励）+ 赐福点亮态 |
+| **短期** | 30 秒级（`time_limit_sec [PLACEHOLDER]`） | 在时限内清掉当前波 | 无（局内进度由导演层持有） | 倒计时 / 第 N/3 波 |
+| **中期** | 一局（三波 `waves`） | 三波全清 | `dungeon.wave_trial.completed`（bool 只增不减，R26） | HUD 历史最佳 / 结算 |
+| **长期** | 跨局 / 跨重启 | 刷新最高波次、累计赐福点数 | `dungeon.wave_trial.best_wave`（int 单调递增）、`grace.trial.points`（int 单调递增），R26 | HUD 历史最佳 / 赐福点数 |
+| **成长** | 跨局 / 跨重启 | 攒够点数 → 兑换永久增益 → 带增益挑战更高 | `grace.trial.spent_points`（int 单调递增）、`grace.upgrade_<id>.unlocked`（bool 单向），R27 | 赐福成长界面 + HUD 余额 |
+
+衔接规则三条：① 教学期间三波保持 `IDLE`、不计时、不生成伤害判定（Rank-1 状态机）；② `COMPLETED` 后自动进第 1 波 `TELEGRAPH`，复用 §4.1 / §4.2 / §4.3 与 `WAVE-TRIAL-SPATIAL.md` §2 的读秒 / 可见预告 / 退避规格，**不另起一套战场**；③ 老玩家由 `completed=true` 跳过教学直接进第 1 波，想复习按 T 重开（T-E5 / T-E6）。「前 30 秒」由「被计时地摸索」变成「不被计时地学会」，§2 / §9 的循环与 §5 难度曲线均不回退。
+
+**（3）奖励节奏（三段连续、全程只增不减）**
+
+```
+【引导】每步完成 → +reward_points（教学表 [PLACEHOLDER]，小额、即时入账）       ┐
+                                                                              ├→ 全部累加进既有 grace.trial.points（int 单调递增，不写 removals、不回退）
+【试炼】每波清波 → +reward_points（WAVE-TRIAL-TUNING.md 三波递增 [PLACEHOLDER]） ┘
+                                  ↓
+【成长】攒够 → 兑换 → cost（GRACE-UPGRADE-TUNING.md [PLACEHOLDER]）→ spent_points 单调镜像
+               → grace.upgrade_<id>.unlocked 单向 → 余额 points − spent_points ≥ 0（§9.9 既有闭环）
+```
+
+- 三段共用**同一个** `grace.trial.points`，教学奖励不是孤立货币，而是玩家开局就拿到、一路带到成长的「第一笔入账」；引用 `reward_points` 时须区分教学表与波次表**同名不同语义域**，落地后按 T-V6 校对。
+- 单调不变量贯穿：教学 `step_index` 递增、`points` 只增不减、`spent_points` / `unlocked` 沿用 §9.9；任何一步失败 / 退出都不回退已入账点数（T-F1）。
+- 具体 `reward_points` / `cost` / `timeout_sec` 值一律引用 Rank-2 `[PLACEHOLDER]` 表、待人工试玩校准，本 GDD 不写数字。
+
+**（4）留存钩子（v0.6.0 完整版，既有钩子不回退）**
+
+1. **「我学会了」不可撤销**（`grace.tutorial.completed` 单向，R28 新增）：三步全完成置 `true`、跨局跨重启不丢，配合赐福标题由暗灰转亮金，给「学会操作」一个永久确认；老玩家据此跳过教学，不被强制重复。
+2. **开局即正反馈**（教学每步 `reward_points` → `grace.trial.points`，R28 新增）：把「第一次打开游戏」从「先摸索」变成「先入账」，与三波点数、成长兑换连成一条不断裂的积累曲线，降低开局流失。
+3. **可重开但不惩罚**（T 重开 + 不惩罚原则，R28 新增）：想复习按 T、按错不扣点、超时不死亡，重试成本接近零；持久化 flag 不回退保证复习不会抹掉「已学会」。
+4. **历史最佳 / 赐福点数 / 永久增益 / 重复挑战更轻松**（R26 §3 / R27 §9.8 既有）：教学完成后玩家带着「会操作 + 有起始点数」进入既有循环，四条钩子原样保留、不因加教学而稀释。
+
+> 四条关系：**完成标记是「因」，开局入账是「第一笔体感」，不惩罚重开是「低门槛」，既有三钩子是「可量化的果」**；`step_index` 单调与 `completed` 单向是让四条同时成立、又不破坏 §4.4 回放不变量的机制保证。
+
+### 10.8 三段式 flag、落盘口径与校对清单
+
+**新 flag（契约 §3.3 登记，真源链见 `存档与flag规范.md` §3.3）**
+
+| key | 类型 | 读写方 | 单调性 |
+|---|---|---|---|
+| `grace.tutorial.completed` | bool（基线 `false`） | 写：Rank-3（订阅三步全完成信号置 `true`，与末次 `step_index` 同一 `commit("tutorial_completed")` 原子先落盘）／读：赐福点亮态、老玩家跳过教学门控、回放断言（纯读 `get_flag`） | **只增不减（false → true 单向）**：失败 / 超时 / 主动退出 / 重启 / T 重开教学 / 重复挑战均无 `false` 回写路径，一次性永久成就 |
+| `grace.tutorial.step_index` | int（基线 `0`） | 写：Rank-3（订阅 `tutorial_step_completed(step_id, reward)`，按 `max(旧值, 本步序号)` 推进，强制 `commit(reason)` 先落盘）／读：教学 HUD「进度 1-3」、重启恢复、回放断言（纯读 `get_flag`） | **单调递增、只增不减**：`0→1→2→3`，重启不丢、赐福休息不清零；T 重开教学属 Rank-1 运行时状态机复位，持久化 flag **不回写更小值**（与 §4.4「quest_stages 取较大值」同机制） |
+
+- 两 key 均通过 §2 三段式正则 `^(world|quest|combat|grace|dungeon)\.[a-z0-9_]+\.[a-z0-9_]+$`：`grace` 前缀、`tutorial` 对象段、`completed` / `step_index` 状态段合法；`world_state.gd` 的 `FLAG_KEY_REGEX` 无需修改、无需迁移、不改 `schema_version`。
+
+**与 §4.4 十字段、`schema_version=3` 的关系**（沿用 §6.2 / §9.9 口径）
+
+- 项目 `SaveDelta` 十字段（`schema_version / slot / seq / baseline / flags / quests / inventory / spawns / removals / meta`）**冻结、不得新增顶层字段**；两个新 flag **只作为 `flags` 字典内的新 key** 落进既有结构（INV-6），不新增顶层字段、不改字段类型、不引入嵌套结构。
+- 因此 **`schema_version` 保持 `3`、不触发 §4.7 迁移链**：新 key 属「相对基线的变化 flag」，回放按 §4.4「LWW by timestamp / 写入顺序」合并、同 key 多行取后写覆盖；**旧存档缺这两个 key 时 `get_flag(key, default)` 回落基线 `0` / `false`，不升级、不重置**（T-E12）。
+- 类型冲突按 §4.4「以 §3.3 登记表声明类型为准，无法转换则丢弃该行并 `push_warning`」处理（T-E9）。
+- **教学奖励只累加既有 `grace.trial.points`、绝不写 `removals`、绝不回退 `points`**（沿用 R26 §6.2 / R27 §9.9；`removals` 用于撤销 / 迁移纠偏，抹除 `points` 会破坏单调不变量与回放「集合并集只增不减」语义）。
+
+**`commit(reason)` 强制落盘点与「先落盘再改运行时实例」**（沿用 §6.3 / §6.4 / §9.9 顺序）
+
+| # | 落盘点 | reason（`meta.last_commit_reason`） | 写入内容 |
+|---|---|---|---|
+| T-P1 | 每步 `tutorial_step_completed` 结算 | `tutorial_step_completed` | `step_index = max(旧, 本步序号)`、`grace.trial.points += 本步 reward_points` |
+| T-P2 | 三步全完成 `COMPLETED` | `tutorial_completed` | `completed = true` 与末次 `step_index` 同一原子写 |
+| T-P3 | 波次清波 / 全清 / 失败结算 | `wave_trial_cleared` / `wave_trial_completed` / `wave_trial_settled`（R26 既有） | `points` 入账、`best_wave` / `completed`；**不动 `grace.tutorial.*`** |
+| T-P4 | 重启恢复 | `load`（既有口径） | 只读 `_load()` 回放，不新增写盘 |
+
+> reason 字面量仅进 `meta.last_commit_reason`，**不是新顶层字段**、不触发迁移；教学奖励属玩家资产变更，与 §4.8「点燃 / 休息赐福强制同步」同机制（须强制同步先落盘）。
+
+每一次 T-P1 / T-P2 严格按 §6.4 五步顺序，不得颠倒：① 由 Rank-1 信号取结算结果（本步序号 / 本步奖励 / 是否三步全完成）→ ② 计算新值（`step_index = max(旧, 本步序号)` / `points = 旧 + 本步 reward_points` / `completed` 仅全完成置 `true`）→ ③ ★ 强制 `commit(reason)` 按十字段原子写（`.tmp → flush → rename → delta.json`）→ ④ ★ 落盘成功后，才更新 `WorldState` 运行时 flag 实例、`emit flag_changed`（教学 HUD 进度 / 赐福点亮态增量刷新）→ ⑤ 若 ③ 失败：不执行 ④、运行时保持旧值、不推进步数、不发奖、如实告警，绝不「内存已改、磁盘未改」。磁盘为唯一权威（T-E7 / T-E8），机器判定见 `verify_tutorial_flags_v060.gd` D 类断言。
+
+**口径差异登记（如实、不伪造）**：Rank-1 任务单的「按 T 重开教学」属运行时状态机复位；本 GDD / 契约把 `step_index` 登记为**单调递增、只增不减**，即重开时持久化 flag 不回写更小值、教学 HUD 进度以运行时状态机为准。此口径与 §4.4「quest_stages 取较大值」一致、保证重启读回不回退；**若总指挥 / Rank-1 需要「重开时进度归零」的持久化语义，列为待裁决的口径差异**（同 §3.1 脚注 A8 / R27 `<id>` 收敛先例），本轮按三段式单调不变量落地、不擅自改正则、不改 `world_state.gd`。
+
+**校对清单（本轮未达 / 待办，如实登记）**
+
+| # | 项 | 状态 |
+|---|---|---|
+| T-V1 | 三段式正则（2 个新 key 通过 + 六类反例拒绝） | `verify_tutorial_flags_v060.gd` A 类 |
+| T-V2 | `completed` false→true 单向 / `step_index` 单调递增 / 重复触发与 T 重开不回退 | 同 B 类 |
+| T-V3 | 重启读回一致（write / read 两独立引擎进程） | 同 C 类 |
+| T-V4 | commit 顺序「先落盘再改运行时实例」/ 十字段齐全 / `schema_version=3` / 落盘 flags 全合法 | 同 D 类 |
+| T-V5 | 31 PASS 存档 / HUD 回归不回退 + 三段门禁 `grep SCRIPT ERROR=0` | R28 真跑（见 `DONE-R28.md`） |
+| T-V6 | **Rank-2 教学表落地后校对**：§10.2 / §10.3 引用键名（`step_id / prompt / expected_action / reward_points / timeout_sec`）、教学 `reward_points` 与波次 `reward_points` 同名不同语义域、rationale / broken 定义与 Rank-2 实际表一致；不一致**改本 GDD 引用段、不改数据表** | **待 Rank-2 并发产出落地后执行（本轮未达，如实登记）** |
+| T-V7 | 教学 HUD / 赐福点亮态 / 跳过门控 / 第 1 波衔接 / T 重开 / 演示序列兼容的运行时接线 | **属 Rank-1 并发实现，Rank-3 不代验、不宣称已接通**（T-F5 / T-F6） |
+| T-V8 | `step_index` 单调 vs T 重开「进度归零」持久化语义的口径裁决 | **待总指挥裁决（本轮按单调不变量落地、不擅自改正则）** |
+| T-V9 | 人工试玩校准 `[PLACEHOLDER]` 数值、15~20 秒实机录屏回看、HD-2D 全绿 | **属用户侧 / Rank-1 / Rank-4，Rank-3 不代做、不宣称完成**（工程根 `README.md`「还差什么」） |
+
+### 10.9 关联
+
+- `teamwork/迭代-v0.4.0-试炼与精修.md` §1（「前 30 秒无引导」断点原始诊断）、§2（玩法拆解表）
+- `teamwork/Rank-2/调度任务单-latest.json`（本轮 `tutorial_config.gd` / `tutorial_steps.tres` 字段约定，只读）、`godot/scripts/combat/tutorial_config.gd` / `godot/data/rpg/tutorial_steps.tres` / `verify_tutorial_reward_v060.gd`（Rank-2 并发产出，本轮尚未落地）
+- `teamwork/Rank-2/WAVE-TRIAL-TUNING.md`（波次 `[PLACEHOLDER]` 表 / B1~B3，已落地）、`teamwork/Rank-2/GRACE-UPGRADE-TUNING.md`（兑换 `cost` / 防刷 F1~F8 / `broken`，已落地）
+- `tutorial_director.gd` / 教学 HUD / 赐福点亮态 / `wave_trial_director.gd`（Rank-1 并发产出）、`verify_tutorial_v060.gd`（Rank-1 自测）
+- `teamwork/00-协作契约.md` §3.3（三段式 flag 登记表 + R28 说明段）、`teamwork/Rank-3/存档与flag规范.md` §3.1 / §3.3 / §4.1 / §4.4 / §4.7 / §4.8（flag 与十字段真源）
+- `teamwork/Rank-3/TUTORIAL-BLOCKOUT.md`（R28 Level Designer 引导 blockout）、`verify_tutorial_flags_v060.gd`（R28 自测载体）、`DONE-R28.md`（真跑结论）、`WAVE-TRIAL-GDD.md` §0~§9（R26 / R27 既有设计）、`WAVE-TRIAL-SPATIAL.md`（R27 空间规格）、工程根 `README.md`（状态表）

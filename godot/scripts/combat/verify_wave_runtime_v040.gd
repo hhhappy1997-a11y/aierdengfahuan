@@ -27,9 +27,17 @@ const FIELDLESS_TABLE_PATH: String = "res://data/rpg/grace_network.tres"  # 存�
 #   GraceShopLabel（Hud 下，赐福成长购买 HUD）
 # 故改后基线同步为 38（+5）。属「断言与当前实现的真实口径差异 → 修断言」：
 #   只同步精确期望值，断言仍严格检查 node_count 与 delta，不删断言、不放宽、不掩盖。
+# R28 [ROUND=R28]（cmd-20261111-095602-818-A1）教学运行时：courtyard.tscn 再加 3 个真实节点
+#   TutorialHud / TutorialLabel / TutorialDirector（赐福引导金色 HUD + 导演），
+#   故基线同步为 41（+8）。沿用 R27B 同类先例：只同步精确期望值，不删断言、不放宽、不掩盖。
+# R28B [ROUND=R28B] 裁决 A27（cmd-20261111-105411-909-A1）正式授权该 38→41 同步：
+#   断言过期源于场景新增 3 个教学节点，非实现缺陷；只改精确期望值、不删断言、
+#   不放宽其它判定。本轮 v040 的断言集合 / 常量 / 判定逐字未动，复跑 37 PASS 不回退；
+#   「教学 3 节点」的结构性回归用例补在本轮新写的 verify_tutorial_restart_v060.gd
+#   （用例 tutorial_three_nodes_present，见 DONE-R28B.md §A27）。
 const NODE_COUNT_BEFORE: int = 33
-const NODE_COUNT_AFTER: int = 38
-const NODE_COUNT_DELTA: int = 5
+const NODE_COUNT_AFTER: int = 41
+const NODE_COUNT_DELTA: int = 8
 
 var _pass: int = 0
 var _fail: int = 0
@@ -357,7 +365,7 @@ func _test_courtyard_readback() -> void:
 			NODE_COUNT_BEFORE, disk_nodes, disk_nodes - NODE_COUNT_BEFORE])
 	_ck("courtyard_node_count", disk_nodes == NODE_COUNT_AFTER \
 			and disk_nodes - NODE_COUNT_BEFORE == NODE_COUNT_DELTA,
-			"node_count=%d expected=%d（+%d：R26 三波 HUD/导演 + R27B 增益运行时/购买 HUD）" % [
+			"node_count=%d expected=%d（+%d：R26 三波 HUD/导演 + R27B 增益运行时/购买 HUD + R28 教学 HUD/导演）" % [
 				disk_nodes, NODE_COUNT_AFTER, NODE_COUNT_DELTA])
 
 	# instantiate 不 add_child → 不触发 _ready，纯结构/属性回读

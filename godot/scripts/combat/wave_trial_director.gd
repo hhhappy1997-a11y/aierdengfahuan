@@ -97,6 +97,11 @@ var _label: Label = null
 var _auto_start_pending: bool = false
 var _auto_start_frames: int = 0
 
+# ---- R28 [ROUND=R28] 教学运行时接线 ----
+# 教学激活期间冻结三波（不自动开始、不推进、不响应 E 重开）；教学完成后由
+# begin_wave_after_tutorial() 解冻并自动进第 1 波。默认 false，既有回归完全等价。
+var _tutorial_freeze: bool = false
+
 # ---- R26B 持久化（经 WorldState / SaveDeltaWriter 既有入口）----
 var _world_state: Node = null
 var _delta_writer: Node = null
@@ -134,11 +139,17 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
+	# R28：教学激活期间不推进三波（自动开始与波次时序都冻结，避免与教学双驱动）。
+	if _tutorial_freeze:
+		return
 	_tick_auto_start()
 	_advance(delta)
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# R28：教学激活期间 E 键由 TutorialDirector 消费推进第三步，本导演不重开一轮。
+	if _tutorial_freeze:
+		return
 	# 赐福休息 / E 键 interact 可重开一轮（既有 EncounterDirector 仍同时处理其 _grace_rest()）。
 	if event.is_action_pressed("interact"):
 		interact_restart()
@@ -181,6 +192,8 @@ func _tick_auto_start() -> void:
 
 ## E 键 interact / 赐福休息后重开一轮；一局进行中拒绝（不打断、不重复计数）。
 func interact_restart() -> void:
+	if _tutorial_freeze:
+		return
 	restart_trial()
 
 
@@ -190,6 +203,48 @@ func restart_trial() -> bool:
 	if _state == State.TRIAL_COMPLETED:
 		_state = State.IDLE
 	return start_trial()
+
+
+# ===========================================================================
+# 0.05) R28 [ROUND=R28] 教学运行时衔接（既有 0 / 0.1 节逻辑逐字未动）
+# ===========================================================================
+
+## 教学激活 / 结束的开关键。冻结时：取消待处理的自动开始；若已有活跃波次
+## （例如教学完成后按 T 重开），把运行时状态复位到 IDLE（不落盘、不回退 flag），
+## 保证教学期间三波不推进、教学完成后可从第 1 波干净开始。
+func set_tutorial_freeze(enabled: bool) -> void:
+	_tutorial_freeze = enabled
+	if enabled:
+		_auto_start_pending = false
+		_auto_start_frames = 0
+		if is_trial_active() or _state == State.TRIAL_COMPLETED:
+			_state = State.IDLE
+			_index = 0
+			_remaining = 0.0
+			_refresh_hud()
+		print("[WaveTrial] 教学冻结：三波不自动开始 / 不推进（tutorial_freeze=true）")
+	else:
+		print("[WaveTrial] 教学解冻：可由 begin_wave_after_tutorial() / 既有 auto_start 进第 1 波")
+
+
+func is_tutorial_frozen() -> bool:
+	return _tutorial_freeze
+
+
+## 教学完成后的单一衔接入口：先解冻、取消自动开始排队（避免重复 start），
+## 再经既有 start_trial() 自动进第 1 波。返回是否真正进入第 1 波。
+func begin_wave_after_tutorial() -> bool:
+	set_tutorial_freeze(false)
+	_auto_start_pending = false
+	_auto_start_frames = 0
+	if is_trial_active():
+		return false
+	if _state == State.TRIAL_COMPLETED:
+		_state = State.IDLE
+	var ok: bool = start_trial()
+	print("[WaveTrial] 教学完成 → 自动进第 1 波：start_trial()=%s（state=%s index=%d/%d）" % [
+			str(ok), STATE_NAMES[_state], _index + 1, _total])
+	return ok
 
 
 # ===========================================================================
@@ -412,6 +467,10 @@ func configure_waves(waves: Array) -> bool:
 # ===========================================================================
 
 func start_trial() -> bool:
+	# R28：教学激活期间拒绝开试炼（演示序列 / 外部驱动的 start_trial 也不会造成双驱动）。
+	if _tutorial_freeze:
+		_start_rejects += 1
+		return false
 	if _state != State.IDLE:
 		_start_rejects += 1
 		return false
@@ -642,6 +701,8 @@ func get_snapshot() -> Dictionary:
 		"auto_start": auto_start,
 		"has_external_driver": has_external_driver,
 		"is_trial_active": is_trial_active(),
+		# ---- R28 新增只读字段（既有 key 逐字不动，回归不回退）----
+		"tutorial_frozen": _tutorial_freeze,
 		"persist_available": _persist_available,
 		"persist_downgrade_reason": _persist_downgrade_reason,
 		"grace_trial_points": _grace_points,

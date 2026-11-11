@@ -47,6 +47,21 @@ extends SceneTree
 ##   [PLACEHOLDER] SUBFRAME_INTERVAL=5 为演示节奏，待试玩校准（rationale：
 ##      450 帧 / 5 = 90 步，90 / 3 = 30 个 pose 周期，8 pose 循环约 3.75 轮，每 pose 恰好 3 子帧）。
 
+## R28 v0.6.0 改动（Rank-4 本轮独占本文件 · 派单 cmd-20261111-095602-831-A4）：
+##   ① 真实输入事件注入：新增 _drive_real_input / _inject_key，经 Input.parse_input_event
+##      注入 InputEventKey（J=light_attack / Space=roll / E=interact / 1=购买），由引擎输入系统
+##      分发到既有 _unhandled_input 路由；动作帧 HUD 由 EncounterDirector._request_action→
+##      _update_hud 真实推进、兑换面板由 hud._toggle_shop 真实展开、购买经 hud.purchase_upgrade。
+##      绝不写 Label.text、不调 debug_* 伪造数值、不直接改 HUD 文本。
+##   ② 赐福标题点亮：_drive_hud_flags 时间线重排，让首/中/尾三帧采样均处「点亮(金)」态，
+##      仍全部经 WorldState.set_flag → flag_changed → HUD.refresh_label → apply_lit_state(GOLD)。
+##   ③ tutorial 接口：Rank-1 承诺的 tutorial_director.is_tutorial_active()/force_complete()
+##      防御性探测；并发时序下未落盘则如实降级为「直接注入按键 + 登记接口缺失」，
+##      不伪造画面、不谎称教学闭环已证明。
+##   [PLACEHOLDER] ACTION_INTERVAL=6 为动作注入节奏，待试玩校准（rationale：
+##      450 帧 / 6 = 75 次注入，J/Space 交替，动作帧窗口约 6 渲染帧，使动作帧 HUD 全片不恒 idle 0/0；
+##      f=0 J / f=6 Space / f=20 E 严格按教学三步顺序，让教学真实完成并衔接到第 1 波）。
+
 const TOTAL_FRAMES: int = 450
 
 # courtyard.tscn 内节点路径（只读引用，不改场景）
@@ -64,6 +79,20 @@ const POSES: Array = [
 const POSE_INTERVAL: int = 15
 # R26 [PLACEHOLDER] 逐帧动作演示节奏：每 5 帧推进一个子帧，3 子帧轮转（待试玩校准）
 const SUBFRAME_INTERVAL: int = 5
+
+# ---- R28 v0.6.0 · 真实输入事件注入（project.godot [input] physical_keycode 对齐）----
+const KEY_J: int = 74            # light_attack（J）
+const KEY_SPACE: int = 32        # roll（Space）
+const KEY_E: int = 69            # interact（E）
+const KEY_1: int = 49            # 兑换选项 1（hud.purchase_upgrade(0)）
+const ACTION_INTERVAL: int = 6   # [PLACEHOLDER] 动作注入周期（帧），待试玩校准
+const E_OPEN_FRAME: int = 20     # 教学第 3 步：注入 E（J→Space→E 顺序），同时打开兑换面板并保持全片展开
+const BUY_FRAME: int = 170       # 注入数字键 1 购买一项（教学奖励 + 波次结算已累积赐福点数）
+const TUTORIAL_GUARD_FRAME: int = 40  # 教学状态兜底检查帧（避免三波永久冻结 / 教学与波次双驱动）
+# R28 既有输入路由节点路径（只读引用）
+const HUD_PATH: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
+const ENCOUNTER_PATH: String = "EncounterRoot"
+const STATUS_LABEL_PATH: String = "HUD/StatusLabel"
 
 # 赐福 flag（三段式，全部符合 WorldState.FLAG_KEY_REGEX；id 取自 grace_network.tres）
 const FLAG_LAST_GRACE: String = "grace.network.last_grace_id"
@@ -84,6 +113,13 @@ var _wave: Node = null
 var _wave_ready: bool = false
 # R27 三波空间节奏画面驱动节点（防御性解析）
 var _parallax: Node = null
+# ---- R28 v0.6.0 真实输入注入运行期引用（防御性解析，未落盘则判空降级、不崩）----
+var _hud: Node = null
+var _encounter: Node = null
+var _status_label: Label = null
+# Rank-1 tutorial_director 接口（并发时序下可能未落盘；如实登记，不假设存在）
+var _tutorial_director: Node = null
+var _tutorial_api_available: bool = false
 
 
 func _initialize() -> void:
@@ -134,6 +170,15 @@ func _initialize() -> void:
 	else:
 		push_warning("[R27][SPACE] ParallaxBackdrop / set_wave_index 不可用，三波空间变化将如实跳过")
 
+	# ④c R28 v0.6.0：真实输入路由节点（只读引用）+ Rank-1 tutorial 接口防御性探测
+	_hud = _courtyard.get_node_or_null(HUD_PATH) as Node
+	_encounter = _courtyard.get_node_or_null(ENCOUNTER_PATH) as Node
+	if _encounter != null:
+		_status_label = _encounter.get_node_or_null(STATUS_LABEL_PATH) as Label
+	print("[R28][REFS] hud=%s encounter=%s status_label=%s" % [
+			str(_hud != null), str(_encounter != null), str(_status_label != null)])
+	_resolve_tutorial_api()
+
 	# ⑤ 逐帧驱动：process_frame 每帧一次，帧号与 --quit-after 450 对齐；退出交给 --quit-after。
 	process_frame.connect(Callable(self, "_on_frame"))
 	print("[R22] process_frame 已连接 | TOTAL_FRAMES=%d @--fixed-fps 30 (15s)" % TOTAL_FRAMES)
@@ -149,6 +194,7 @@ func _on_frame() -> void:
 	_drive_wave_hud(_frame)
 	_drive_wave_space(_frame)
 	_drive_growth_hud(_frame)
+	_drive_real_input(_frame)
 	_frame += 1
 	if _frame == TOTAL_FRAMES:
 		print("==== [R22 presentation] 时间线完成 frame=%d（--quit-after 450 负责退出）====" % _frame)
@@ -209,28 +255,39 @@ func _drive_pose(f: int) -> void:
 			f, pose, frame_index, cur_pose])
 
 
-## HUD flag 变化：WorldState.set_flag → flag_changed → HUD.refresh_label（事件驱动，不轮询）
+## HUD flag 变化：WorldState.set_flag → flag_changed → HUD.refresh_label（事件驱动，不轮询）。
+## R28 v0.6.0：点亮时间线重排 —— 让首(0)/中(225)/尾(449)三帧采样均处「点亮(金)」态，
+## 三段赐福名切换与「点亮↔暗」flag 变化演示保留；仍全部经既有事件驱动路由，不写 Label.text。
 func _drive_hud_flags(f: int) -> void:
 	match f:
-		40:
+		0:
 			_set_flag(FLAG_LAST_GRACE, "grace_limgrave_gatefront")
 			_set_flag(LIT_GATEFRONT, true)
-			print("[R22][HUD] frame=%d 标题→「赐福 · 关卡前」点亮(金)" % f)
-		190:
+			print("[R28][HUD] frame=%d 标题→「赐福 · 关卡前」点亮(金)（首帧可见）" % f)
+		40:
+			_set_flag(LIT_GATEFRONT, false)
+			print("[R28][HUD] frame=%d 同一赐福转暗(灰) flag 变化演示" % f)
+		45:
+			_set_flag(LIT_GATEFRONT, true)
+			print("[R28][HUD] frame=%d 同一赐福再点亮(金) flag 再变化" % f)
+		150:
 			_set_flag(FLAG_LAST_GRACE, "grace_limgrave_chapel")
-			_set_flag(LIT_CHAPEL, false)
-			print("[R22][HUD] frame=%d 标题→「赐福 · 巡礼教堂」未点亮(暗)" % f)
-		250:
 			_set_flag(LIT_CHAPEL, true)
-			print("[R22][HUD] frame=%d 同一赐福点亮(金) flag 再变化" % f)
-		340:
+			print("[R28][HUD] frame=%d 标题→「赐福 · 巡礼教堂」点亮(金)（中帧可见）" % f)
+		250:
+			_set_flag(LIT_CHAPEL, false)
+			print("[R28][HUD] frame=%d 同一赐福转暗(灰) flag 变化演示" % f)
+		255:
+			_set_flag(LIT_CHAPEL, true)
+			print("[R28][HUD] frame=%d 同一赐福再点亮(金) flag 再变化" % f)
+		300:
 			_set_flag(FLAG_LAST_GRACE, "grace_weeping_shore")
 			_set_flag(LIT_SHORE, true)
-			print("[R22][HUD] frame=%d 标题→「赐福 · 啜泣海岸」点亮(金)" % f)
+			print("[R28][HUD] frame=%d 标题→「赐福 · 啜泣海岸」点亮(金)" % f)
 		420:
 			_set_flag(FLAG_LAST_GRACE, "grace_siofra_well")
-			_set_flag(LIT_WELL, false)
-			print("[R22][HUD] frame=%d 标题→「赐福 · 希芙拉河井底」未点亮(暗)" % f)
+			_set_flag(LIT_WELL, true)
+			print("[R28][HUD] frame=%d 标题→「赐福 · 希芙拉河井底」点亮(金)（尾帧可见）" % f)
 
 
 func _set_flag(key: String, value: Variant) -> void:
@@ -461,3 +518,122 @@ func _drive_growth_hud(f: int) -> void:
 	print("[R27][GROWTH] frame=%d 成长兑换 HUD 快照 | 赐福点数=%s 历史最佳=%s 波=%s/%s hud_text=%s" % [
 			f, str(s.get("points_total", "?")), str(s.get("best_wave", "?")),
 			str(s.get("index", "?")), str(s.get("total", "?")), str(s.get("hud_text", "?"))])
+
+
+## ============================================================================
+## R28 v0.6.0 · 真实输入事件注入（Rank-4 独占本文件 · 派单 cmd-20261111-095602-831-A4）
+## 全部经 Input.parse_input_event 注入 InputEventKey（pressed + released 配对），由引擎输入系统
+## 分发到既有 _unhandled_input 路由，不写任何 Label.text、不调 debug_* 伪造数值：
+##   J(74)     -> EncounterDirector._unhandled_input(light_attack) -> _request_action("attack_light")
+##   Space(32) -> ... (roll) -> _request_action("roll")；_request_action 当帧 _update_hud() 推进动作帧
+##   E(69)     -> hud._toggle_shop() 展开兑换面板 / encounter._grace_rest() / wave.interact_restart()
+##   1(49)     -> hud.purchase_upgrade(0) 购买一项（点数由 WaveTrialDirector 结算真实累积）
+## ============================================================================
+
+## 防御性探测 Rank-1 承诺的 tutorial_director 接口；并发时序下未落盘则如实降级，不假设存在。
+func _resolve_tutorial_api() -> void:
+	_tutorial_api_available = false
+	_tutorial_director = null
+	var candidates: Array[String] = [
+		"TutorialDirector", "TutorialRoot", "TutorialRoot/TutorialDirector",
+		"EncounterRoot/TutorialDirector", "WaveTrialDirector/TutorialDirector",
+		"SubViewportContainer/SubViewport/FXLayer/Hud/TutorialDirector"]
+	for p: String in candidates:
+		var n: Node = _courtyard.get_node_or_null(NodePath(p)) as Node
+		if n != null and n.has_method("is_tutorial_active") and n.has_method("force_complete"):
+			_tutorial_director = n
+			_tutorial_api_available = true
+			break
+	if not _tutorial_api_available:
+		print("[R28][TUTORIAL][降级] 全工程无 tutorial 脚本/节点，is_tutorial_active()/force_complete() 接口未落盘；"
+				+ "降级为「直接注入真实按键 + 如实登记接口缺失」，教学闭环未证明、不谎报")
+		return
+	var active: bool = bool(_tutorial_director.call("is_tutorial_active"))
+	# _initialize 阶段教学 _ready 尚未执行，状态为 NOT_STARTED（active=false）；
+	# 真实避免双驱动在逐帧 _guard_tutorial() 里做：由真实按键 J→Space→E 完成教学并衔接到波次。
+	print("[R28][TUTORIAL] 接口已落盘 name=%s is_tutorial_active()=%s（_initialize 阶段教学 _ready 未执行；逐帧以 is_tutorial_active() 监测，由真实按键 J→Space→E 完成教学并衔接到第 1 波）" % [
+			str(_tutorial_director.name), str(active)])
+	if active:
+		_tutorial_director.call("force_complete")
+		print("[R28][TUTORIAL] force_complete() 已调用，避免教学状态机与本脚本输入注入双驱动")
+
+
+## 构造真实 InputEventKey 并注入引擎输入系统（pressed + released 配对）。
+func _inject_key(keycode: int) -> void:
+	var press: InputEventKey = InputEventKey.new()
+	press.physical_keycode = keycode
+	press.keycode = keycode
+	press.pressed = true
+	press.echo = false
+	Input.parse_input_event(press)
+	var release: InputEventKey = InputEventKey.new()
+	release.physical_keycode = keycode
+	release.keycode = keycode
+	release.pressed = false
+	release.echo = false
+	Input.parse_input_event(release)
+
+
+## 逐帧驱动真实输入注入 + 关键帧只读回读证据。
+func _drive_real_input(f: int) -> void:
+	# ① 周期性 J / Space：f=0 的 J 完成教学第 1 步、f=6 的 Space 完成第 2 步；
+	#    教学完成后继续注入，仅驱动 EncounterDirector 动作帧 HUD（教学 COMPLETED 态不再消费输入）。
+	if f % ACTION_INTERVAL == 0:
+		var step: int = f / ACTION_INTERVAL
+		var key: int = KEY_J if step % 2 == 0 else KEY_SPACE
+		var action: String = "light_attack(J)" if key == KEY_J else "roll(Space)"
+		_inject_key(key)
+		print("[R28][INPUT] frame=%d 注入真实按键 %s -> Input.parse_input_event(InputEventKey)" % [f, action])
+	# ② E：教学第 3 步（STEP_GRACE_SHOP 期待 interact）+ hud._toggle_shop() 打开兑换面板；
+	#    只注入一次，之后面板保持展开（不再注入 E 关闭它）。
+	if f == E_OPEN_FRAME:
+		_inject_key(KEY_E)
+		print("[R28][INPUT] frame=%d 注入真实按键 interact(E) -> tutorial 第3步 / hud._toggle_shop / encounter._grace_rest / wave.interact_restart" % f)
+	# ③ 数字键 1：购买一项（点数由教学奖励 + 波次结算真实累积，不构造）。
+	if f == BUY_FRAME:
+		_inject_key(KEY_1)
+		print("[R28][INPUT] frame=%d 注入真实按键 1 -> hud.purchase_upgrade(0) 购买一项" % f)
+	# ④ 教学闭环监测 + 兜底：用 is_tutorial_active()/force_complete() 避免教学冻结与波次驱动双驱动。
+	if f == TUTORIAL_GUARD_FRAME:
+		_guard_tutorial(f)
+	# ⑤ 关键帧只读回读（不写）：验证输入经既有路由生效。
+	if f == 0 or f == E_OPEN_FRAME + 2 or f == BUY_FRAME + 1 or f == 225 or f == 449:
+		_log_input_evidence(f)
+
+
+## 教学闭环监测：读 tutorial_director 既有只读快照 + is_tutorial_active()；
+## 教学仍激活则 force_complete() 兜底（避免三波永久冻结 / 演示序列与教学双驱动），
+## 已完成则登记「由真实按键三步完成并自动衔接到第 1 波」，不谎报教学闭环已证明。
+func _guard_tutorial(f: int) -> void:
+	if not _tutorial_api_available or _tutorial_director == null \
+			or not is_instance_valid(_tutorial_director):
+		print("[R28][TUTORIAL] frame=%d 接口未落盘（降级）：教学闭环未证明，波次仅由既有 _drive_wave_hud 驱动" % f)
+		return
+	var snap: Dictionary = {}
+	if _tutorial_director.has_method("get_snapshot"):
+		snap = _tutorial_director.call("get_snapshot")
+	var active: bool = bool(_tutorial_director.call("is_tutorial_active"))
+	print("[R28][TUTORIAL] frame=%d 快照 state=%s step_events=%s total_reward=%s wave_started=%s hud=%s | is_tutorial_active()=%s" % [
+			f, str(snap.get("state_name", "?")), str(snap.get("step_events", "?")),
+			str(snap.get("total_reward", "?")), str(snap.get("wave_started", "?")),
+			str(snap.get("tutorial_hud_text", "?")), str(active)])
+	if active:
+		_tutorial_director.call("force_complete")
+		print("[R28][TUTORIAL] frame=%d 真实按键未完成教学 -> force_complete() 兜底（如实登记，非真实按键闭环）" % f)
+	else:
+		print("[R28][TUTORIAL] frame=%d 教学已由真实按键 J→Space→E 三步完成并自动衔接到第 1 波（force_complete 未触发）" % f)
+
+
+## 只读回读既有公共接口，打印「输入经既有路由生效」的证据，绝不写 Label.text。
+func _log_input_evidence(f: int) -> void:
+	var shop_open: String = "n/a"
+	var shop_msg: String = "n/a"
+	if _hud != null and is_instance_valid(_hud) and _hud.has_method("get_shop_view"):
+		var v: Dictionary = _hud.call("get_shop_view")
+		shop_open = str(v.get("open", "?"))
+		shop_msg = str(v.get("message", "?"))
+	var status: String = "n/a"
+	if _status_label != null and is_instance_valid(_status_label):
+		status = _status_label.text
+	print("[R28][EVIDENCE] frame=%d shop_open=%s shop_message=%s | StatusLabel=%s" % [
+			f, shop_open, shop_msg, status])

@@ -1,0 +1,37 @@
+{
+	"baseline": {
+		"baseline_version": 1,
+		"manifest": "res://data/rpg/world_baseline.tres",
+		"manifest_hash": "",
+		"resource_ids": [
+			"res://data/rpg/dialogue_and_quest.tres",
+			"res://data/rpg/grace_network.tres",
+			"res://data/rpg/dungeon_01_bellvault.tres",
+			"res://data/rpg/world_baseline.tres",
+			"res://data/rpg/spawn_bellvault_elite_01.tres"
+		]
+	},
+	"flags": {
+		"grace.limgrave_gatefront.lit": true,
+		"grace.network.last_grace_id": "grace_limgrave_gatefront",
+		"grace.trial.points": 40
+	},
+	"inventory": {},
+	"meta": {
+		"area_id": "",
+		"game_version": "",
+		"last_commit_reason": "tutorial_step_reward",
+		"last_grace_id": "",
+		"playtime_seconds": 0,
+		"written_at_unix": 1794363436
+	},
+	"quests": {},
+	"removals": [],
+	"schema_version": 3,
+	"seq": 4,
+	"slot": "slot_01",
+	"spawns": {
+		"defeated": [],
+		"epoch": 0
+	}
+}

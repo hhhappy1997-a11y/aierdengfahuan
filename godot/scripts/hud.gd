@@ -39,6 +39,19 @@ const DIM: Color = Color(0.45, 0.42, 0.34, 1.0)               # 未点亮运行�
 const LIT_FLAG_TRIAL_COMPLETED: String = "dungeon.wave_trial.completed"
 const LIT_FLAG_REST_EPOCH: String = "grace.network.last_rest_epoch"
 const LIT_SOURCE_FLAGS: Array[String] = [LIT_FLAG_TRIAL_COMPLETED, LIT_FLAG_REST_EPOCH]
+# R28 [ROUND=R28] 教学完成点亮来源（bool，false→true 单向）。
+# 单独常量、不并入 LIT_SOURCE_FLAGS：保护既有 verify_persistence_hud_v050.gd 的
+# D5「LIT_SOURCE_FLAGS.size()==2」断言（30 PASS 全不回退）。教学完成与试炼完成都
+# 读三段式 flag，颜色切换统一复用既有 apply_lit_state(lit) 入口，不硬编码颜色条件。
+const LIT_FLAG_TUTORIAL_COMPLETED: String = "grace.tutorial.completed"
+# R28B / 裁决 A26：grace.tutorial.step_index 是【世界持久层】单调历史最高进度
+#   （按 max 写、绝不回退、T 重开不回写更小值），只作存档 / 回放 / 重启恢复记录。
+#   教学 HUD 的「进度 1-3」必须显示【运行时游标】（见 read_tutorial_progress() /
+#   tutorial_progress_text()），绝不读该世界 flag，否则 T 重开会卡在历史最高 3/3。
+#   本常量只登记「不用于显示」的世界 key：不并入 LIT_SOURCE_FLAGS、不并入 _bound_keys、
+#   不参与 refresh_label 增量命中，保护 verify_persistence_hud_v050.gd D5
+#   「LIT_SOURCE_FLAGS.size()==2」等既有断言不回退。
+const FLAG_TUTORIAL_STEP_INDEX: String = "grace.tutorial.step_index"
 # 对齐 chunk_world_bridge.gd:43 const REASON_FAST_TRAVEL
 const REASON_FAST_TRAVEL: String = "grace_fast_travel"
 # R19/R20：SaveDeltaWriter 的 autoload 注册键与 /root 路径。R20 起已正式注册为 autoload，
@@ -147,6 +160,8 @@ func load_grace_network(path: String) -> void:
 	# 使其成为事件驱动的点亮来源（订阅 flag_changed，不每帧轮询）。
 	for k: String in LIT_SOURCE_FLAGS:
 		_bound_keys[k] = true
+	# R28：教学完成三段式 flag 也登记进增量命中集合（事件驱动，不每帧轮询）。
+	_bound_keys[LIT_FLAG_TUTORIAL_COMPLETED] = true
 	if not ResourceLoader.exists(path):
 		push_warning("[HUD] 赐福网络资源不存在：%s" % path)
 		return
@@ -188,7 +203,10 @@ func refresh_all() -> void:
 		var _node_unlocked: bool = bool(_flag(String(node.get("unlocked_flag")), false))  # 显式 default=false
 		if String(node.get("grace_id")) == last_id:
 			lit = node_lit
-	apply_lit_state(lit)
+	# R28：全量刷新也纳入「教学完成」三段式来源（否则 commit → delta_committed →
+	# refresh_all 会把 flag_changed 刚点亮的亮金覆盖回暗灰）。既有回归的干净基线里
+	# grace.tutorial.completed 默认 false，lit or false == lit，逐字等价、不回退。
+	apply_lit_state(lit or _read_tutorial_lit())
 	_menu = build_grace_menu()
 	hud_refreshed.emit()
 
@@ -202,6 +220,11 @@ func refresh_label(key: String) -> void:
 	# apply_lit_state(lit) 统一完成「暗灰 → 亮金」切换（本处不硬编码颜色条件）。
 	if LIT_SOURCE_FLAGS.has(key):
 		apply_lit_state(_read_lit_sources())
+		return
+	# R28：教学完成（grace.tutorial.completed）flag 变化 → 读三段式 flag 汇总点亮态，
+	# 与试炼完成共用既有 apply_lit_state(lit) 入口，代码内不出现「某 flag → 某颜色」硬编码。
+	if key == LIT_FLAG_TUTORIAL_COMPLETED:
+		apply_lit_state(_read_lit_sources() or _read_tutorial_lit())
 		return
 	for n in _grace_nodes():
 		var node: Resource = n as Resource
@@ -267,6 +290,44 @@ func _read_lit_sources() -> bool:
 		elif typeof(v) == TYPE_INT or typeof(v) == TYPE_FLOAT:
 			lit = lit or (int(v) > 0)
 	return lit
+
+
+## R28：教学完成点亮来源（纯读、事件驱动）。经唯一 _flag(key, default) 入口显式传
+## 业务默认值 false 读三段式 flag；只产出 bool，颜色切换完全交给 apply_lit_state()。
+## 与 _read_lit_sources() 分离，避免改动既有 2 项来源数组（保护 v050 D5 断言）。
+func _read_tutorial_lit() -> bool:
+	return bool(_flag(LIT_FLAG_TUTORIAL_COMPLETED, false))
+
+
+## R28B / 裁决 A26 · 教学进度显示（只认运行时游标，绝不读世界持久层 flag）。
+## runtime_step_index 来自 TutorialDirector.get_snapshot()["step_index"]（T 重开归零）；
+## 返回 "赐福引导 %d/%d"，供教学 HUD / 集成层渲染与验证读回。
+## 世界 flag FLAG_TUTORIAL_STEP_INDEX 只登记、绝不读取：它是单调历史最高进度，
+## 若用它渲染，T 重开后进度会错误地卡在 3/3（A26 明确禁止）。
+func tutorial_progress_text(runtime_step_index: int, total_steps: int) -> String:
+	var total: int = maxi(1, total_steps)
+	var shown: int = clampi(runtime_step_index + 1, 1, total)
+	return "赐福引导 %d/%d" % [shown, total]
+
+
+## R28B / 裁决 A26 · 从教学导演的运行时快照产出教学进度显示（集成层只读接口）。
+## 只取 get_snapshot()["step_index"]（运行时游标）与 total_steps；
+## 绝不读 grace.tutorial.step_index 世界 flag，绝不写任何 flag、不发信号。
+## director 为空 / 无 get_snapshot 时安全回落 0 / 3，不崩、不产生 SCRIPT ERROR。
+func read_tutorial_progress(director: Node) -> Dictionary:
+	var runtime_step: int = 0
+	var total: int = 3
+	if director != null and director.has_method("get_snapshot"):
+		var snap: Dictionary = director.call("get_snapshot") as Dictionary
+		runtime_step = int(snap.get("step_index", 0))
+		total = int(snap.get("total_steps", 3))
+	return {
+		"runtime_step_index": runtime_step,
+		"total_steps": total,
+		"text": tutorial_progress_text(runtime_step, total),
+		"source": "runtime_cursor",
+		"world_flag_key_not_for_display": FLAG_TUTORIAL_STEP_INDEX,
+	}
 
 # ==========================================================================
 # 4) 赐福菜单（对应 HUD-BINDING.md §2，8 节点 / 7 边数据驱动）
@@ -563,9 +624,13 @@ func get_commit_status() -> Dictionary:
 #          grace.trial.spent_points（单调递增）与 grace.upgrade_<id>.unlocked（单向），
 #          commit("grace_upgrade_purchased") 严格「先落盘再改运行时实例」；
 #          绝不 removals、绝不回退 grace.trial.points。
-#    兼容：同一 commit 内另写 Rank-2 运行时读取口径 grace.trial.bought_<id>，使挂载的
-#          GraceUpgradeRuntime.apply_purchased() 能读到已购项（裁决 A23 三段式收敛与
-#          Rank-2 内部标记并存，如实登记，不改 Rank-2 脚本）。
+#    R28B ③ 兼容旧档：写入侧自 R28 双写收敛后【只写 grace.upgrade_<id>.unlocked】
+#          （裁决 A23，本轮逐字未动），不再新写 grace.trial.bought_<id>；
+#          读取侧接入 Rank-2 GraceUpgradeService 的三个兼容函数
+#          legacy_bought_flag_key() / is_purchased_in_flags() / load_state_from_flags()，
+#          以「unlocked OR 旧 grace.trial.bought_<id>」判定，使只有旧 bought_ 的
+#          历史存档仍可识别已购（见 get_shop_view / purchase_upgrade /
+#          _purchase_flags_snapshot）。F1~F8 防刷核心逐字不变。
 #    既有 1~7 节逻辑逐字未动；依赖缺失一律判空降级、不崩、不产生 SCRIPT ERROR。
 # ==========================================================================
 
@@ -621,6 +686,27 @@ func _load_grace_config() -> GraceUpgradeConfig:
 	return ResourceLoader.load(GRACE_CONFIG_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as GraceUpgradeConfig
 
 
+## R28B / ③ 兼容旧档：从 WorldState 逐 key get_flag 构造「已购判定」flags 快照。
+## I-1 铁律：WorldState 只暴露 get_flag(key, default)，不可访问内部 _flags；
+## 故按 upgrade id 收集权威 unlocked 与旧 grace.trial.bought_<id> 两键的值，
+## 交 GraceUpgradeService.is_purchased_in_flags() / load_state_from_flags() 以
+## 「unlocked OR 旧 bought_」判定，使仅有旧 bought_ 的历史存档仍可识别已购。
+## 纯读、不写；写仍只写 unlocked（裁决 A23 / F1~F8 防刷判定逐字不变）。
+func _purchase_flags_snapshot(state: Node, cfg: GraceUpgradeConfig) -> Dictionary:
+	var flags: Dictionary = {}
+	if state == null or cfg == null or not state.has_method("get_flag"):
+		return flags
+	for i: int in range(cfg.upgrade_count()):
+		var u := cfg.get_upgrade(i)
+		if u == null:
+			continue
+		var auth_key: String = unlocked_key(u.id)
+		var legacy_key: String = GraceUpgradeService.legacy_bought_flag_key(u.id)
+		flags[auth_key] = bool(state.call("get_flag", auth_key, false))
+		flags[legacy_key] = bool(state.call("get_flag", legacy_key, false))
+	return flags
+
+
 ## 只读视图：供 HUD 渲染与验证读回（不改 WorldState、不写 flag）。
 func get_shop_view() -> Dictionary:
 	var cfg: GraceUpgradeConfig = _load_grace_config()
@@ -633,14 +719,14 @@ func get_shop_view() -> Dictionary:
 	var balance: int = maxi(0, points - spent)
 	var items: Array[Dictionary] = []
 	if cfg != null:
+		# R28B ③：一次构造兼容快照（unlocked OR 旧 bought_），供全部兑换项共用；
+		# 写入侧仍只写 unlocked，读取侧兼容纯 bought_ 历史存档。
+		var flags: Dictionary = _purchase_flags_snapshot(state, cfg)
 		for i: int in range(cfg.upgrade_count()):
 			var u := cfg.get_upgrade(i)
 			if u == null:
 				continue
-			var unlocked: bool = false
-			if state != null and state.has_method("get_flag"):
-				unlocked = bool(state.call("get_flag", unlocked_key(u.id), false)) \
-					or bool(state.call("get_flag", GraceUpgradeService.purchased_flag_key(u.id), false))
+			var unlocked: bool = GraceUpgradeService.is_purchased_in_flags(flags, u.id)
 			items.append({
 				"index": i, "id": u.id, "name": u.display_name, "cost": u.cost,
 				"unlocked": unlocked, "affordable": (not unlocked) and balance >= u.cost,
@@ -735,17 +821,18 @@ func purchase_upgrade(index: int) -> Dictionary:
 		return {"ok": false, "reason": "world_state_unavailable", "committed": false}
 	var points: int = int(state.call("get_flag", FLAG_POINTS, 0))
 	var spent: int = int(state.call("get_flag", FLAG_SPENT_POINTS, 0))
-	var purchased_ids: Array = []
+	# R28B ③：按兼容口径（unlocked OR 旧 grace.trial.bought_<id>）从 flags 快照恢复
+	# 已购集合，使只有旧 bought_ 的历史存档仍被 F1 判为「已购、拒绝重复购买」。
+	# 写仍只写 unlocked（裁决 A23），本轮未新增任何 bought_ 写入点。
+	var flags: Dictionary = _purchase_flags_snapshot(state, cfg)
+	var all_ids: Array = []
 	for i: int in range(cfg.upgrade_count()):
 		var it := cfg.get_upgrade(i)
-		if it == null:
-			continue
-		if bool(state.call("get_flag", unlocked_key(it.id), false)) \
-				or bool(state.call("get_flag", GraceUpgradeService.purchased_flag_key(it.id), false)):
-			purchased_ids.append(it.id)
+		if it != null:
+			all_ids.append(it.id)
 	var row: Dictionary = cfg.make_upgrade(u.id, u.display_name, u.cost, u.effect_key, u.effect_value)
 	var svc: GraceUpgradeService = GraceUpgradeService.new()
-	svc.load_state(spent, purchased_ids)
+	svc.load_state_from_flags(flags, all_ids, spent)
 	if not svc.can_purchase(points, spent, row):
 		_set_shop_message(_reject_message(svc, points, spent, row, u))
 		return {"ok": false, "reason": "can_purchase_rejected",
@@ -759,7 +846,8 @@ func purchase_upgrade(index: int) -> Dictionary:
 	grace_purchase_events.append("stage_flags:" + u.id)
 	state.call("set_flag", FLAG_SPENT_POINTS, new_spent)
 	state.call("set_flag", unlocked_key(u.id), true)
-	# 兼容 Rank-2 运行时读取口径（同一 commit 原子落盘，如实登记）。
+	# R28 收敛后 purchased_flag_key() == unlocked_key()（同键幂等合并为单写）。
+	# 写仍只写 unlocked（裁决 A23），绝不新写 grace.trial.bought_<id>；本行逐字未动。
 	state.call("set_flag", GraceUpgradeService.purchased_flag_key(u.id), true)
 	var writer: Node = _grace_delta_writer()
 	if writer == null or not writer.has_method("commit"):

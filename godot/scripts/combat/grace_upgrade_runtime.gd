@@ -27,6 +27,16 @@ class_name GraceUpgradeRuntime
 ##  但真机自动生效须由 Rank-1 装配层在 courtyard.tscn 挂本节点（或在其导演 _ready 调一次
 ##  apply_purchased(encounter)）。按裁决 A22 如实登记为「数据已落、效果待接」，不谎报真机已生效。
 ##  详见 teamwork/Rank-2/DONE-R27.md §4 与 GRACE-UPGRADE-TUNING.md §5。
+##
+## 【R28B ③ 兼容旧档（裁决 A26 同轮收口）】
+##  - 读取侧接入 Rank-2 GraceUpgradeService 的三个兼容函数：
+##    legacy_bought_flag_key() / is_purchased_in_flags() / load_state_from_flags()，
+##    以「unlocked OR 旧 grace.trial.bought_<id>」判定，使只有旧 bought_ 的历史存档
+##    在 apply_purchased() / try_purchase() 的已购判定读取路径上仍可识别已购。
+##  - I-1 铁律：WorldState 只暴露 get_flag(key, default)，不可访问内部 _flags；
+##    故由 _purchase_flags_snapshot() 逐 key 构造 flags 快照再交给兼容函数。
+##  - 写入侧仍只写 unlocked（R28 双写收敛 / 裁决 A23），绝不新写 bought_；
+##    F1~F8 防刷核心（can_purchase / purchase / spent_points 单调）逐字不变。
 ## 引擎：Godot 4.7.2 / GDScript，全静态类型。
 ## ===========================================================================
 
@@ -65,6 +75,26 @@ func _load_config() -> GraceUpgradeConfig:
 	return ResourceLoader.load(config_path, "", ResourceLoader.CACHE_MODE_IGNORE) as GraceUpgradeConfig
 
 
+## R28B / ③ 兼容旧档：按 I-1 逐 key get_flag 构造「已购判定」flags 快照。
+## 收集权威 unlocked（GraceUpgradeService.authoritative_unlocked_key）与旧
+## grace.trial.bought_<id>（legacy_bought_flag_key）两键，供 is_purchased_in_flags /
+## load_state_from_flags 以「unlocked OR 旧 bought_」判定，兼容纯 bought_ 历史存档。
+## 纯读、不写；写入仍只写 unlocked（裁决 A23 / F1~F8 逐字不变）。
+func _purchase_flags_snapshot(state: Node, cfg: GraceUpgradeConfig) -> Dictionary:
+	var flags: Dictionary = {}
+	if state == null or cfg == null or not state.has_method("get_flag"):
+		return flags
+	for i: int in range(cfg.upgrade_count()):
+		var u := cfg.get_upgrade(i)
+		if u == null:
+			continue
+		var auth_key: String = GraceUpgradeService.authoritative_unlocked_key(u.id)
+		var legacy_key: String = GraceUpgradeService.legacy_bought_flag_key(u.id)
+		flags[auth_key] = bool(state.call("get_flag", auth_key, false))
+		flags[legacy_key] = bool(state.call("get_flag", legacy_key, false))
+	return flags
+
+
 ## 读取三段式 flag → 把已购增益作用到运行时。
 ## 返回 {checked, applied, degraded, items:[{id, effect_key, status, before, after, reason}], reasons}
 ## ws / encounter 可显式注入（验证模式）；为 null 时按 Engine.get_main_loop() 相对探活。
@@ -81,6 +111,8 @@ func apply_purchased(encounter: Node = null, ws: Node = null) -> Dictionary:
 		report["degraded"] = 1
 		report["reasons"] = ["grace_upgrades.tres 未加载 → 数据已落、效果待接"]
 		return report
+	# R28B ③：兼容快照（unlocked OR 旧 bought_）供全部兑换项共用；纯读、不写。
+	var flags: Dictionary = _purchase_flags_snapshot(state, cfg)
 	for i: int in range(cfg.upgrade_count()):
 		report["checked"] = int(report["checked"]) + 1
 		var u := cfg.get_upgrade(i)
@@ -93,8 +125,8 @@ func apply_purchased(encounter: Node = null, ws: Node = null) -> Dictionary:
 			})
 			report["degraded"] = int(report["degraded"]) + 1
 			continue
-		var fk: String = GraceUpgradeService.purchased_flag_key(u.id)
-		if not bool(state.call("get_flag", fk, false)):
+		# R28B ③：以「unlocked OR 旧 grace.trial.bought_<id>」判定已购，兼容纯旧档。
+		if not GraceUpgradeService.is_purchased_in_flags(flags, u.id):
 			items.append({"id": u.id, "effect_key": u.effect_key, "status": "not_purchased", "reason": "未购买"})
 			continue
 		if _applied_ids.has(u.id):
@@ -241,8 +273,9 @@ func _apply_attack_power(row: Dictionary) -> Dictionary:
 
 
 ## 购买落盘：经既有 WorldState.set_flag / SaveDeltaWriter.commit。
-## ★ 唯一写入路径：只写 grace.trial.spent_points（单调递增）与 grace.trial.bought_<id>（bool）；
-##   绝不 set_flag(grace.trial.points, ...)（不回退 points）、绝不 removals。
+## ★ 唯一写入路径：只写 grace.trial.spent_points（单调递增）与
+##   GraceUpgradeService.purchased_flag_key(id)（R28 收敛后 == grace.upgrade_<id>.unlocked）；
+##   绝不新写 grace.trial.bought_<id>（旧档仅经兼容函数读取）、绝不 set_flag(points)、绝不 removals。
 ## ws / writer 可显式注入（验证模式）；writer 为 null 时如实降级「flag 仅进程内内存、未落盘」。
 func try_purchase(upgrade_id: String, ws: Node = null, writer: Node = null) -> Dictionary:
 	var state: Node = ws if ws != null else _get_world_state()
@@ -254,23 +287,25 @@ func try_purchase(upgrade_id: String, ws: Node = null, writer: Node = null) -> D
 	if cfg == null:
 		out["reason"] = "grace_upgrades.tres 未加载 → 购买未落盘"
 		return out
+	# R28B ③：兼容快照（unlocked OR 旧 bought_）；写仍只写 unlocked（裁决 A23）。
+	var flags: Dictionary = _purchase_flags_snapshot(state, cfg)
 	var target: Dictionary = {}
-	var purchased_ids: Array = []
+	var all_ids: Array = []
 	for i: int in range(cfg.upgrade_count()):
 		var u := cfg.get_upgrade(i)
 		if u == null or not cfg.is_upgrade_valid(u):
 			continue
+		all_ids.append(u.id)
 		if u.id == upgrade_id:
 			target = cfg.make_upgrade(u.id, u.display_name, u.cost, u.effect_key, u.effect_value)
-		if bool(state.call("get_flag", GraceUpgradeService.purchased_flag_key(u.id), false)):
-			purchased_ids.append(u.id)
 	if target.is_empty():
 		out["reason"] = "未知/非法 upgrade id → 购买被拒绝"
 		return out
 	var points: int = int(state.call("get_flag", GraceUpgradeService.FLAG_POINTS, 0))
 	var spent: int = int(state.call("get_flag", GraceUpgradeService.FLAG_SPENT_POINTS, 0))
 	var svc: GraceUpgradeService = GraceUpgradeService.new()
-	svc.load_state(spent, purchased_ids)
+	# R28B ③：按兼容口径恢复已购集合（纯 bought_ 旧档会被判为已购 → F1 拒绝重复购买）。
+	svc.load_state_from_flags(flags, all_ids, spent)
 	var r: Dictionary = svc.purchase(points, spent, target)
 	var ok: bool = bool(r.get("ok", false))
 	out["ok"] = ok

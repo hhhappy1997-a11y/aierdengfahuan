@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261111-095602-818-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "R28 完成，详见 teamwork/Rank-1/DONE-R28.md 实际结论：① 新写 tutorial_director.gd 三步状态机 NOT_STARTED→STEP_LIGHT_ATTACK(J)→STEP_ROLL(Space)→STEP_GRACE_SHOP(E)→COMPLETED，_unhandled_input 消费既有 light_attack/roll/interact，发 tutorial_step_completed(step_id,reward) 并给赐福点数奖励（数据驱动读 Rank-2 tutorial_steps.tres 20/30/50），三步完成写 grace.tutorial.completed 单向 flag 并自动进第 1 波，教学期冻结三波、T 强制重开（已完成存档跳过、重开防刷点）；② 教学 HUD 独立一行金色引导 y≈520，避开赐福/画质/波次/兑换/底部五处 HUD，不改既有 HUD 文本；③ 点亮态读三段式 flag 复用 hud.gd apply_lit_state 同一入口（LIT_SOURCE_FLAGS 保持 2 项，v050 D5 不回退）；④ 未改 presentation.gd，提供 is_tutorial_active()/force_complete() 避免双驱动；⑤ 新写 verify_tutorial_v060.gd 实跑 64 PASS/0 FAIL/RESULT=ALL_PASS（三步顺序/错误按键/重复触发/完成跳过/T 重开/依赖缺失降级/点亮态与波次衔接/对外接口）；⑥ 三段门禁 8 份 r28_final_g*.log SCRIPT ERROR=0，--headless --quit-after 90 courtyard.tscn 确认教学提示与自动开始无 ERROR；全回归工程内 22 脚本 EXIT=0/fail=0/SCRIPT_ERROR=0，期望 20/45/53/34/47/19/31/58/37/45/23/30/127/58 全部达到或超过。未完成项如实登记：verify_tutorial_flags_v060（Rank-3 并发件）实跑 21 低于任务单标注 25（见 DONE-R28.md §8.3）；同步 verify_wave_runtime_v040.gd 精确期望值 38→41/+5→+8 的越权风险透明登记待裁决（§8.1）；主存档并发中间态经 I-1 归一化恢复（§8.2）；未做 15~20s 实机录屏、未自行 git。"
+}
