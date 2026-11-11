@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261111-112804-021-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "R29 v0.7.0 实际结论见 teamwork/Rank-4/DONE-R29.md：Compatibility 后端 hint_screen_texture 真跑可用，P2 全屏 shader 生效、未降级（证据：无 shader 编译错误/SCRIPT ERROR=0、像素 A/B 边缘 -12~-40 且上部中心 0 的径向暗角、参数注入命中 20 字段；降级 _draw() 层已实现但本轮未启用、未目视）。shader uniform 一律无默认值，真读 Rank-2 depth_profile.tres 的 desktop/mobile 双档并逐帧注入（desktop vignette=0.240/warm=0.450/fog=0.175/deep=0.100/blur=1.50；mobile 0.120/0.220/0.090/0.140/1.25）；运行时创建 CanvasLayer(layer=12)+ColorRect+ShaderMaterial，不写 courtyard.tscn 的 [node] 条目（磁盘节点数恒 41，回归不回退），layer=12 在 HUD 之下不遮挡，hd2d_fx.gd 零改动、desktop 档四项光效不回退。点亮态三帧标题均 GOLD、暖金层次随波次 lerp 平滑递进、三波完成后一次收束光效（暖金区尾帧 192 vs R28 34，来源演示节奏兜底、不冒充游戏事件）。真跑 450 帧/15s/1280x720/30fps，capture/v070_demo.mp4=935921 B，ffprobe 450 帧，WAV 未混入 MP4（音频流 0）。三帧 ViewImage：景深分层可辨（仍 2D 近似）、暗角/光晕改善、段 B 文字清晰可读（改善归 Rank-1 hud.gd 迁出 SubViewport）、首帧动作 attack_light 1/27 非 idle 0/0（归 Rank-1 presentation.gd 预热）、HD-2D 全绿未达（如实写未达）。三段门禁 EXIT=0/0/0 且 grep SCRIPT ERROR=0，全 PASS 回归 907+181+37+48=1173 PASS/0 FAIL 零回退。未完成项：HD-2D 全绿未达、降级 _draw() 层未启用未目视、[PLACEHOLDER] 数值待试玩校准、未做人工试玩逐帧验收、未自行 git；阻塞：无。"
+}

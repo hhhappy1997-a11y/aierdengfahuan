@@ -69,6 +69,53 @@ const FLAG_UNLOCKED_PREFIX: String = "grace.upgrade_"
 const FLAG_UNLOCKED_SUFFIX: String = ".unlocked"
 const COMMIT_REASON_PURCHASED: String = "grace_upgrade_purchased"
 
+# ---- R29 [ROUND=R29] · 兑换面板文字可读性（段 B / low-mobile SubViewport 缩放）----
+# 根因（改前真跑三档抓帧实证）：courtyard.tscn 的 GraceShopLabel 挂在
+#   SubViewportContainer/SubViewport/FXLayer/Hud（SubViewport 内）。quality_settings.apply()
+#   按档位改写 SubViewportContainer.stretch_shrink（low=3 / medium=2 / high=1）与 SubViewport
+#   内部渲染尺寸（low=480x270 / medium=640x360 / high=960x540），Label 的屏幕绝对坐标
+#   offset=(24,300)-(1100,470) 在小尺寸 SubViewport 内被整体拉伸/裁剪：
+#     high(shrink=1) 文字叠在砖地上、字号小、对比度低，勉强可辨；
+#     medium(shrink=2) 文字被推到 y≈610 与底部战斗 HUD 重叠、后两行被截断；
+#     low(shrink=3) offset 远超内部视口 → 兑换面板文字完全消失。
+# 修法：_ready() 里把该 Label 迁到【SubViewport 外】的独立 CanvasLayer（与 QualitySettings
+#   同级，挂 SubViewportContainer 的父节点），CanvasLayer 铺满真实 1280x720 视口、不受
+#   stretch_shrink 影响；同时固定字号 + 高对比度（亮色字 / 深色描边阴影 / 半透明深底），
+#   保证 low/medium/high 三档一致可读。
+# 边界：只动兑换面板 Label 自身的父节点与 theme / 位置 / 可见性，不改兑换逻辑
+#   （get_shop_view / purchase_upgrade）、不改四套既有 HUD 位置。独立 hud.tscn 实例
+#   （--script 验证）无 SubViewport，判空降级、不迁节点、不改节点路径，
+#   保护既有 58 / 30 / 11 PASS 断言不回退。
+# R29B [ROUND=R29B] 修正：上轮保留的 offset (24,300)-(1100,470) 在独立 CanvasLayer 上
+#   变成 1076×170 的近黑实心大矩形，首帧常驻并横切玩家/Boss 躯干（总指挥目视发现）。
+#   本轮改为：① 面板 visible 严格由 shop_open 门控（首帧隐藏 / E 打开才显示 / 关闭隐藏）；
+#   ② 深底 alpha 0.88→0.30；③ offset 移到屏幕右下 SHOP_RECT_*（避开角色包围盒与四套 HUD）。
+# [PLACEHOLDER] 字号 / 颜色 / 层号 / rect 为布局值，待试玩目视校准（rationale：20px 在
+#   1280x720 下 5 行文本约 120px；layer=45 高于 QualitySettings=40）。
+const SHOP_FONT_SIZE: int = 20
+const SHOP_LAYER_INDEX: int = 45
+const SHOP_LAYER_NAME: String = "GraceShopReadableLayer"
+const SHOP_TEXT_COLOR: Color = Color(1.0, 0.96, 0.82, 1.0)
+const SHOP_OUTLINE_COLOR: Color = Color(0.02, 0.03, 0.06, 1.0)
+# R29B [ROUND=R29B]：改前深底 alpha=0.88 几乎不透明，在独立 CanvasLayer 上形成
+#   x≈24–1100 / y≈300–470 的近黑实心大矩形，首帧常驻并遮住玩家/Boss 躯干
+#   （总指挥目视 v070 定稿三帧发现的新回归）。压到 0.30（≤0.35）：真跑像素量化
+#   验证面板区保留底层砖地纹理、不是近黑实心块。边框同步降到 0.55 避免金边突兀。
+const SHOP_BG_COLOR: Color = Color(0.04, 0.06, 0.12, 0.30)
+const SHOP_BORDER_COLOR: Color = Color(0.83, 0.68, 0.3, 0.55)
+const SHOP_OUTLINE_SIZE: int = 6
+# R29B · 面板位置（屏幕右下，避开角色包围盒与四套 HUD）。改前 (24,300)-(1100,470)
+#   横切玩家(x≈400–680,y≈490–570) / Boss(x≈645–880,y≈230–350) 躯干；新矩形
+#   x≥740 / y≥358 落在两者包围盒之外：Boss 下沿 y≈350 < 358、玩家右沿 x≈680 < 740。
+#   不覆盖 赐福 HUD(x<730,y<220) / 画质面板(x>760,y<180)（本面板 y≥358）；
+#   也不压 波次 HUD(y≈240,x<460) / 教学 HUD(y≈520,x<700) / 底部战斗 HUD(y≈660)。
+#   宽 536px < 原 1076px、覆盖面积 182,920→112,896 px²，配合 autowrap 保持 20px 字号
+#   与三档可读（独立 CanvasLayer 不受 stretch_shrink 影响）。[PLACEHOLDER] 待试玩校准。
+const SHOP_RECT_LEFT: float = 740.0
+const SHOP_RECT_TOP: float = 358.0
+const SHOP_RECT_RIGHT: float = 1276.0
+const SHOP_RECT_BOTTOM: float = 568.0
+
 # ==========================================================================
 # 依赖注入 / 运行期引用
 # ==========================================================================
@@ -125,6 +172,8 @@ func _ready() -> void:
 	refresh_all()
 	# R27B：绑定兑换面板 Label / 增益运行时节点并启用输入；依赖缺失判空降级、不崩。
 	_shop_label = get_node_or_null(shop_label_path) as Label
+	# R29：把兑换面板 Label 迁出 SubViewport（仅在真实场景命中）；独立 hud.tscn 实例判空降级。
+	_ensure_shop_readable()
 	if _grace_runtime == null and not grace_runtime_path.is_empty():
 		_grace_runtime = get_node_or_null(grace_runtime_path)
 	set_process_unhandled_input(true)
@@ -735,12 +784,100 @@ func get_shop_view() -> Dictionary:
 		"items": items, "message": shop_message}
 
 
+## R29 · 把兑换面板 Label 迁出 SubViewport，挂到不受 stretch_shrink 影响的独立 CanvasLayer。
+## 只在「Label 确实位于某个 SubViewportContainer/SubViewport 内 + 能找到其父级挂载根」时执行；
+## 独立 hud.tscn 实例（--script 验证）不含 SubViewportContainer，判空降级、节点路径 / 文本 /
+## 兑换逻辑逐字不变。固定字号 + 高对比度 theme 覆盖仅作用于该 Label，三档渲染结果一致。
+## 时序：_ready() 期间场景根（Courtyard / root）处于 _propagate_ready（blocked>0），直接
+##   outside_root.add_child(layer) 会报 "Parent node is busy setting up children" 并失败
+##   （改前真跑实证：Label 被 reparent 到游离层 → 三档文字全部消失）。故用 call_deferred
+##   把「建层 + reparent + theme」推迟到本帧 _ready 传播完成之后、首帧渲染之前执行。
+func _ensure_shop_readable() -> void:
+	if _shop_label == null or not is_instance_valid(_shop_label):
+		return
+	var container: SubViewportContainer = null
+	var p: Node = _shop_label.get_parent()
+	while p != null:
+		if p is SubViewportContainer:
+			container = p as SubViewportContainer
+			break
+		p = p.get_parent()
+	if container == null:
+		# --script 独立 hud.tscn 实例：Label 不在 SubViewport 内，保持原路径 / 原属性（降级）。
+		return
+	var outside_root: Node = container.get_parent()
+	if outside_root == null:
+		return
+	call_deferred("_deferred_shop_readable", outside_root)
+
+
+## 由 call_deferred 触发：此时 outside_root 已完成 children setup，add_child 合法。
+func _deferred_shop_readable(outside_root: Node) -> void:
+	if _shop_label == null or not is_instance_valid(_shop_label) \
+			or outside_root == null or not is_instance_valid(outside_root):
+		return
+	# 幂等：同名独立层已存在则复用，不重复建层。
+	var layer: CanvasLayer = outside_root.get_node_or_null(NodePath(SHOP_LAYER_NAME)) as CanvasLayer
+	if layer == null:
+		layer = CanvasLayer.new()
+		layer.name = SHOP_LAYER_NAME
+		layer.layer = SHOP_LAYER_INDEX
+		outside_root.add_child(layer)
+	if not layer.is_inside_tree():
+		return
+	if _shop_label.get_parent() != layer:
+		_shop_label.reparent(layer)
+	# R29B：把面板从横切角色中部的 (24,300)-(1100,470) 移到屏幕右下 SHOP_RECT_*。
+	#   autowrap 让 20px 字号在较窄宽度下自动折行、不裁字；文字内容逐字不动，
+	#   独立 CanvasLayer 不受 stretch_shrink 影响 → low/medium/high 三档一致可读。
+	_shop_label.offset_left = SHOP_RECT_LEFT
+	_shop_label.offset_top = SHOP_RECT_TOP
+	_shop_label.offset_right = SHOP_RECT_RIGHT
+	_shop_label.offset_bottom = SHOP_RECT_BOTTOM
+	_shop_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# 固定字号 + 高对比度（不受 SubViewport 缩放影响的独立层，三档一致）。
+	_shop_label.add_theme_font_size_override("font_size", SHOP_FONT_SIZE)
+	_shop_label.add_theme_color_override("font_color", SHOP_TEXT_COLOR)
+	_shop_label.add_theme_color_override("font_outline_color", SHOP_OUTLINE_COLOR)
+	_shop_label.add_theme_constant_override("outline_size", SHOP_OUTLINE_SIZE)
+	_shop_label.add_theme_color_override("font_shadow_color", SHOP_OUTLINE_COLOR)
+	_shop_label.add_theme_constant_override("shadow_offset_x", 2)
+	_shop_label.add_theme_constant_override("shadow_offset_y", 2)
+	var bg: StyleBoxFlat = StyleBoxFlat.new()
+	bg.bg_color = SHOP_BG_COLOR
+	bg.set_corner_radius_all(6)
+	bg.set_border_width_all(1)
+	bg.border_color = SHOP_BORDER_COLOR
+	bg.content_margin_left = 12.0
+	bg.content_margin_right = 12.0
+	bg.content_margin_top = 8.0
+	bg.content_margin_bottom = 8.0
+	_shop_label.add_theme_stylebox_override("normal", bg)
+	# R29B：可见性严格由 shop_open 门控。_ready() 的 _refresh_shop_hud() 已按
+	#   shop_open=false 设过 visible=false；reparent / theme 覆盖后这里再显式同步一次，
+	#   保证 deferred 建层之后首帧仍隐藏（画面不出现大矩形）。
+	_shop_label.visible = shop_open
+	print("[R29][SHOP] 兑换面板迁出 SubViewport → 独立 CanvasLayer(layer=%d) | 固定字号=%d + 描边/阴影/深底高对比 | rect=(%.0f,%.0f)-(%.0f,%.0f) 避开 赐福HUD(x<730,y<220)/画质面板(x>760,y<180)" % [
+			SHOP_LAYER_INDEX, SHOP_FONT_SIZE,
+			_shop_label.offset_left, _shop_label.offset_top,
+			_shop_label.offset_right, _shop_label.offset_bottom])
+	print("[R29B][SHOP] 默认隐藏 visible=%s (shop_open=%s) | 深底 alpha=%.2f | rect=(%.0f,%.0f)-(%.0f,%.0f) 屏幕右下避开玩家/Boss 包围盒 | autowrap=%d" % [
+			str(_shop_label.visible), str(shop_open), SHOP_BG_COLOR.a,
+			SHOP_RECT_LEFT, SHOP_RECT_TOP, SHOP_RECT_RIGHT, SHOP_RECT_BOTTOM,
+			int(_shop_label.autowrap_mode)])
+
+
 ## 渲染三项可兑换增益（名称 / cost / 是否已解锁 / 当前余额）+ 可读提示到 GraceShopLabel。
 func _refresh_shop_hud() -> void:
 	if _shop_label == null:
 		return
 	var v: Dictionary = get_shop_view()
-	if not bool(v.get("open", false)):
+	var is_open: bool = bool(v.get("open", false))
+	# R29B：GraceShopLabel 与其 normal stylebox（深底 + 金边）整体随 shop_open 显隐。
+	#   shop_open=false（首帧 / 关闭 / 购买会话结束）→ visible=false，画面不出现大矩形；
+	#   仅 E 键打开（shop_open=true）才显示。既有文本 / 兑换逻辑逐字不动。
+	_shop_label.visible = is_open
+	if not is_open:
 		_shop_label.text = "赐福成长 · 按 E 打开兑换"
 		return
 	var lines: Array[String] = []

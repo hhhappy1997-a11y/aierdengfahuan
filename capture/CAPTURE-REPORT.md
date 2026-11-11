@@ -829,3 +829,57 @@ G1 `--headless --import` / G2 `--headless --check-only --script res://test/prese
 先目视检查再接入（20/60 帧短验输入生效与教学闭环 → 正式 450 帧 → 三帧 ViewImage + 裁剪 + 像素采样后才写结论）、直接改直接真跑、未新建只读探针/巡检脚本（短跑复用同一脚本，临时 PNG 已清理）；零付费、零外部依赖、不启 GPU job。
 未完成：HD-2D 全绿未达、段 B 面板不可辨、首帧 idle、`verify_wave_runtime_v040` 36/1（并发断言过期）、数值 `[PLACEHOLDER]` 待试玩、真 3D 光效仅评估未实现、未自行 git。**阻塞：无。**
 
+---
+
+## 12. R29 v0.7.0 · Rank-4 全屏 shader 小样 + 景深强化 + 点亮态节奏 + 15 秒录屏（派单 `cmd-20261111-112804-021-A4`）
+
+> `[ROUND=R29]` · Rank-4 独占追加 · 引擎 4.7.2.stable / ffmpeg 9.0.2（绝对路径）
+> 逐项实证见 `capture/V070-RUNTIME-REVIEW.md`、`TECHNICAL-ART-DEPTH-v060.md`、`teamwork/Rank-4/DONE-R29.md`、`capture/r29_*.log`。
+> 结论以「跑起来的画面」为准，不粉饰、不谎报。
+
+**12.1 P2 全屏 shader 小样（A30 判定：Compatibility screen texture 可用，shader 生效，未降级）**
+
+新增 `godot/shaders/v070_depth_grade.gdshader`（`shader_type canvas_item` + `hint_screen_texture` / `SCREEN_UV` 一次全屏采样）：一 pass 实现「多层视差景深（上部远景 4-tap 轻模糊 + 降饱和 + 冷雾）+ 边缘暗角 + 冷夜雾 + 暖金光晕 + 三波收束扩散环」。由 `hd2d_parallax.gd` **运行时** `call_deferred("add_child")` 创建 `CanvasLayer(layer=12)` + `ColorRect` + `ShaderMaterial`；**不写 `courtyard.tscn` 的 `[node` 条目**（磁盘节点数恒 41 → `verify_wave_runtime_v040` / `verify_tutorial_restart_v060` 的 41 断言不回退）。`layer=12` 在 HUD(20/21/40) 之下，不遮 HUD。
+生效证据链：三段门禁 + 正式录屏 + 短跑日志**无 shader 编译错误 / `SCREEN_TEXTURE` 报错**；像素 A/B（R28→R29 首帧）边缘点 `-12.0~-39.7`、上部中心 `0.0` 呈径向压暗；参数注入日志 `总命中=20` 且双档切换。**如实口径**：这是「Compatibility 后端一次全屏 screen-reading 后处理真的起作用」，**不是**真 3D 景深 / 体积光 / bloom。`_r29_draw_grade()` 程序化 `_draw()` 降级层已实现但本轮**未启用、未目视验证**（`GRADE_FORCE_DRAW_FALLBACK=false`），如实登记。
+`hd2d_fx.gd` 四项光效**零改动**（mtime 仍 2026-11-09），desktop 档不回退、与新层无冲突。
+
+**12.2 读 Rank-2 参数表，不硬编码（并发时序如实）**
+
+开跑时 `depth_profile.tres` 未落盘；执行期间 Rank-2 落盘（mtime 11:39），正式录屏走**真读**路径：`desktop`/`mobile` 双档子 Resource，逐字段映射（顶层容错 + 子档覆盖），`总命中=20`（每档 10）。shader 内 uniform **一律无默认值**，全部 `set_shader_parameter` 注入。
+实测：desktop `vignette=0.240 / warm=0.450 / fog=0.175 / deep=0.100 / blur=1.50`，mobile `0.120 / 0.220 / 0.090 / 0.140 / 1.25`；色 `cold_night_fog_color=#2B3A5C`、`warm_gold_key_color=#F0A94C`。双档按 `get_quality_preset()` 切换（日志 `f=173→mobile`、`f=279→desktop`）。派生系数 `×5/×0.4/×25` 与 `vignette_inner/outer`、`warm_glow_pos`、`bloom_threshold` 均标 `[PLACEHOLDER]` 待试玩校准，rationale 见 `hd2d_parallax.gd` 注释。
+
+**12.3 点亮态与三波完成节奏**
+
+赐福标题三帧最亮像素均 `(212,174,76)`=GOLD 点亮态；点亮后暖金层次随波次经 `lerp` 平滑递进（不闪烁），尾帧 `lit=1.00 tier=1.00`。三波完成后**一次**收束光效：`sin(phase·PI)` 单峰 `[PLACEHOLDER] FINALE_DELAY=4.0s / DURATION=2.0s` 使峰值落在尾帧 449，日志 `[R29][FINALE] … 来源=演示节奏兜底(波3 + 4.0s)`（导演 `TRIAL_COMPLETED` 仅佐证，**不冒充游戏事件证明**）。像素：暖金区 `(904,184)` 尾帧 192 vs R28 尾帧 34、R29 `f400=137`/`f430=123` → 收束峰值可见。
+
+**12.4 15 秒录屏 / MP4 / WAV / 三帧目视**
+
+| 项 | 实测 |
+|---|---|
+| 录屏 | `--write-movie capture/v070_demo.png --fixed-fps 30 --quit-after 450 --script res://test/presentation.gd res://scenes/courtyard.tscn`（不加 `--headless`），**EXIT=0 / 450 帧 / 1280×720 / 15.000000s**，`SCRIPT ERROR=0` |
+| ffmpeg | 绝对路径 9.0.2，`-framerate 30 -start_number 0 -i v070_demo%08d.png -frames:v 450 -c:v libx264 -pix_fmt yuv420p -movflags +faststart`，**EXIT=0** |
+| **MP4** | `capture/v070_demo.mp4` **935,921 B**；ffprobe `h264 / yuv420p / 1280×720 / 30/1 / nb_frames=450 / duration=15.000000`，`moov` 前置 |
+| **WAV 是否混入** | **未混入**：输入仅 PNG 序列、无音频 `-i`，`ffprobe -select_streams a` 音频流计数 = **0**。如实登记 |
+
+`ViewImage` 真看首 0 / 中 225 / 尾 449（+ 像素采样，逐帧结论见 `V070-RUNTIME-REVIEW.md §4/§5`）：
+
+- **景深分层可辨：是** —— 64 色带夜空 + 3 层山影视差 + 远/近雾带 + 地面冷夜压暗 + shader 远景轻模糊/降饱和/冷雾；**仍为 2D 近似，非真 3D 景深**。
+- **暗角/光晕改善：是（像素实证）** —— 边缘 `-12~-40`、上部中心 `0`；尾帧暖金区 192（R28 34）。
+- **段 B 文字可读：是，本轮改善** —— 中帧 low/mobile 兑换面板 5 行清晰可辨（R28 同段不可辨）；归 **Rank-1 `hud.gd::_ensure_shop_readable()` 迁出 SubViewport**（`[R29][SHOP]`），Rank-4 未写 `hud.gd`、不冒领。
+- **首帧动作帧：否，已非 idle 0/0** —— 首帧 `动作 attack_light 1/27`；归 **Rank-1 `presentation.gd` `_initialize` 预热注入 J**（`[R29][INPUT]`），Rank-4 只读该文件、不冒领。
+- **点亮态节奏：达标** —— 三帧 GOLD、暖金层次平滑递进、尾帧一次收束、不闪烁不遮 HUD。
+- **HD-2D 全绿：未达（如实写未达）** —— 景深/光效仍 2D `draw_*`/全屏后处理近似、地面高倍平铺、billboard 像素精灵、`[PLACEHOLDER]` 待试玩、未做人工试玩逐帧动态验收。
+
+**12.5 三段门禁 / PASS 回归**
+
+G1 `--headless --import` / G2 `--headless --check-only --script res://test/presentation.gd` / G3 `--headless --quit` 三段 **EXIT=0/0/0**，`r29_g1/g2/g3` + `r29_capture` + `r29_ffmpeg` 逐份 `SCRIPT ERROR|Parse Error` = 0 → 字面 `SCRIPT ERROR=0`。
+回归 `47 / 34 / 20 / 45 / 53 / 58 / 650 PASS`（7 项基线 **907**）+ v060 教学 `64 / 86 / 31`（**181**）+ `verify_wave_runtime_v040` **37** + `verify_tutorial_restart_v060` **48** → **合计 1173 PASS / 0 FAIL**，与开跑前基线逐项一致、**零回退**；全部 `r29_verify_*.log` `SCRIPT ERROR` = 0。
+**并发竞态如实登记**：首次 G1 因 Rank-1 并发改写 `hud.gd` 半写入出现 1 条 `_ensure_shop_readable()` Parse Error，重跑归零；30 帧短跑 `r29_probe.log` 的 `Parent node is busy`（backtrace `hud.gd:795`，Rank-1 件）与 GLES3 `leaked` 退出告警，在正式 450 帧 `r29_capture.log` 中**均未复现**。Rank-4 未写他人件、未等待、未掩盖。
+
+**12.6 目录所有权 / 合规 / 未完成项**
+
+只写 `godot/shaders/v070_depth_grade.gdshader` / `godot/scripts/render/hd2d_parallax.gd` / `godot/scenes/courtyard.tscn` 的**视觉属性 metadata**（新增 1 行、不新增 `[node`） / `capture/` / `teamwork/Rank-4/`（+ 回执 `teamwork/command_center/ai/4/outbox/`）；
+未写 `hd2d_fx.gd` / `hud.gd` / `presentation.gd`（Rank-1 只读）/ 导演脚本 / 素材 PNG / SpriteFrames `.tres` / `project.godot` / `depth_profile.tres`（Rank-2 只读）/ 契约 / README / 任何验证脚本；未自行 git（总指挥收尾）。
+先目视检查再接入（30 帧短跑 + ViewImage + 像素 A/B 判定 shader 生效 → 正式 450 帧 → 三帧 ViewImage + 像素采样后才写结论）、直接改直接真跑、未新建只读探针/巡检脚本（短跑复用同一脚本、临时 PNG 已清理）；零付费、零外部依赖、不启 GPU job。
+未完成：HD-2D 全绿未达、真 3D 光效未实现、降级 `_draw()` 层未启用未目视、`[PLACEHOLDER]` 数值待试玩校准、未做人工试玩逐帧动态验收、未自行 git。**阻塞：无。**
+

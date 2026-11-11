@@ -61,6 +61,17 @@ extends SceneTree
 ##   [PLACEHOLDER] ACTION_INTERVAL=6 为动作注入节奏，待试玩校准（rationale：
 ##      450 帧 / 6 = 75 次注入，J/Space 交替，动作帧窗口约 6 渲染帧，使动作帧 HUD 全片不恒 idle 0/0；
 ##      f=0 J / f=6 Space / f=20 E 严格按教学三步顺序，让教学真实完成并衔接到第 1 波）。
+##
+## R29 [ROUND=R29] 首帧动作帧 1 帧延迟修复（Rank-1 本轮独占本文件）：
+##   改前真跑实证：frame=0 的 [R28][EVIDENCE] 显示 StatusLabel 仍为「动作 idle 0/0」——
+##   _on_frame(f=0) 内经 Input.parse_input_event 注入的 J 要等下一帧输入 flush 才分发，
+##   故 Movie Maker 抓取的录屏首帧动作帧恒为 idle 0/0（1 帧延迟）。
+##   修法：在 _initialize() 内（第 0 帧之前）预热注入一次真实 J 事件，令首个渲染帧前
+##   输入路由已激活、EncounterDirector._request_action("attack_light") 已推进动作帧 HUD。
+##   仍严格走真实 Input.parse_input_event 路由，绝不写 Label.text / 不调 debug_* 伪造数值；
+##   _drive_real_input 的 f=0 J / f=6 Space / f=20 E 教学三步时间线逐字保留，
+##   预热 J 只额外消费一次 light_attack（教学第 2 步期待 Space，重复 J 不推进教学、不破坏闭环）。
+##   [PLACEHOLDER] 预热键位 J 与既有教学第一步一致，待试玩校准（rationale：不引入新动作）。
 
 const TOTAL_FRAMES: int = 450
 
@@ -182,6 +193,16 @@ func _initialize() -> void:
 	# ⑤ 逐帧驱动：process_frame 每帧一次，帧号与 --quit-after 450 对齐；退出交给 --quit-after。
 	process_frame.connect(Callable(self, "_on_frame"))
 	print("[R22] process_frame 已连接 | TOTAL_FRAMES=%d @--fixed-fps 30 (15s)" % TOTAL_FRAMES)
+
+	# ⑥ R29：首帧动作帧 1 帧延迟修复 —— 第 0 帧之前预热一次真实输入路由（详见头部 R29 注释）。
+	_prewarm_action_input()
+
+
+## R29 · _initialize 阶段（第 0 帧之前）预热注入一次真实 J 键，消除录屏首帧 idle 0/0 延迟。
+## 仍经既有 _inject_key() → Input.parse_input_event(InputEventKey) 真实路由，不碰 HUD 文本 / 数值。
+func _prewarm_action_input() -> void:
+	_inject_key(KEY_J)
+	print("[R29][INPUT] _initialize 预热注入真实按键 light_attack(J) -> Input.parse_input_event(InputEventKey)（提前到第 0 帧之前，消除首帧 idle 0/0 延迟）")
 
 
 func _on_frame() -> void:

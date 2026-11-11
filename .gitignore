@@ -28,6 +28,11 @@ capture/v050_demo*.png
 capture/v050_final*.png
 capture/v060_demo*.png
 capture/v060_final*.png
+capture/v070_demo*.png
+capture/v070b_*.png
+capture/v070_final*.png
+capture/v070_hud_before[0-9]*.png
+capture/v070_hud_after[0-9]*.png
 
 # 临时文件
 *.tmp

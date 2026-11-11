@@ -489,7 +489,7 @@ R26 §2 的四环节循环在「目标」之后直接回到「再行动」，中
 |---|---|---|---|
 | 玩家输入 | `J` 轻攻击 / `Space` 翻滚 / `E` 赐福交互（既有 input action `light_attack` / `roll` / `interact`）；`T` 重开教学 | 既有玩家状态机 + Rank-1 `tutorial_director.gd` | **不新增输入、不改既有战斗件**；`expected_action` 只对应该步允许的 action，错误按键不推进（§10.5 T-E1） |
 | 时序输入 | `NOT_STARTED → STEP_LIGHT_ATTACK → STEP_ROLL → STEP_GRACE_SHOP → COMPLETED` | **Rank-1** `tutorial_director.gd` 状态机 | 只读编排，教学期间不推进三波、不起倒计时、不生成伤害判定；Rank-3 不定义状态机实现 |
-| 事件输入 | `tutorial_step_completed(step_id, reward)`（每步完成）/ 三步全完成信号 | **Rank-1** 导演层信号 | Rank-3 订阅信号写 `grace.tutorial.step_index` / `grace.tutorial.completed` 并累加 `grace.trial.points`（I-1）；**Rank-1 不写 flag** |
+| 事件输入 | `tutorial_step_completed(step_id, reward)`（每步完成）/ 三步全完成信号 | **Rank-1** 导演层信号 | **A31 按裁决 A26 落地口径统一**（R29C）：**写方 Rank-1 `tutorial_director.gd`**（运行时代理：每步 `step_index` 按 `max` 推进的 `set_flag` 与本步 `grace.trial.points` 奖励合并入同一次 `commit("tutorial_step_reward")` 原子落盘、不新增落盘点；三步全完成 `commit("tutorial_completed")` 置 `completed=true`）／**教学 HUD 读运行时游标**（`get_snapshot()["step_index"]` / `hud.gd read_tutorial_progress()`）、绝不读世界 flag／**世界 flag 只作历史进度**（重启恢复 / 回放断言纯读 `get_flag`）／信号名 `tutorial_step_completed(step_id, reward)` 保留不改。R28 原登记「Rank-3 订阅信号写 / Rank-1 不写 flag」已废止，逐处改前→改后见 `teamwork/Rank-3/DONE-R29C.md` |
 | 数据输入 | 三步 `tutorial_steps.tres`（`step_id / prompt / expected_action / reward_points / timeout_sec`） | **Rank-2** 数据表 | 全 `[PLACEHOLDER]`，见 §10.2；空表 / 字段缺失 / 非法 `expected_action` 按 §10.5 T-E4 降级 |
 | 存档输入 | 三段式 flag 基线 `grace.tutorial.step_index`（`0`）/ `grace.tutorial.completed`（`false`）/ 既有 `grace.trial.points` | **Rank-3** 契约 §3.3 / `存档与flag规范.md` §3.3 | `get_flag(key, default)` 纯读（INV-3）；老玩家 `completed=true` 跳过教学 |
 | 衔接输入 | 第 1 波 `TELEGRAPH`（`telegraph_sec` `[PLACEHOLDER]`） | **Rank-1** `wave_trial_director.gd`（R26 既有） | 教学 `COMPLETED` 后自动进入，不改写 §4.1 读秒规格 |
@@ -587,7 +587,7 @@ R26 §2 的四环节循环在「目标」之后直接回到「再行动」，中
 | key | 类型 | 读写方 | 单调性 |
 |---|---|---|---|
 | `grace.tutorial.completed` | bool（基线 `false`） | 写：Rank-3（订阅三步全完成信号置 `true`，与末次 `step_index` 同一 `commit("tutorial_completed")` 原子先落盘）／读：赐福点亮态、老玩家跳过教学门控、回放断言（纯读 `get_flag`） | **只增不减（false → true 单向）**：失败 / 超时 / 主动退出 / 重启 / T 重开教学 / 重复挑战均无 `false` 回写路径，一次性永久成就 |
-| `grace.tutorial.step_index` | int（基线 `0`） | 写：Rank-3（订阅 `tutorial_step_completed(step_id, reward)`，按 `max(旧值, 本步序号)` 推进，强制 `commit(reason)` 先落盘）／读：教学 HUD「进度 1-3」、重启恢复、回放断言（纯读 `get_flag`） | **单调递增、只增不减**：`0→1→2→3`，重启不丢、赐福休息不清零；T 重开教学属 Rank-1 运行时状态机复位，持久化 flag **不回写更小值**（与 §4.4「quest_stages 取较大值」同机制） |
+| `grace.tutorial.step_index` | int（基线 `0`） | 写：Rank-1 `tutorial_director.gd`（裁决 A26 运行时代理：按 `max(旧值, 本步序号)` 推进，`set_flag` 与本步赐福点数奖励合并入同一次 `commit("tutorial_step_reward")` 先落盘、**不新增落盘点**）／读：**世界 flag 只作历史进度**（重启恢复 / 回放断言纯读 `get_flag`）；**教学 HUD 读运行时游标**（`TutorialDirector.get_snapshot()["step_index"]` / `hud.gd read_tutorial_progress()`）、**绝不读世界 flag** | **单调递增、只增不减**：`0→1→2→3`，重启不丢、赐福休息不清零；T 重开教学属 Rank-1 运行时状态机复位，持久化 flag **不回写更小值**（与 §4.4「quest_stages 取较大值」同机制） |
 
 - 两 key 均通过 §2 三段式正则 `^(world|quest|combat|grace|dungeon)\.[a-z0-9_]+\.[a-z0-9_]+$`：`grace` 前缀、`tutorial` 对象段、`completed` / `step_index` 状态段合法；`world_state.gd` 的 `FLAG_KEY_REGEX` 无需修改、无需迁移、不改 `schema_version`。
 
@@ -602,16 +602,16 @@ R26 §2 的四环节循环在「目标」之后直接回到「再行动」，中
 
 | # | 落盘点 | reason（`meta.last_commit_reason`） | 写入内容 |
 |---|---|---|---|
-| T-P1 | 每步 `tutorial_step_completed` 结算 | `tutorial_step_completed` | `step_index = max(旧, 本步序号)`、`grace.trial.points += 本步 reward_points` |
+| T-P1 | 每步结算（A26：Rank-1 `tutorial_director.gd` 运行时代理） | **`tutorial_step_reward`** | `step_index = max(旧, 本步序号)` 的 `set_flag` 与本步 `grace.trial.points += 本步 reward_points` **合并入同一次原子 commit**（不新增落盘点） |
 | T-P2 | 三步全完成 `COMPLETED` | `tutorial_completed` | `completed = true` 与末次 `step_index` 同一原子写 |
 | T-P3 | 波次清波 / 全清 / 失败结算 | `wave_trial_cleared` / `wave_trial_completed` / `wave_trial_settled`（R26 既有） | `points` 入账、`best_wave` / `completed`；**不动 `grace.tutorial.*`** |
 | T-P4 | 重启恢复 | `load`（既有口径） | 只读 `_load()` 回放，不新增写盘 |
 
 > reason 字面量仅进 `meta.last_commit_reason`，**不是新顶层字段**、不触发迁移；教学奖励属玩家资产变更，与 §4.8「点燃 / 休息赐福强制同步」同机制（须强制同步先落盘）。
 
-每一次 T-P1 / T-P2 严格按 §6.4 五步顺序，不得颠倒：① 由 Rank-1 信号取结算结果（本步序号 / 本步奖励 / 是否三步全完成）→ ② 计算新值（`step_index = max(旧, 本步序号)` / `points = 旧 + 本步 reward_points` / `completed` 仅全完成置 `true`）→ ③ ★ 强制 `commit(reason)` 按十字段原子写（`.tmp → flush → rename → delta.json`）→ ④ ★ 落盘成功后，才更新 `WorldState` 运行时 flag 实例、`emit flag_changed`（教学 HUD 进度 / 赐福点亮态增量刷新）→ ⑤ 若 ③ 失败：不执行 ④、运行时保持旧值、不推进步数、不发奖、如实告警，绝不「内存已改、磁盘未改」。磁盘为唯一权威（T-E7 / T-E8），机器判定见 `verify_tutorial_flags_v060.gd` D 类断言。
+每一次 T-P1 / T-P2 严格按 §6.4 五步顺序，不得颠倒：① 由 Rank-1 信号取结算结果（本步序号 / 本步奖励 / 是否三步全完成）→ ② 计算新值（`step_index = max(旧, 本步序号)` / `points = 旧 + 本步 reward_points` / `completed` 仅全完成置 `true`）→ ③ ★ 强制 `commit(reason)` 按十字段原子写（`.tmp → flush → rename → delta.json`）→ ④ ★ 落盘成功后，才更新 `WorldState` 运行时 flag 实例、`emit flag_changed`（赐福点亮态增量刷新；**教学 HUD 进度取运行时游标、不随世界 flag 刷新**）→ ⑤ 若 ③ 失败：不执行 ④、运行时保持旧值、不推进步数、不发奖、如实告警，绝不「内存已改、磁盘未改」。磁盘为唯一权威（T-E7 / T-E8），机器判定见 `verify_tutorial_flags_v060.gd` D 类断言。
 
-**口径差异登记（如实、不伪造）**：Rank-1 任务单的「按 T 重开教学」属运行时状态机复位；本 GDD / 契约把 `step_index` 登记为**单调递增、只增不减**，即重开时持久化 flag 不回写更小值、教学 HUD 进度以运行时状态机为准。此口径与 §4.4「quest_stages 取较大值」一致、保证重启读回不回退；**若总指挥 / Rank-1 需要「重开时进度归零」的持久化语义，列为待裁决的口径差异**（同 §3.1 脚注 A8 / R27 `<id>` 收敛先例），本轮按三段式单调不变量落地、不擅自改正则、不改 `world_state.gd`。
+**口径差异登记（如实、不伪造；R29 / A28 按裁决 A26 统一）**：Rank-1 任务单的「按 T 重开教学」属运行时状态机复位；本 GDD / 契约把 `step_index` 登记为**单调递增、只增不减**（**世界 flag 只作历史进度**、重开时不回写更小值），教学 HUD 进度**读运行时游标**（`get_snapshot()["step_index"]` / `hud.gd read_tutorial_progress()`），绝不读世界 flag。此口径与 §4.4「quest_stages 取较大值」一致、保证重启读回不回退；**该口径差异已由裁决 A26 落地（写方 Rank-1 `tutorial_director.gd`、reason `tutorial_step_reward`、HUD 读运行时游标、世界 flag 只作历史进度），并按 A28 在 §10.8 全文统一，不再列为待裁决**（见下方 R29 说明段）；本轮按三段式单调不变量落地、不擅自改正则、不改 `world_state.gd`。
 
 **校对清单（本轮未达 / 待办，如实登记）**
 
@@ -624,8 +624,17 @@ R26 §2 的四环节循环在「目标」之后直接回到「再行动」，中
 | T-V5 | 31 PASS 存档 / HUD 回归不回退 + 三段门禁 `grep SCRIPT ERROR=0` | R28 真跑（见 `DONE-R28.md`） |
 | T-V6 | **Rank-2 教学表落地后校对**：§10.2 / §10.3 引用键名（`step_id / prompt / expected_action / reward_points / timeout_sec`）、教学 `reward_points` 与波次 `reward_points` 同名不同语义域、rationale / broken 定义与 Rank-2 实际表一致；不一致**改本 GDD 引用段、不改数据表** | **待 Rank-2 并发产出落地后执行（本轮未达，如实登记）** |
 | T-V7 | 教学 HUD / 赐福点亮态 / 跳过门控 / 第 1 波衔接 / T 重开 / 演示序列兼容的运行时接线 | **属 Rank-1 并发实现，Rank-3 不代验、不宣称已接通**（T-F5 / T-F6） |
-| T-V8 | `step_index` 单调 vs T 重开「进度归零」持久化语义的口径裁决 | **待总指挥裁决（本轮按单调不变量落地、不擅自改正则）** |
+| T-V8 | `step_index` 单调 vs T 重开「进度归零」持久化语义的口径裁决 | **A26 已裁决落地、A28 全文统一**（世界 flag 只作历史进度 / 教学 HUD 读运行时游标 / 写方 Rank-1 `tutorial_director.gd` / reason `tutorial_step_reward`），不再待裁决 |
 | T-V9 | 人工试玩校准 `[PLACEHOLDER]` 数值、15~20 秒实机录屏回看、HD-2D 全绿 | **属用户侧 / Rank-1 / Rank-4，Rank-3 不代做、不宣称完成**（工程根 `README.md`「还差什么」） |
+| T-V10 | A28 全文口径统一（契约 §3.3 / 本 GDD §10.8 / 工程根 README 三处 `grace.tutorial.step_index` 写方 / commit reason / 读方对齐裁决 A26） | **R29 真跑**（见 `teamwork/Rank-3/DONE-R29.md`） |
+
+> **R29 / v0.7.0 追加（A28 全文口径统一 · 按裁决 A26 落地口径）**：R28 把本节 `grace.tutorial.step_index` 登记为「写方 Rank-3 订阅信号 / 每步 reason `tutorial_step_completed` / 读方含教学 HUD 进度 1-3」；裁决 A26 由 Rank-1 `tutorial_director.gd` 运行时代理按 `max` 写、reason 沿用 `tutorial_step_reward`、教学 HUD 改显运行时游标（原始登记见 `teamwork/Rank-1/DONE-R28B.md` §7 第 1 条，实现见 `godot/scripts/combat/tutorial_director.gd:17-23`）。本轮按 A28 把 **§10.8** 就地统一为 A26 落地口径，逐处改前 → 改后：
+> - **新 flag 表 `step_index` 行「写」**：`Rank-3（订阅 tutorial_step_completed(step_id, reward)，按 max 推进，强制 commit(reason)）` → **`Rank-1 tutorial_director.gd`（A26 运行时代理：`set_flag` 与本步奖励合并入同一次 `commit("tutorial_step_reward")`、不新增落盘点）**。
+> - **新 flag 表 `step_index` 行「读」**：`教学 HUD「进度 1-3」、重启恢复、回放断言` → **世界 flag 只作历史进度（重启恢复 / 回放断言纯读 `get_flag`）；教学 HUD 读运行时游标、绝不读世界 flag**。
+> - **T-P1 落盘点 reason**：`tutorial_step_completed` → **`tutorial_step_reward`**；写入内容改为「`step_index` 的 `set_flag` 与本步 `points` 奖励合并入同一次原子 commit」。
+> - **五步顺序第 ④ 步**：`emit flag_changed（教学 HUD 进度 / 赐福点亮态增量刷新）` → **赐福点亮态增量刷新；教学 HUD 进度取运行时游标、不随世界 flag 刷新**。
+> - **口径差异登记 / T-V8**：「待裁决的口径差异」「待总指挥裁决」 → **A26 已裁决落地、A28 全文统一**（世界 flag 只作历史进度 / HUD 读运行时游标 / 写方 Rank-1 / reason `tutorial_step_reward`），不再待裁决。
+> - **未动（不改动其它历史条款）**：`grace.tutorial.completed` 整行、T-P2 / T-P3 / T-P4 三行、§10.8 之外的 §10.1~§10.7 / §10.9 及全部历史章节（含 §10.6 事件输入表「Rank-3 订阅信号写 / Rank-1 不写 flag」等 R28 登记口径）**一律未改**，按任务单「只统一 §10.8」与「不改动其它历史条款」保留，并在 `DONE-R29.md` 如实登记为已知残留口径差异、供总指挥裁决；契约 §3.3 与工程根 README 的同类统一见各自 R29 段 / `DONE-R29.md`。
 
 ### 10.9 关联
 

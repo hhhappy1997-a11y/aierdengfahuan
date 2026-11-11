@@ -126,6 +126,7 @@ layer = 5
 [node name="ParallaxBackdrop" type="Node2D" parent="SubViewportContainer/SubViewport/ParallaxBackdropLayer" unique_id=1900000002]
 texture_filter = 1
 script = ExtResource("11_r23px")
+metadata/v070_depth_profile_path = "res://data/render/depth_profile.tres"
 
 [node name="WetReflection" type="Node3D" parent="SubViewportContainer/SubViewport" unique_id=1372639736]
 visible = false

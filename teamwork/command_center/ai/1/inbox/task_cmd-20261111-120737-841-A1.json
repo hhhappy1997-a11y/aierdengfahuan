@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261111-120737-841-A1",
+  "command_id": "cmd-20261111-120737-841",
+  "ai": 1,
+  "from": "总指挥",
+  "task": "[ROUND=R29B] 【R29B · Rank-1 紧急修复：兑换面板深底遮挡角色的新回归（总指挥目视发现）】总指挥目视 v070 定稿三帧发现：Rank-1 把 GraceShopLabel 迁出 SubViewport 后加的「半透明深底」实际几乎不透明，形成 x≈24–1100 / y≈300–470 的深蓝大矩形，首帧即常驻并把玩家与 Boss 的身体中部整块遮住 —— 属本轮新引入的画面回归，必须修。① 面板默认隐藏：shop_open=false 时 GraceShopLabel 与其深底/边框整体 visible=false（首帧画面不得出现该大矩形）；仅 E 键打开兑换（shop_open=true）时显示，关闭/购买后回到隐藏。② 显示时深底 alpha ≤0.35（真跑像素量化验证不是近黑实心块），并把面板高度压缩或移到不遮挡玩家/Boss 主体的位置（优先屏幕右侧或下方避开角色包围盒），保持段 B/low 档文字清晰可读、不遮挡赐福 HUD x<730,y<220 与画质面板 x>760,y<180。③ 保持 Rank-1 本轮已修好的「首帧 action_light 1/27」「跨 exe 读回 6 PASS」「三档文字可读」不回退；真跑三档抓帧 + ViewImage 目视，输出「首帧无大矩形 / 打开时面板不遮角色」的前后对照像素数字。④ 同跑 v060 64 / 86 / 21 / 48 / 37 与 v070 6 / 46 及既有全回归不回退；三段门禁 grep SCRIPT ERROR=0。⑤ 只写 hud.gd / capture/v070b_*.png / teamwork/Rank-1/；不改 shader / 场景 / presentation.gd / 素材 / 契约 / README。\n【公共契约】用画面判断进度；零付费零外部依赖、不启 GPU job；直接改直接真跑，不新建只读探针/巡检脚本；不伪造产物、不谎报成功、不自行 git（总指挥收尾）。完成后写 teamwork/Rank-1/DONE-R29B.md，并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/1/outbox/<id>.json：{\"task_id\":\"<id>\",\"ai\":1,\"status\":\"done\",\"result\":\"引用 DONE-R29B.md 实际结论\"}。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-11 12:07:38",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261111-120737-841-A1\",\"ai\":1,\"status\":\"done\",\"result\":\"...\"}"
+}

@@ -54,6 +54,48 @@ const HUD_AVOID_H: float = 220.0
 const LOGICAL_TO_SCREEN: float = 2.0
 const HUD_AVOID_MARGIN: float = 6.0
 
+# ===========================================================================
+# R29 v0.7.0 · P2 全屏景深强化（shader 小样 / 程序化 _draw 降级）
+#   ① shader 路径：运行时创建 CanvasLayer(layer=12) + ColorRect + ShaderMaterial
+#      （v070_depth_grade.gdshader, hint_screen_texture），读 Rank-2
+#      depth_profile.tres 参数注入；未落盘 → [PLACEHOLDER] 安全默认并如实登记。
+#   ② 降级路径：Compatibility screen texture 不可用 → 关闭 shader，改由本节点
+#      _draw() 追加 _r29_draw_grade() 程序化强化；不谎称 shader 生效（裁决 A30）。
+#   ③ 运行时创建节点，绝不写 courtyard.tscn 的 [node 条目 → 磁盘 node_count 恒 41，
+#      verify_wave_runtime_v040 / verify_tutorial_restart_v060 的 41 断言不回退。
+#   ④ layer=12 < Hud(20)/WaveTrialHud(20)/TutorialHud(21)/QualitySettings(40)：不遮挡 HUD。
+#   [PLACEHOLDER] FINALE_DELAY_SEC / FINALE_DURATION_SEC 为演示收束节奏，待试玩校准
+#   （rationale：波3 自 f=300=10s 起，+4.0s=f420 触发、2.0s 单峰脉冲使峰值落在尾帧 449，
+#    与 f=430 击败 Boss / f=420 赐福标题切「希芙拉河井底」的尾段收束节奏对齐）。
+# ===========================================================================
+const DEPTH_GRADE_SHADER_PATH: String = "res://shaders/v070_depth_grade.gdshader"
+const DEPTH_PROFILE_PATH: String = "res://data/render/depth_profile.tres"
+const GRADE_LAYER_NAME: String = "V070DepthGradeLayer"
+const GRADE_RECT_NAME: String = "V070DepthGradeRect"
+const GRADE_CANVAS_LAYER: int = 12
+# 短跑目视 + 编译日志判定后切换：false=尝试 shader / true=降级 _draw（A30 不谎称）
+const GRADE_FORCE_DRAW_FALLBACK: bool = false
+const FINALE_DELAY_SEC: float = 4.0
+const FINALE_DURATION_SEC: float = 2.0
+
+var _r29_params: Dictionary = {}
+var _r29_profiles: Dictionary = {}          # "desktop"/"mobile" → 生效参数字典（读 Rank-2 参数表）
+var _r29_active_tier: String = "desktop"
+var _r29_profile_source: String = "SAFE_DEFAULTS"
+var _r29_profile_hits: int = 0
+var _grade_layer: CanvasLayer = null
+var _grade_rect: ColorRect = null
+var _grade_mat: ShaderMaterial = null
+var _r29_shader_active: bool = false
+var _r29_draw_fallback: bool = false
+var _wave_tier: float = 0.0
+var _lit_level: float = 0.0
+var _wave3_elapsed: float = 0.0
+var _finale_triggered: bool = false
+var _finale_phase: float = -1.0
+var _finale_value: float = 0.0
+var _finale_source: String = ""
+
 var _far_motes: Array[Dictionary] = []
 var _near_motes: Array[Dictionary] = []
 var _stars: Array[Dictionary] = []
@@ -69,10 +111,12 @@ func _ready() -> void:
 	_build_motes()
 	_build_stars()
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_r29_init()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	queue_redraw()
+	_r29_tick(delta)
 
 
 ## R27：演示序列（presentation.gd）显式设置波次，确定性驱动三波空间变化。
@@ -165,6 +209,8 @@ func _draw() -> void:
 	_draw_fog_bands_near(t)
 	_draw_ground_grade()
 	_draw_layered_motes(t)
+	if _r29_draw_fallback:
+		_r29_draw_grade(t)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
@@ -277,3 +323,278 @@ func _draw_layered_motes(t: float) -> void:
 			continue
 		draw_circle(Vector2(float(round(x)), float(round(y))), float(m["size"]),
 				_c("#FFD27A", 0.38))
+
+
+# ===========================================================================
+# R29 v0.7.0 · P2 全屏景深强化实现（shader 小样 / 程序化 _draw 降级）
+# 详见文件头「R29 v0.7.0」常量区注释。零素材 / 零 GPU job / 零外部依赖。
+# ===========================================================================
+
+## 参数表路径可由 courtyard.tscn 的 ParallaxBackdrop 节点 metadata 覆盖（视觉属性，
+## 不新增 [node 条目）；未配置则用常量 DEPTH_PROFILE_PATH。
+func _r29_profile_path() -> String:
+	if has_meta("v070_depth_profile_path"):
+		return str(get_meta("v070_depth_profile_path"))
+	return DEPTH_PROFILE_PATH
+
+
+func _r29_init() -> void:
+	_r29_load_params()
+	if GRADE_FORCE_DRAW_FALLBACK:
+		_r29_draw_fallback = true
+		_r29_shader_active = false
+		print("[R29][GRADE] Compatibility screen texture 不可用（短跑目视/编译日志判定）→ 降级为程序化 _draw() 强化；shader 未生效（A30 如实登记）")
+		return
+	var sh: Shader = load(DEPTH_GRADE_SHADER_PATH) as Shader
+	if sh == null:
+		_r29_draw_fallback = true
+		_r29_shader_active = false
+		push_warning("[R29][GRADE] shader 文件加载失败 → 降级为程序化 _draw() 强化")
+		return
+	var layer := CanvasLayer.new()
+	layer.name = GRADE_LAYER_NAME
+	layer.layer = GRADE_CANVAS_LAYER
+	var rect := ColorRect.new()
+	rect.name = GRADE_RECT_NAME
+	rect.color = Color(0.0, 0.0, 0.0, 0.0)   # shader 编译失败时零遮挡，保护画面
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	rect.material = mat
+	layer.add_child(rect)                      # layer 未进树，先组装子节点（安全）
+	call_deferred("add_child", layer)           # _ready 期间父节点 busy，延迟挂入树
+	_grade_layer = layer
+	_grade_rect = rect
+	_grade_mat = mat
+	_r29_shader_active = true
+	_r29_draw_fallback = false
+	_r29_apply_params()
+	print("[R29][GRADE] shader 小样已挂载（待短跑目视 + 编译日志确认生效） | layer=%d rect=%s | 参数来源=%s 命中=%d/%d" % [
+		GRADE_CANVAS_LAYER, GRADE_RECT_NAME, _r29_profile_source,
+		_r29_profile_hits, _r29_params.size()])
+
+
+## [PLACEHOLDER] 安全默认参数（参数表未落盘 / 字段缺失时兜底；待试玩校准）。
+## rationale：Rank-2 参数表属并发件，必须有一套零风险兜底；且所有生效数值均由本函数
+## 注入 shader，shader 内不硬编码任何生效数值。
+func _r29_base_defaults() -> Dictionary:
+	return {
+		"vignette_strength": 0.42,
+		"vignette_inner": 0.34,
+		"vignette_outer": 0.78,
+		"cool_fog_strength": 0.20,
+		"cool_fog_color": Color(0.12, 0.22, 0.40),
+		"warm_glow_strength": 0.22,
+		"warm_glow_color": Color(1.0, 0.72, 0.32),
+		"warm_glow_pos": Vector2(0.706, 0.256),   # LIGHT_POS(452,92) / 640×360
+		"depth_far_strength": 0.16,
+		"blur_radius": 1.5,
+		"bloom_threshold": 0.75,
+	}
+
+
+## 真读 Rank-2 depth_profile.tres：顶层 + desktop/mobile 两套子 Resource 逐字段映射到 shader uniform。
+## 参数表未落盘 / load 失败 → 两套都用 [PLACEHOLDER] 安全默认（如实登记，不等待、不伪造）。
+func _r29_load_params() -> void:
+	_r29_profiles = {}
+	_r29_profile_hits = 0
+	var path: String = _r29_profile_path()
+	var res: Resource = null
+	if ResourceLoader.exists(path):
+		res = load(path)
+	if res == null:
+		_r29_profile_source = "SAFE_DEFAULTS[PLACEHOLDER]（参数表未落盘/加载失败）"
+		_r29_profiles["desktop"] = _r29_base_defaults()
+		_r29_profiles["mobile"] = _r29_base_defaults()
+		_r29_params = _r29_profiles["desktop"]
+		print("[R29][DEPTH] depth_profile.tres 未落盘/加载失败 path=%s → 自带 [PLACEHOLDER] 安全默认参数，不等待、不伪造" % path)
+		return
+	for tier: String in ["desktop", "mobile"]:
+		var d: Dictionary = _r29_base_defaults()
+		var n: int = _r29_map_profile(d, res)               # 顶层字段（结构容错）
+		var sub: Resource = res.get(tier) as Resource
+		if sub != null:
+			n += _r29_map_profile(d, sub)                     # 子 Resource 字段覆盖
+		_r29_profiles[tier] = d
+		_r29_profile_hits += n
+		print("[R29][DEPTH] 档=%s 命中字段=%d | vignette=%.3f warm=%.3f fog=%.3f deep=%.3f blur=%.2f" % [
+			tier, n, float(d["vignette_strength"]), float(d["warm_glow_strength"]),
+			float(d["cool_fog_strength"]), float(d["depth_far_strength"]), float(d["blur_radius"])])
+	_r29_profile_source = path if _r29_profile_hits > 0 else "SAFE_DEFAULTS(字段未匹配)"
+	_r29_params = _r29_profiles["desktop"]
+	print("[R29][DEPTH] 参数表已读取 path=%s | 总命中=%d | 生效来源=%s | desktop/mobile 双档按画质切换（数值不硬编码于 shader）" % [
+		path, _r29_profile_hits, _r29_profile_source])
+
+
+## 把 Rank-2 DepthProfile 字段映射到 shader uniform，返回命中字段数。
+## [PLACEHOLDER] 派生系数 fog_density×5 / layer_depths[0]×0.4 / parallax_coefficients[0]×25
+## 为「参数表字段语义 → shader uniform」的量纲换算，待试玩校准；rationale：
+## fog_density(0.035/0.018) 需放大到 0~1 雾强度、layer_depths(0.25/0.35) 需映射到远景模糊权重、
+## parallax_coefficients(0.06/0.05) 需映射到低分辨率缓冲模糊半径 1.5px 口径。
+func _r29_map_profile(d: Dictionary, src: Resource) -> int:
+	var n: int = 0
+	var v: Variant = src.get("vignette_strength")
+	if v is float or v is int:
+		d["vignette_strength"] = clampf(float(v), 0.0, 1.0)
+		n += 1
+	v = src.get("warm_glow_strength")
+	if v is float or v is int:
+		d["warm_glow_strength"] = clampf(float(v), 0.0, 1.0)
+		n += 1
+	v = src.get("fog_density")
+	if v is float or v is int:
+		d["cool_fog_strength"] = clampf(float(v) * 5.0, 0.0, 1.0)
+		n += 1
+	v = src.get("cold_night_fog_color")
+	if v is String and not String(v).is_empty():
+		d["cool_fog_color"] = Color(String(v))
+		n += 1
+	v = src.get("warm_gold_key_color")
+	if v is String and not String(v).is_empty():
+		d["warm_glow_color"] = Color(String(v))
+		n += 1
+	v = src.get("layer_depths")
+	if v is PackedFloat32Array and (v as PackedFloat32Array).size() > 0:
+		d["depth_far_strength"] = clampf(float((v as PackedFloat32Array)[0]) * 0.4, 0.0, 1.0)
+		n += 1
+	v = src.get("parallax_coefficients")
+	if v is PackedFloat32Array and (v as PackedFloat32Array).size() > 0:
+		d["blur_radius"] = clampf(float((v as PackedFloat32Array)[0]) * 25.0, 0.0, 4.0)
+		n += 1
+	return n
+
+
+## 按 QualitySettings 当前画质档选参数表（防御性；读不到档位默认 desktop）。
+func _r29_current_tier() -> String:
+	var q: Node = get_tree().root.get_node_or_null("Courtyard/QualitySettings")
+	if q != null and q.has_method("get_quality_preset"):
+		var p: String = str(q.call("get_quality_preset")).to_lower()
+		if p == "low" or p.contains("mobile"):
+			return "mobile"
+	return "desktop"
+
+
+## 把生效参数灌入 ShaderMaterial（Color→Vector3 以匹配 vec3 uniform；screen_px 按真实 viewport）。
+func _r29_apply_params() -> void:
+	if _grade_mat == null:
+		return
+	for k in _r29_params.keys():
+		var v: Variant = _r29_params[k]
+		if v is Color:
+			var c: Color = v
+			v = Vector3(c.r, c.g, c.b)
+		_grade_mat.set_shader_parameter(String(k), v)
+	var vp: Viewport = get_viewport()
+	var sz: Vector2 = Vector2(BUFFER_W, BUFFER_H)
+	if vp != null and vp.size.x > 0.0 and vp.size.y > 0.0:
+		sz = Vector2(vp.size)
+	_grade_mat.set_shader_parameter("screen_px", sz)
+	_grade_mat.set_shader_parameter("wave_tier", _wave_tier)
+	_grade_mat.set_shader_parameter("lit_level", _lit_level)
+	_grade_mat.set_shader_parameter("finale", _finale_value)
+
+
+## 点亮态 / 波次层次 / 三波收束节奏（每帧平滑，不闪烁、不遮挡 HUD）。
+func _r29_tick(delta: float) -> void:
+	# 画质档切换 → 采用 Rank-2 参数表对应档（段 A/C desktop、段 B mobile）
+	var tier: String = _r29_current_tier()
+	if tier != _r29_active_tier and _r29_profiles.has(tier):
+		_r29_active_tier = tier
+		_r29_params = _r29_profiles[tier]
+		print("[R29][DEPTH] 画质档切换 → 采用 %s 档参数表（vignette=%.3f warm=%.3f）" % [
+			tier, float(_r29_params["vignette_strength"]), float(_r29_params["warm_glow_strength"])])
+	var w: int = _current_wave()
+	var tier_target: float = clampf(float(w - 1) / 2.0, 0.0, 1.0)
+	_wave_tier = lerpf(_wave_tier, tier_target, clampf(delta * 3.0, 0.0, 1.0))
+	var lit: bool = _r29_read_lit_flag()
+	# 赐福标题点亮后，暖金层次随波次推进（波1→波2→波3 递进），平滑插值避免闪烁
+	var lit_target: float = (0.55 + 0.45 * tier_target) if lit else 0.20
+	_lit_level = lerpf(_lit_level, lit_target, clampf(delta * 2.5, 0.0, 1.0))
+	_r29_tick_finale(delta, w)
+	if _r29_shader_active:
+		_r29_apply_params()
+
+
+## 只读 WorldState 的赐福点亮 flag（防御性；接口缺失返回 false，不伪造点亮）。
+func _r29_read_lit_flag() -> bool:
+	var ws: Node = get_tree().root.get_node_or_null("WorldState")
+	if ws == null or not ws.has_method("get_flag"):
+		return false
+	var keys: Array[String] = [
+		"grace.limgrave_gatefront.lit", "grace.limgrave_chapel.lit",
+		"grace.weeping_shore.lit", "grace.siofra_well.lit"]
+	for k: String in keys:
+		if bool(ws.call("get_flag", k, false)):
+			return true
+	return false
+
+
+## 三波完成收束：优先读 WaveTrialDirector TRIAL_COMPLETED(state=5)；
+## 未达该状态则用「波3 + 演示节奏计时」兜底触发一次，并如实打印触发来源（不冒充游戏事件证明）。
+func _r29_tick_finale(delta: float, w: int) -> void:
+	if w >= 3:
+		_wave3_elapsed += delta
+	if not _finale_triggered:
+		# 三波完成收束：以「波3 + 演示尾段计时」确定性触发（一次、尾帧可见）；
+		# 导演 TRIAL_COMPLETED(state=5) 只作日志佐证，不提前消费唯一的一次收束。
+		if w >= 3 and _wave3_elapsed >= FINALE_DELAY_SEC:
+			var completed: bool = _r29_read_trial_completed()
+			_finale_triggered = true
+			_finale_phase = 0.0
+			_finale_source = "演示节奏兜底(波3 + %.1fs)" % FINALE_DELAY_SEC
+			if completed:
+				_finale_source += " / 导演 TRIAL_COMPLETED(state=5) 已达成"
+			print("[R29][FINALE] 三波完成收束光效触发一次 | 来源=%s | wave=%d lit=%.2f tier=%.2f（程序化单峰，不闪烁）" % [
+				_finale_source, w, _lit_level, _wave_tier])
+	if _finale_phase >= 0.0:
+		_finale_phase += delta / FINALE_DURATION_SEC
+		# 单峰脉冲 0→1→0，一次性，不反复闪烁
+		_finale_value = sin(clampf(_finale_phase, 0.0, 1.0) * PI) if _finale_phase <= 1.0 else 0.0
+
+
+func _r29_read_trial_completed() -> bool:
+	var d: Node = get_tree().root.get_node_or_null("Courtyard/WaveTrialDirector")
+	if d == null or not d.has_method("get_snapshot"):
+		return false
+	var s: Dictionary = d.call("get_snapshot")
+	return int(s.get("state", -1)) == 5
+
+
+## 降级路径：程序化 _draw() 全屏强化层（暗角 / 冷夜雾 / 多层景深 / 暖金光晕 / 收束环）。
+## 与 shader 等效的四项观感，全部 draw_rect / draw_circle / draw_arc，零素材、零 GPU job。
+func _r29_draw_grade(_t: float) -> void:
+	var vignette: float = float(_r29_params.get("vignette_strength", 0.42))
+	var fog: float = float(_r29_params.get("cool_fog_strength", 0.20))
+	var far_s: float = float(_r29_params.get("depth_far_strength", 0.16))
+	var warm: float = float(_r29_params.get("warm_glow_strength", 0.22))
+	var lp: Vector2 = Vector2(452.0, 92.0)
+	# ① 多层视差景深：上部 3 层冷蓝降饱和雾带（远→近逐层淡）
+	for i in range(3):
+		draw_rect(Rect2(-8.0, float(i) * 26.0, BUFFER_W + 16.0, 26.0),
+				_c("#12345A", far_s * (0.55 - 0.14 * float(i))))
+	# ② 冷夜雾：底部横向薄雾
+	for i in range(3):
+		draw_rect(Rect2(-8.0, BUFFER_H - 60.0 + float(i) * 20.0, BUFFER_W + 16.0, 20.0),
+				_c("#1C3556", fog * (0.10 + 0.06 * float(i))))
+	# ③ 边缘暗角：6 层四边矩形边框，从外向内 alpha 递减
+	for i in range(6):
+		var f: float = float(i) / 6.0
+		_r29_vignette_frame(4.0 + f * 44.0, vignette * 0.15 * (1.0 - f))
+	# ④ 暖金光晕：同心圆（随点亮态 / 波次层次平滑增强，不闪烁）
+	var glow: float = warm * (0.55 + 0.45 * _lit_level) * (0.60 + 0.40 * _wave_tier)
+	var radii: Array[float] = [48.0, 38.0, 28.0, 18.0, 9.0]
+	for i in range(radii.size()):
+		draw_circle(lp, radii[i], _c("#FFD27A", glow * (0.05 + 0.05 * float(i))))
+	# ⑤ 收束光效（一次性扩散环）
+	if _finale_value > 0.001:
+		var rr: float = 18.0 + (1.0 - _finale_value) * 230.0
+		draw_arc(lp, rr, 0.0, TAU, 48, _c("#FFE6A8", 0.40 * _finale_value), 2.0)
+
+
+func _r29_vignette_frame(m: float, a: float) -> void:
+	var col: Color = _c("#04070F", a)
+	draw_rect(Rect2(0.0, 0.0, BUFFER_W, m), col)                       # 上
+	draw_rect(Rect2(0.0, BUFFER_H - m, BUFFER_W, m), col)              # 下
+	draw_rect(Rect2(0.0, 0.0, m, BUFFER_H), col)                       # 左
+	draw_rect(Rect2(BUFFER_W - m, 0.0, m, BUFFER_H), col)              # 右
