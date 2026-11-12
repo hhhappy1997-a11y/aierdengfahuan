@@ -36,6 +36,18 @@ capture/v070_hud_after[0-9]*.png
 capture/v080_demo*.png
 capture/v080_final*.png
 
+# R31~R33 录屏中间帧与旧版关键帧（只保留 r33b_key_*.png 作为最终目视证据）
+capture/frame[0-9]*.png
+capture/r31_demo[0-9]*.png
+capture/v090_demo*.png
+capture/v090_final*.png
+capture/v090b_key_*.png
+capture/v100_final[0-9]*.png
+capture/v100_host_*.png
+capture/v100_key_*.png
+capture/r32_ground_tile_2x2.png
+capture/*.wav
+
 # 临时文件
 *.tmp
 *.log

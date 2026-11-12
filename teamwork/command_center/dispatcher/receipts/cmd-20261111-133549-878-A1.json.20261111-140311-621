@@ -1,0 +1,1 @@
+{"task_id":"cmd-20261111-133549-878-A1","ai":1,"status":"done","result":"引用 DONE-R31.md 实际结论：R31 交付 impact_feedback.gd / hud.gd 运行时挂载 / verify_impact_feedback_v090.gd 三件；三段门禁 G1/G2A/G2B/G3 均 EXIT=0 且 SCRIPT_ERROR=0；验证 35 PASS / 0 FAIL / RESULT=ALL_MATCH；courtyard.tscn 节点数 41 与 uv 2/1/1 原样保持。"}

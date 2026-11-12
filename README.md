@@ -15,6 +15,9 @@
 > **R29C · cmd-20261111-120737-845-A3（Rank-3，v0.7.1 裁决 A31 口径统一扩大 + A32 派生色登记）** 裁决 A31 把 R29 如实登记、授权边界外保留的**两处口径差异**统一到 A26 落地口径：`WAVE-TRIAL-GDD.md` 行 492（§10.3 inputs，任务单称「§10.6 行 492」）「Rank-3 订阅写 / Rank-1 不写 flag」与 `00-协作契约.md` §3.3 `grace.tutorial.completed` 行「写方 Rank-3」→ **写方 Rank-1 `tutorial_director.gd` / commit reason `tutorial_step_reward` / 教学 HUD 读运行时游标 / 世界 flag 只作历史进度**，逐处改前→改后见 `teamwork/Rank-3/DONE-R29C.md`；不改动其它历史条款（GDD §10.8 `completed` 行等按授权边界保留、作为新残留如实登记交裁决）。裁决 A32 在 `HD2D-STYLE-ANCHOR-v2.md` 追加 **§8「派生色说明」**：钉死 shader 色 uniform 真源是 `godot/data/render/depth_profile.tres` 锚点色 `#1B2A4A` / `#C99A3A`（hex→`Color(String(v))` 逐字直取、零数值派生），把 shader 报告派生显示色 `#2B3A5C` / `#F0A94C` 如实登记为 Rank-4 `palette_256.json` 32 色板灰阶档 L3/L7（Rank-2 首版误判 / 降级分支历史显示色），立下「派生色须写明来源公式 + rationale、不得冒充新色板、不并入 16 色受控表」硬规则；**未改任何 `godot/` 工程文件**。追加「一、已做了什么」**R29C 条目 + R29C 回归真跑行**、「二、还差什么」**第 16 项同步 + R29C 复核段**（R29B 为 Rank-1 并行轮次 `cmd-20261111-120737-841-A1`、本轮不代写其结论）；**31 PASS / 0 FAIL 存档 / HUD 回归不回退**、12 次引擎调用全 `EXIT=0`、12 份 `R29C-*.log` 逐份 `SCRIPT ERROR=0` / `Parse Error=0` / `ERROR:` 前缀 = 0（三段门禁达成；G3 仅 1 条既有 `ObjectDB instances leaked` WARNING、如实保留非 ERROR）。§3.1~§3.4 资产表实测字节数、「中枢 done 轮次」表（仍 R22 快照）与其余历史结论未改；**本轮 Rank-3 未写任何 `godot/` 工程业务文件**，未自行 git。
 > **R30 · cmd-20261111-125001-356-A3（Rank-3，v0.8.0 完善旧内容：A34 残留清除 + 图鉴 GDD 章节）** ① **A34 残留 1**：`WAVE-TRIAL-GDD.md` §10.8 新 flag 表 `grace.tutorial.completed` 行「写方 Rank-3」就地统一为 A26 落地口径（写方 Rank-1 `tutorial_director.gd` / reason `tutorial_completed`、每步 `tutorial_step_reward` / 教学 HUD 读运行时游标 / 世界 flag 只作历史进度）并补 R30 说明段；`00-协作契约.md` §3.3 登记表 `completed` 行（R29C / A31 已统一）核对一致、**无需再改**、补 R30 说明段；逐处改前→改后见 `teamwork/Rank-3/DONE-R30.md`，不改动其它历史条款。② **A34 残留 2**：`HD2D-STYLE-ANCHOR-v2.md` §8.4 由「未完成 / 待登记」改写为派生显示色**四要素登记**（① 来源锚点 hex ② 派生公式含中间计算 ③ 结果 hex ④ rationale），明确 `#2B3A5C` / `#F0A94C` 来自 `teamwork/Rank-4/palette_256.json` 32 色板灰阶档 `L3(28%)` / `L7(85%)` 的历史显示色，给出「锚点色 → 灰阶插值 / 亮度提升 → 结果色」可复算公式（逐通道 Δ + 「冻结档不可由相邻档线性插值生成」反证），并声明**不是 v2 新色板 / 不并入 §5.2 16 色受控表 / uniform 真源仍是 `depth_profile.tres` 锚点色**；未改任何 `godot/` 工程文件。③ 新写 **`teamwork/Rank-3/CODEX-GDD.md`**（Game Designer 六项齐全：purpose / player experience goal / inputs / outputs / edge cases / failure states + 「收集」留存钩子 + 「教学→三波→成长」四层梯度衔接 + 奖励节奏与不惩罚原则 + `[PLACEHOLDER]` 数值引用表），**所有数值引用 Rank-2 `[PLACEHOLDER]` 表、不另造数值**（Rank-2 `CODEX-TUNING.md` / `codex_config.gd` / `codex_entries.tres` 于 12:55~12:59 落盘、13:01:35 done，本 GDD 已按落地表校对引用键名 / 数值 / 语义并逐项一致，见 `CODEX-GDD.md` §11 C-V1）。④ 追加「一、已做了什么」**v0.8.0 条目 + R30 回归真跑行**、「二、还差什么」**第 16 项同步（残留口径差异已清 / 派生色四要素已补）+ 第 17 项（v0.8.0 图鉴缺口）+ v0.8.0 复核段**；**31 PASS / 0 FAIL 存档 / HUD 回归不回退**（`r19_verify_hud.gd` 20 + `verify_hud_binding.gd` 11，首次即 11/0）、12 次引擎调用全 `EXIT=0`、12 份 `R30-*.log` 逐份 `SCRIPT ERROR=0` / `Parse Error=0` / `ERROR:` 前缀 = 0（三段门禁达成；G3 仅 1 条既有 `2 ObjectDB instances were leaked at exit` WARNING、如实保留非 ERROR）。§3.1~§3.4 资产表实测字节数、「中枢 done 轮次」表（仍 R22 快照）与其余历史结论未改；**本轮 Rank-3 未写任何 `godot/` 工程业务文件**，未自行 git（总指挥收尾）。
 
+> **R31 · cmd-20261111-133549-886-A3（Rank-3，v0.9.0 完善旧内容：满愿存档三态回读 + GDD v0.9.0 + 契约登记）** ① `00-协作契约.md` §3.3 **只追加 R31 说明段**（不改历史条款 / 不改 I-1~I-6 接口表 / 不改 §3.1·§3.2 缺号），登记两个新三段式 flag：`grace.trial.modifier_active`（String / 基线 `""` / **非单调·局内翻转**）与 `grace.codex_full_wish.notified`（bool / 基线 `false` / **false→true 单向**），严格匹配 `^(world|quest|combat|grace|dungeon)\.[a-z0-9_]+\.[a-z0-9_]+$`；只作 `flags` 字典新 key，`SaveDelta` 十字段与 `schema_version=3` 冻结、不写 `removals`、不新增顶层字段；`存档与flag规范.md` §3.3 全局登记表同步追加两行 + R31 注记。② 新写 **`godot/scripts/rpg/verify_v090_save_readback.gd`**（只读验证脚本）：三进程三态（write → 新进程 load → 断言读回）验证买齐三项成长后 `grace.upgrade_<id>.unlocked` / `grace.trial.spent_points` / `grace.codex_<id>.unlocked` 与磁盘一致、余额 `points − spent_points ≥ 0`、旧存档缺 key 回落基线；独立 `user://saves/verify_v090_<RUN>/` 临时槽（与生产 `slot_01` 物理隔离、md5 前后一致），不改 `world_state.gd` / `save_system.gd` 生产逻辑、不碰生产存档。③ 新写 **`teamwork/Rank-3/V090-GDD.md`**（game-development-pro 六项：purpose / player experience goal / inputs / outputs / edge cases / failure states，含 B1~B6 broken 判据与空间节奏影响）；`WAVE-TRIAL-GDD.md` / `CODEX-GDD.md` / 本 README **只追加 R31 / v0.9.0 状态段**、不改历史条款；所有新数值标 `[PLACEHOLDER]` 并写 rationale。**真跑结论**：三进程三态 `write 9 / load 6 / assert 41 PASS`、三份 `0 FAIL` / `RESULT=PASS`、合计 **56 PASS / 0 FAIL**，三 pid `31616 / 1644 / 24208` 互不相同（A02 机器判定）；单进程 `all` 自检 **54 PASS / 0 FAIL**；三段门禁 G1 `--headless --import` / G2 `--check-only --script` / G3 `--headless --quit` 与 5 份自有日志 `SCRIPT ERROR=0`、`Parse Error=0`、`ERROR:` 前缀 = 0 —— **首次 G3 另有 5 条 `SCRIPT ERROR`（`res://scripts/render/impact_feedback.gd:201/241` 的 `cosf()/sinf()`，属 Rank-1 本轮并发写入的瞬时半成品、非 Rank-3 引入），按历轮 R27「定向重跑 1 次」先例重跑归零**，`courtyard.tscn` A38 `node_count=41` 两次真跑回读保持；全部引擎调用 `EXIT=0`，既有 3 条退出 WARNING（`[SaveSystem] --script 跳过自动读回` / `[ChunkManager] 未找到 ChunkRoot` / `2 ObjectDB instances were leaked`）如实保留、非 ERROR。日志留档 `teamwork/Rank-3/R31-*.log`（7 份，均为实际 stdout）。**本段即 R31 / v0.9.0 状态段**：「一、已做了什么」/「二、还差什么」的历史行按「只追加、不改历史条款」保留未动，v0.9.0 增量以本段与 `teamwork/Rank-3/DONE-R31.md` 为准；§3.1~§3.4 资产表实测字节数、「中枢 done 轮次」表（仍 R22 快照）与其余历史结论未改。**本轮 Rank-3 未写任何 `godot/` 工程业务代码**（新写的验证脚本只读加载生产脚本、不修改其逻辑）、未自行 git（总指挥收尾）。
+> **R32 · cmd-20261112-074023-412-A3（Rank-3，v0.10.0「赐福抉择 · 韧性处决」：新机制存档口径 + 玩法拆解与收口）** ① `00-协作契约.md` §3.3 **只追加 R32 说明段**（不改历史条款 / I-1~I-6 / §3.1·§3.2 缺号），登记 4 个新三段式 flag：`grace.boon_draft.selected`（String / 非单调·局内翻转）、`grace.boon_draft.cost_applied`（bool / 非单调·局内翻转）、`combat.boss_01.stagger_window`（bool / 非单调·局内翻转）、`grace.execution.performed`（int / 单调只增），严格匹配 `^(world|quest|combat|grace|dungeon)\.[a-z0-9_]+\.[a-z0-9_]+$`；只作 `flags` 字典新 key，`SaveDelta` 十字段与 `schema_version=3` 冻结、不写 `removals`、不新增顶层字段；`存档与flag规范.md` §3.3 全局登记表同步追加 4 行 + R32 注记。追加段**同时登记总指挥裁决 A39~A45**（A39 命中信号接线归属与 Rank-1 越界授权范围 / A40 项目级色库 ≥256 色由 Rank-4 程序化扩充清零、单帧 ≤16 色不变 / A41 HD-2D 全绿以 `HD2D-STYLE-ANCHOR-v2.md` 三判据为准、如实记「未达全绿」/ A42 录屏目视以总指挥亲自回看首中尾三帧为准 / A43 `128bit` 歧义保留不消歧 / A44 `encounter_director.gd` 唯一写入方 = Rank-1 其余只读 / A45 三类新数值全部 `[PLACEHOLDER]` 待人工试玩校准）。② 新写 **`godot/scripts/rpg/verify_v100_save_readback.gd`**（只读验证脚本）：三进程三态（write → 新进程 load → 断言读回）验证抉择/处决 4 flag 与买齐三项成长后余额一致、`points − spent_points ≥ 0`、旧档缺 key 回落基线、生产 `slot_01` md5 前后一致；独立 `user://saves/verify_v100_<RUN>/` 临时槽（与生产物理隔离、三 PID 互不相同），不改 `world_state.gd` / `save_system.gd` 生产逻辑、不碰生产存档。③ 新写 **`teamwork/迭代-v0.10.0-赐福抉择与韧性处决.md`**（游戏拆解表「需求→机制→数值→状态→验收」+ P0/P1/P2 漏洞识别 + GDD 六项 + 三栏清单 + 节点与信号链架构 + 真跑数字 + 验收三态 + 风险回滚 + 零付费零外部依赖 backlog）。④ 本 README 追加 v0.10.0 状态段 / 资产表增量 /「已做了什么」/「还差什么」（见文末 §四，历史行一律保留未动）。**真跑结论（Rank-3 实测）**：三进程三态 `write 9 / load 6 / assert 42 PASS`、三份 `0 FAIL` / `RESULT=PASS`、合计 **57 PASS / 0 FAIL**，三 pid `22080 / 26888 / 26012` 互不相同（A02 机器判定）；单进程 `all` 自检 **55 PASS / 0 FAIL**；三段门禁 G1 `--headless --import` / G2 `--check-only --script` / G3 `--headless --quit` 与 7 份自有日志逐份 `SCRIPT ERROR=0` / `Parse Error=0` / `ERROR:` 前缀 = 0（`R32-G3-quit.log` 回读 `courtyard.tscn node_count=41`，A38 断言保持；生产 `slot_01` md5 前后一致 `ea30335b3d1fd6c5a846e04a704d91dc`）；全部引擎调用 `EXIT=0`，既有 3 条退出 WARNING（`[SaveSystem] --script 跳过自动读回` / `[ChunkManager] 未找到 ChunkRoot` / `2 ObjectDB instances were leaked`）如实保留、非 ERROR。日志留档 `teamwork/Rank-3/R32-*.log`（7 份，均为实际 stdout）。**引用 R32 派单反馈数字（非 Rank-3 本轮真跑，如与最终实测不符以各自 Rank 真跑为准）**：Rank-1 反馈 42 PASS / HUD 布局 19 PASS / 处决运行时 16 PASS；Rank-2 赐福抉择 97 PASS / 韧性 62 PASS / 词条运行时 41 PASS / 既有 `.tres` md5 前后一致；全工程 `SCRIPT ERROR=0`、A38 节点数 41。**本段即 R32 / v0.10.0 状态段**：「一、已做了什么」/「二、还差什么」/「三、资产清单表」历史行按「只追加、不改历史条款」保留未动，v0.10.0 增量以本段、文末 §四 与 `teamwork/Rank-3/DONE-R32.md` 为准；§3.1~§3.4 资产表实测字节数、「中枢 done 轮次」表（仍 R22 快照）与其余历史结论未改。**本轮 Rank-3 未写任何 `godot/` 工程业务代码**（新写的验证脚本只读加载生产脚本、不修改其逻辑）、未自行 git（总指挥收尾）。
+
 ---
 
 ## 中枢 done 轮次
@@ -218,3 +221,57 @@
 - 上表两项均 **`published_in_pck: false`** —— 既不进 `.pck`，也不进 `.exe` / `.apk` 任何发布包；R23 素材条目是规格口径而非已发布资产，DNF NPK 是本机参考而非工程素材。
 - **参考目录 `.gdignore`**：DNF 参考目录须以 `.gdignore` 标记，使 Godot 4.7.2 跳过该目录的文件系统扫描与资源导入，从机制上保证不被打进发布包；本轮不改素材目录，仅登记该约定（`.gdignore` 由素材目录所有方 Rank-4 按需落地）。
 - 版权归 `Neople` / 腾讯；完整合规登记见 `teamwork/Rank-3/DNF-COMPLIANCE-R23.md`。
+
+---
+
+## 四、R32 / v0.10.0 状态表（追加段，历史行一律保留未动）
+
+> 本段为 **R32 / cmd-20261112-074023-412-A3（Rank-3）** 追加；「一、已做了什么」/「二、还差什么」/「三、资产清单表」的所有历史行按「只追加、不改历史条款」保留未动，v0.10.0 增量以本段 + `teamwork/Rank-3/DONE-R32.md` 为准。零付费、零外部依赖、不启 GPU job。
+
+### 4.1 v0.10.0 状态表
+
+| 域 | 状态 | 说明 |
+|---|---|---|
+| 四个三段式 flag 登记 | ✅ 已落地（口径） | `grace.boon_draft.selected` / `.cost_applied` / `combat.boss_01.stagger_window` / `grace.execution.performed`，契约 §3.3 R32 段 + 存档与flag规范 §3.3 全局表；只作 `flags` 字典新 key、十字段冻结、`schema_version=3`、不写 `removals` |
+| `verify_v100_save_readback.gd` | ✅ 通过（只读验证件） | 三进程三态 `57 PASS / 0 FAIL`、`all` 自检 `55 PASS / 0 FAIL`、三 pid 互不相同、生产 `slot_01` md5 前后一致；不改生产逻辑、不碰生产存档 |
+| 迭代收口文档 | ✅ 已落地 | `teamwork/迭代-v0.10.0-赐福抉择与韧性处决.md`：拆解表 / P0~P2 / GDD 六项 / 三栏 / 架构 / 三态 / 回滚 / backlog |
+| 裁决 A39~A45 | ✅ 已登记 | 契约 §3.3 R32 说明段同时登记，逐条如实（含 A41「未达全绿」、A43 不消歧、A45 `[PLACEHOLDER]`） |
+| 三段门禁 `grep SCRIPT ERROR=0` | ✅ 通过 | 7 份 `R32-*.log` 逐份 `SCRIPT ERROR=0` / `Parse Error=0` / `ERROR:` 前缀 = 0；G3 回读 `node_count=41` |
+| 抉择/处决/词条 `[PLACEHOLDER]` 校准（A45 / A17） | ⚠️ 需用户确认 | 用户侧人工试玩，Rank-3 不代做 |
+| HD-2D 全绿（A41 三判据） | ❌ 未达 | 光效仍 2D `_draw()` / screen-reading shader 近似、地面 2D tile 贴 3D 平面、角色 billboard 像素精灵；不得据单路自评宣称全绿 |
+
+### 4.2 资产表增量（R32 新增 / 改动文件，字节数为 `os.path.getsize` 实测，非编造）
+
+| 文件（相对工程根） | 字节 | 类型 / 归属 |
+|---|--:|---|
+| `godot/scripts/rpg/verify_v100_save_readback.gd` | **26,410** | 新写只读验证脚本（本轮 Rank-3 唯一 `godot/` 新增文件，只读加载生产脚本、不改业务逻辑） |
+| `teamwork/迭代-v0.10.0-赐福抉择与韧性处决.md` | **22,527** | 新写迭代收口文档（§10 backlog 禁词净化后定稿） |
+| `teamwork/00-协作契约.md`（§3.3 追加 R32 段） | **56,767** | 只追加、历史条款未动 |
+| `teamwork/Rank-3/存档与flag规范.md`（§3.3 追加 4 行 + 注记） | **36,167** | 只追加、历史条款未动 |
+| `teamwork/Rank-3/R32-*.log`（9 份真跑 stdout：7 份主验证 + 2 份收尾复跑） | **29,001**（1,087+75+4,526+7,362+5,921+2,027+2,256+1,087+4,660） | 真跑日志留档；收尾 `R32-final-import/quit.log` 亦 `SCRIPT ERROR=0`、G3 回读 `node_count=41` |
+| `README.md` / `teamwork/Rank-3/DONE-R32.md` / `DONE-R31B.md` / 两份回执 | —（不登记自指静态字节数） | 运行时状态文档 / 交付报告 / 回执：内容按「只追加」维护，字节数随段落追加变动，不做自指静态登记以免失真 |
+
+> §3.1~§3.4 既有 I-5 素材 / 场景 / 脚本 / 产物实测字节数与「中枢 done 轮次」表（仍 R22 快照）一律未改；R32 未新增任何 I-5 素材 / 场景节点 / 导出产物，`courtyard.tscn` 节点 41 / uv 2/1/1 与 `presentation.gd` 只读。
+
+### 4.3 「一、已做了什么」v0.10.0 增量（追加）
+
+| 域 | 已落地 |
+|---|---|
+| **v0.10.0 赐福抉择 · 韧性处决**（R32 派单 · Rank-3 存档口径 / 玩法拆解 / 只读验证） | ① 契约 §3.3 + 存档与flag规范 §3.3 登记 4 个新三段式 flag（抉择 String/bool、处决窗口 bool、处决次数 int 单调只增）+ 裁决 A39~A45；② 新写 `godot/scripts/rpg/verify_v100_save_readback.gd` 三进程三态只读回读验证（`57 PASS / 0 FAIL`，独立 PID 临时槽、生产 `slot_01` md5 前后一致）；③ 新写 `teamwork/迭代-v0.10.0-赐福抉择与韧性处决.md`（game-development-pro 玩法拆解表 + P0/P1/P2 漏洞识别 + GDD 六项 + 三栏清单 + 节点与信号链架构 + 验收三态 + 风险回滚 + 零付费 backlog）；④ 工程根 `README.md` 追加 v0.10.0 状态段与本 §四；⑤ 真跑三段门禁 `grep SCRIPT ERROR=0`（7 份日志全 0、G3 回读 `node_count=41`）；⑥ 两份 DONE（`DONE-R32.md` / `DONE-R31B.md`）+ 两份回执（R32 本轮 + R31B 补）。**所有新数值标 `[PLACEHOLDER]` + rationale + 调参唯一入口（只改表不改代码），Rank-3 未写任何 `godot/` 业务代码、未改其它 Rank 产出、未自行 git（总指挥收尾）** |
+| **R32 回归真跑**（Rank-3） | 三进程三态 `write 9 / load 6 / assert 42 = 57 PASS / 0 FAIL`、三 pid `22080 / 26888 / 26012` 互不相同；单进程 `all` `55 PASS / 0 FAIL`；G1 `--headless --import` / G2 `--check-only --script` / G3 `--headless --quit` 全 `EXIT=0`；7 份 `R32-*.log` 逐份 `SCRIPT ERROR=0` / `Parse Error=0` / `ERROR:` 前缀 = 0（三段门禁达成）；生产 `slot_01` md5 前后一致 `ea30335b3d1fd6c5a846e04a704d91dc`；`courtyard.tscn CACHE_MODE_IGNORE` 真跑回读 `node_count=41`（A38 断言保持）；既有 3 条退出 WARNING 如实保留、非 ERROR |
+
+### 4.4 「二、还差什么」v0.10.0 增量（追加）
+
+| # | 项 | 状态 | 说明 |
+|---|---|---|---|
+| 18 | **v0.10.0 赐福抉择 / 韧性处决：`[PLACEHOLDER]` 数值待人工试玩校准、4 个新 flag 运行时写入接线（Rank-1 / Rank-2 并发）未代验、抉择面板安全区 / 处决窗口可读性 / 15~20 秒录屏目视（A42）未代判、HD-2D 全绿仍未达（A41）** | **未达 · 待用户侧试玩 + 其它 Rank 运行时接线 + 总指挥目视** | 三类新数值（试炼词条 / 赐福抉择 / 韧性处决）全部 `[PLACEHOLDER]`、rationale 与调参唯一入口见迭代文档 §2（A45）；`boon_draft.tres` / `stagger_rules.tres` / 编排服务 / `player_hit_landed` 命中信号 / HUD 面板归 Rank-1 / Rank-2 并发产出，Rank-3 只登记口径 + 只读验证脚本、不代验运行时接线；抉择面板不遮角色 / 处决窗口带形状差异（锚点 v2 J6）/ 15~20 秒录屏首中尾三帧归 Rank-4 与总指挥目视（A42），headless 无帧缓冲、Rank-3 不代做手感 / 审美判断；A41 以 `HD2D-STYLE-ANCHOR-v2.md` 三判据为准、如实记「未达全绿」，A30 不切后端；`128bit` 歧义（A43）继续保留待用户确认、不消歧 |
+
+> **v0.10.0（R32）复核「还差什么」**：第 **10 项**（人工试玩，A17）/ **11 项**（`128bit` 歧义，A43 保留）/ **12 项**（HD-2D 全绿未达，A41 三判据）/ **2 项**（真 HDR bloom / 3D 体积光 / SSR）在 v0.10.0 **仍未达**；第 **13~17 项**（各版 `[PLACEHOLDER]` 校准 / 并发表落地校对 / 运行时接线）仍未达且本版第 18 项新增同类缺口；Rank-3 均未代做、未宣称完成。
+
+### R33 实机可见性修复（2026-11-12 总指挥定稿）
+
+- 修复 Tab 图鉴与赐福成长面板互斥的运行时根因（HUD 统一 Tab 仲裁），实机日志 frame=225 图鉴开→兑换隐藏、frame=449 关→恢复。
+- 15 秒演示序列加入 Boss 韧性条 / 处决窗口读秒 / F 处决、赐福抉择三选一卡片 / 数字键选择；F / 数字键 / Tab 为真实按键注入，开窗与卡片属**演示驱动**，6 条生产运行时触发链仍待接线（见 `teamwork/Rank-1/DONE-R33.md`）。
+- 总指挥亲自重跑定稿：`capture/v100_final.mp4` 450 帧 / 15.000s / 1,587,366 B；目视 5 帧确认新玩法可见、HUD 无重叠、暖金收束未过曝。
+- 双产物重导：exe 109,178,880 B / pck 1,662,428 B / apk 30,206,569 B / idsig 243,122 B；apksigner v2/v3 true。
+- **HD-2D 全绿仍未达成**（A41），地面周期重复感仍在；定稿录屏禁止加 `--headless`（A47）。

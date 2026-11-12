@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261111-141611-495-A1",
+  "command_id": "cmd-20261111-141611-495",
+  "ai": 1,
+  "from": "总指挥",
+  "task": "[ROUND=R31B] 【R31B · Rank-1 集成补接线：命中信号 → 打击反馈层真触发】① 依 HOST 裁决 A39，在 godot/scripts/combat/encounter_director.gd 新增 signal player_hit_landed(damage: int)（或等价签名），并在 _try_player_hit() 玩家成功命中处 emit；**只新增这一信号与一处 emit，不改既有数值、判定分支、帧数据、输出格式、其它信号**。同时确认既有 BossController.move_landed 订阅链不变。② impact_feedback.gd 订阅 player_hit_landed（若有 boss 侧可复用信号也可接），命中时自动调用 request_impact()，让暖金闪光 / 微震 / hitstop 在真实游玩中触发，不再只靠外部手动调用；connect 前按 get_signal_connection_list() 去重。③ 扩展 verify_impact_feedback_v090.gd：新增断言「真实导演层 emit 后闪光强度 > 0」、「连续命中不叠加异常」「降级开关下 shake/hitstop=0 但仍闪光」「HUD 避让区像素仍为 0」；输出 PASS/FAIL 与 RESULT=ALL_MATCH（保留既有 35 条断言、不删不放宽）。④ 真跑三段门禁，grep SCRIPT ERROR=0；A38 节点数 41 / uv 2/1/1 不变；不改素材 / 数据表 / 场景。\n【公共契约·R31B 集成与验收轮 / godogen + game-development-pro 纪律】用跑起来的画面判断进度而非 clean build；15~20 秒实机录屏并回看；所有新数值标 [PLACEHOLDER] 待试玩校准并写清 rationale；先目视检查再接入；三段门禁 --headless --import → --check-only --script / --headless --script <verify> → --headless --quit，grep SCRIPT ERROR=0；零付费、零外部依赖、不引入付费素材生成服务、不启 GPU job；直接改直接真跑，不新建只读探针/巡检脚本、不主动扫目录做进度巡检；不伪造产物、不谎报成功、不自行 git（总指挥收尾）。完成后写 teamwork/Rank-1/DONE-R31B.md（实际交付清单 / 真跑输出结论 / 未完成项与阻塞），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/1/outbox/<id>.json（不要写到工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":1,\"status\":\"done\",\"result\":\"引用 DONE-R31B.md 实际结论\"}。\n【目录所有权·R31B / HOST 裁决 A39 越界授权】Rank-1 本轮**额外获授权**改 godot/scripts/combat/encounter_director.gd（只准新增命中信号与 emit，不改既有数值 / 分支 / 输出），并拥有 impact_feedback.gd、hud.gd、verify_impact_feedback_v090.gd；Rank-2 拥有 godot/scripts/combat/verify_trial_modifier_runtime_v090b.gd、teamwork/Rank-2/R31B-INTEGRATION.md；Rank-3 拥有 00-协作契约.md §3.3 追加段、teamwork/迭代-v0.9.0-满愿闭环.md、teamwork/Rank-3/；Rank-4 拥有 项目级色库 palette 文件、godot/assets/generated/r23/impact_fx.png 与 import.json、hd2d_fx.gd、hd2d_parallax.gd、capture/、teamwork/Rank-4/；其余文件一律只读。courtyard.tscn 节点数 41、uv 2/1/1（A38 断言）与节点名本轮不得破坏；presentation.gd 只读不改。各 Rank 只写自己授权范围，接口异议写进自己 DONE 的「待总指挥裁决」。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-11 14:16:11",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261111-141611-495-A1\",\"ai\":1,\"status\":\"done\",\"result\":\"...\"}"
+}

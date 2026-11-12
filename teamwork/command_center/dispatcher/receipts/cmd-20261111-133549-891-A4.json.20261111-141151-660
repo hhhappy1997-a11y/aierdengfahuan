@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261111-133549-891-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "见 teamwork/Rank-4/DONE-R31.md 实际结论：impact_fx.png 512x128/5095B，逐帧 RGBA 色数 [8,8,8,8] 均<=16、alpha 仅 {0,255}（硬边无渐变）；配套 import.json 符合 I-5 四项与契约§9.3 两层口径。hd2d_fx.gd / hd2d_parallax.gd 光尘密度与湿地倒影精修完成，16 项降级层开关/接口保留自检全绿，未写 courtyard.tscn（门禁真跑回读 node_count=41，A38 未破坏）。三段门禁 EXIT 全 0 / SCRIPT ERROR=0 / PARSE ERROR=0。Movie Maker 实跑 450 帧@30FPS=15 秒（日志 movie length 00:00:15:00），未触发短录重跑；ffmpeg 合成 capture/v090_demo.mp4=1769025 字节、编码 450 帧、解码校验 EXIT=0。首/中/尾三帧目视：中央像素角色未被面板遮挡、暖金波3收束最强无过曝、像素精灵硬边 vs 平滑景深对比清晰、HD-2D 全绿达成。未完成/待裁决：项目级色库 palette_256.json 实测仅 32 色未达契约§9.3 >=256 下限（既有口径差异，引用不扩写不谎报）、impact_fx.png 未接入场景、地面砖格平铺重复感与教学 HUD 文字轻微重叠属既有未改、WAV 未并入 MP4。"
+}

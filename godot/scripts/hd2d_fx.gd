@@ -32,6 +32,11 @@ extends Node2D
 ##   （冻结口径 HD2D-FX-PLAN.md §4.2，quality_preset_*.tres / render_profiles.tres）。
 ##   §4.3「移动档降级而非全关」是待裁决建议，本轮不擅自实现（沿用 R15 登记）。
 ##
+## R32 / v0.10.0 追加（派单 cmd-20261112-074023-416-A4 ② · R31B 遗留补齐）：
+##   ⑦ impact_fx.png 按 r23/import.json 以【只读加载】方式接入本程序化特效层，
+##      复用 FXBloom 分派、不新增节点 / 不改节点名 / 不改 courtyard.tscn / 不改 presentation.gd；
+##      保留既有四项降级层与 desktop/mobile 档位，资源缺失静默跳过、移动端零额外开销。
+##
 ## 约束：ComfyUI 仍是主美术路线，本脚本是零外部依赖的 2D 程序化兜底，不取代主路线、
 ##       不宣称已能出图 / 已实现 3D 后处理；中文 UTF-8；Godot 4 合法语法。
 ##       实体坐标 round() 到整数、禁亚像素；Nearest 过滤；不改运行中 hd2d_placeholder.gd。
@@ -47,6 +52,28 @@ const LIGHT_POS := Vector2(452.0, 92.0)
 
 const PROFILE_DESKTOP := "desktop"
 const PROFILE_MOBILE := "mobile"
+
+# ---------------------------------------------------------------------------
+# R32 / v0.10.0 · R31B 遗留补齐：impact_fx.png 只读接入程序化特效层
+# 派单 cmd-20261112-074023-416-A4 ②。约束（逐条）：
+#   · 只读加载：运行时 FileAccess.get_file_as_string() 读 import.json + load() 读 PNG，
+#     绝不写 / 不生成 / 不修改 res://assets/generated/r23/ 下任何文件；
+#   · 不新增节点、不改 courtyard.tscn 节点 41 / uv 2/1/1 / 任何节点名、
+#     不改 presentation.gd；仅复用既有 FXBloom 分派分支（最上层光效）；
+#   · 保留既有降级层：资源缺失 / JSON 解析失败 / 显式关开关 → 静默跳过，
+#     既有 FXReflection / FXGodRays / FXMotes / FXBloom 四项程序化光效照常；
+#   · 移动端不劣化：懒加载只在 desktop（_all_on）绘制路径触发，mobile 段
+#     _draw() 开头即 return，永不加载、零额外绘制开销。
+# [PLACEHOLDER] 演示循环 int(t*fps)%n / alpha=0.32 / 绘制 96×96 为试玩校准值，
+#   rationale：15s 录屏全段可见、低 alpha 不加剧暖金收束过曝、避开 HUD 矩形与角色判定区。
+# ---------------------------------------------------------------------------
+const IMPACT_IMPORT_PATH: String = "res://assets/generated/r23/import.json"
+const IMPACT_PNG_PATH: String = "res://assets/generated/r23/impact_fx.png"
+@export var impact_fx_enabled: bool = true
+@export var impact_fx_alpha: float = 0.32
+var _impact_sheet: Texture2D = null
+var _impact_import: Dictionary = {}
+var _impact_load_attempted: bool = false
 
 # ---------------------------------------------------------------------------
 # R20 · 运行期强制档位覆盖（补 R19「只抓到 desktop 画面」缺口）
@@ -86,6 +113,24 @@ var reflection_alpha: float = 0.42
 var reflection_fade: float = 0.55
 var reflection_block_px: float = 2.0
 var reflection_ripple: float = 0.035
+
+# ---------------------------------------------------------------------------
+# [PLACEHOLDER] R31 / v0.9.0 · 湿地倒影精修新增参数（待试玩校准）
+# rationale：暖金像素角色倒影须落在「冷夜雾湿地」上才成立 —— 离散冷蓝水面带 +
+#   暖金/冷白交替高光横线 + 深层冷雾叠色，强化「暖金 × 冷夜雾」强对比，
+#   与像素精灵硬边形成「2×2 硬色块 vs 平滑水面」的 HD-2D 层次。
+# 既有 reflection_squash / alpha / fade / block_px / ripple 五项冻结口径全部保留不改。
+# ---------------------------------------------------------------------------
+var reflection_water_bands: int = 4
+var reflection_cold_tint: float = 0.30
+
+# [PLACEHOLDER] R31 / v0.9.0 · 光尘密度精修：远景 48→64 / 近景 32→48（待试玩校准）
+# rationale：暖金近景浮尘加密强化体积光下的空气感，冷白远景加密拉开与像素精灵
+#   硬边的「平滑景深」层次；仅 desktop 档 _all_on 绘制，mobile 四项全关时
+#   _draw() 直接 return（数组构建开销可忽略）→ 移动端档位零劣化。
+# tone 分组（i % 3）做「金线深蓝」冷暖分层，确定性、无随机噪点。
+const MOTES_FAR_COUNT: int = 64
+const MOTES_NEAR_COUNT: int = 48
 # ③ 光尘 HUD 避让：屏幕坐标矩形（约 x<730、y<220），绘制时逐粒跳过。
 #    FX 与 HUD 同处 SubViewport(640×360) 逻辑坐标，画布经 stretch_shrink=2 放大到 1280×720。
 var hud_avoid_screen_w: float = 730.0
@@ -218,24 +263,26 @@ func _build_motes() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = PLACEHOLDER_SEED
 	_motes_far.clear()
-	for i in range(48):
+	for i in range(MOTES_FAR_COUNT):
 		_motes_far.append({
 			"x0": rng.randf_range(0.0, BUFFER_W),
 			"y0": rng.randf_range(0.0, BUFFER_H),
 			"phase": rng.randf_range(0.0, TAU),
-			"freq": rng.randf_range(TAU / 4.0, TAU / 2.0),   # 横摆周期 2~4 s
-			"speed": rng.randf_range(2.0, 6.0),                # 上飘 2~6 px/s
-			"size": rng.randf_range(1.0, 3.0)
+			"freq": rng.randf_range(TAU / 4.0, TAU / 2.0),
+			"speed": rng.randf_range(2.0, 6.0),
+			"size": rng.randf_range(1.0, 3.0),
+			"tone": i % 3
 		})
 	_motes_near.clear()
-	for i in range(32):
+	for i in range(MOTES_NEAR_COUNT):
 		_motes_near.append({
 			"x0": rng.randf_range(0.0, BUFFER_W),
 			"y0": rng.randf_range(0.0, BUFFER_H),
 			"phase": rng.randf_range(0.0, TAU),
 			"freq": rng.randf_range(TAU / 4.0, TAU / 2.0),
 			"speed": rng.randf_range(2.0, 6.0),
-			"size": rng.randf_range(1.0, 3.0)
+			"size": rng.randf_range(1.0, 3.0),
+			"tone": i % 3
 		})
 
 
@@ -266,6 +313,7 @@ func _draw() -> void:
 		"FXBloom":
 			if _on_bloom:
 				_draw_bloom(t)
+			_draw_impact_fx(t)   # R32：只读加载的 4 帧打击反馈（资源缺失则降级跳过）
 		_:
 			pass
 
@@ -328,26 +376,36 @@ func _is_hud_avoid(logical_x: float, logical_y: float) -> bool:
 func _draw_reflection(t: float) -> void:
 	var blocks := _collect_entity_blocks()
 	var cx := BUFFER_W * 0.5
-	# 水面基底：2 条极淡横向波纹（仅作湿地反光质感，主体是下方镜像色块）
-	for k in range(2):
-		var wy := float(round(GROUND_Y + 7.0 + float(k) * 16.0))
-		draw_line(Vector2(cx - 26.0, wy), Vector2(cx + 26.0, wy),
-				_c("#BFD0EA", 0.05), 1.0)
+	# [PLACEHOLDER] R31 冷夜雾湿地水面基底：离散冷蓝横带（越深越浓），只铺倒影区宽度
+	var water_w := 60.0
+	for k in range(reflection_water_bands):
+		var wa := 0.05 + 0.035 * float(k)
+		draw_rect(Rect2(float(round(cx - water_w * 0.5)),
+				float(round(GROUND_Y + 2.0 + float(k) * 7.0)),
+				water_w, 7.0), _c("#16233F", wa))
+	# 水面高光横线：暖金 × 冷白交替（湿地对主光 / 夜雾的镜面反射，硬边 1px）
+	for q in range(3):
+		var wy := float(round(GROUND_Y + 6.0 + float(q) * 15.0))
+		var hx := sin(t * 0.9 + float(q)) * 3.0
+		draw_line(Vector2(float(round(cx - 30.0 + hx)), wy),
+				Vector2(float(round(cx + 30.0 + hx)), wy), _c("#FFD27A", 0.10), 1.0)
+		draw_line(Vector2(float(round(cx - 24.0 - hx)), wy + 2.0),
+				Vector2(float(round(cx + 24.0 - hx)), wy + 2.0), _c("#BFD0EA", 0.07), 1.0)
 	for b in blocks:
 		var sy: float = float(b["y"])
-		# 垂直镜像：源块在 GROUND_Y 之上，关于 GROUND_Y 向下翻转
 		var y_mirror := 2.0 * GROUND_Y - sy - 1.0
-		# 压缩后落在 GROUND_Y 之下（向下延伸成镜像色块）
 		var y_ref := GROUND_Y + (y_mirror - GROUND_Y) * reflection_squash
-		# 深度衰减：离脚底越远越淡（水面吸收），脚底最清晰
 		var depth := clampf((y_ref - GROUND_Y) / (31.0 * reflection_squash), 0.0, 1.0)
 		var alpha := reflection_alpha * (1.0 - reflection_fade * depth)
-		# 逐行横向错位 → 水波（相位含 y_ref，行与行错开）
 		var ripple_dx := sin(t * 1.4 + y_ref * 0.35) * reflection_ripple * BUFFER_W
-		# 2×2 半透明色块连成镜像轮廓（普通 Mix 减色，非 Add）
 		draw_rect(Rect2(float(round(float(b["x"]) + ripple_dx)), float(round(y_ref)),
 					reflection_block_px, reflection_block_px),
 				_c_palette_alpha(int(b["idx"]), alpha))
+		# 深层叠冷夜雾：把暖金倒影压进冷蓝水面（暖金 × 冷夜雾分离）
+		if depth > 0.35:
+			draw_rect(Rect2(float(round(float(b["x"]) + ripple_dx)), float(round(y_ref)),
+					reflection_block_px, reflection_block_px),
+					_c("#4A6089", reflection_cold_tint * depth * alpha))
 
 
 # ---------------------------------------------------------------------------
@@ -381,13 +439,21 @@ func _draw_motes(t: float) -> void:
 		var x := float(m["x0"]) + sin(t * float(m["freq"]) + float(m["phase"])) * 3.0
 		if _is_hud_avoid(x, y):
 			continue
-		draw_circle(Vector2(float(round(x)), float(round(y))), float(m["size"]), _c("#BFD0EA", 0.25))
+		# 金线深蓝：远景冷白为主，每 3 粒嵌 1 粒深蓝靛，拉开平滑景深冷色层次
+		var far_hex := "#BFD0EA"
+		if int(m["tone"]) == 1:
+			far_hex = "#4A6089"
+		draw_circle(Vector2(float(round(x)), float(round(y))), float(m["size"]), _c(far_hex, 0.25))
 	for m in _motes_near:
 		var y := fposmod(float(m["y0"]) - float(m["speed"]) * t, BUFFER_H)
 		var x := float(m["x0"]) + sin(t * float(m["freq"]) + float(m["phase"])) * 3.0
 		if _is_hud_avoid(x, y):
 			continue
-		draw_circle(Vector2(float(round(x)), float(round(y))), float(m["size"]), _c("#FFD27A", 0.45))
+		# 暖金近景：每 3 粒嵌 1 粒浅金高光，与冷夜雾远景形成暖金 × 冷夜强对比
+		var near_hex := "#FFD27A"
+		if int(m["tone"]) == 1:
+			near_hex = "#FFF0C2"
+		draw_circle(Vector2(float(round(x)), float(round(y))), float(m["size"]), _c(near_hex, 0.45))
 
 
 # ---------------------------------------------------------------------------
@@ -400,3 +466,62 @@ func _draw_bloom(_t: float) -> void:
 	for i in range(radii.size()):
 		draw_circle(LIGHT_POS, radii[i], _c("#FFD27A", alphas[i]))
 	draw_circle(LIGHT_POS, 3.0, _c("#FFF0C2", 0.85))          # L8 96% 核心过阈
+
+
+# ---------------------------------------------------------------------------
+# R32 ② · impact_fx.png 只读加载（懒加载，仅 desktop 绘制路径触发）
+#   FileAccess.get_file_as_string 为只读；load() 为只读资源加载；
+#   任一环节失败 → _impact_sheet 保持 null，_draw_impact_fx() 静默跳过，
+#   既有四项程序化光效照常（降级层保留），不 push_error、不崩。
+# ---------------------------------------------------------------------------
+func _ensure_impact_loaded() -> void:
+	if _impact_load_attempted:
+		return
+	_impact_load_attempted = true
+	if not FileAccess.file_exists(IMPACT_IMPORT_PATH):
+		return
+	var txt := FileAccess.get_file_as_string(IMPACT_IMPORT_PATH)
+	if txt.is_empty():
+		return
+	var parser := JSON.new()
+	if parser.parse(txt) != OK or not (parser.data is Dictionary):
+		return
+	_impact_import = parser.data
+	if not ResourceLoader.exists(IMPACT_PNG_PATH):
+		return
+	_impact_sheet = load(IMPACT_PNG_PATH) as Texture2D
+	if _impact_sheet != null:
+		print("[R32][impact_fx] 只读加载成功 png=%s frames=%d fw=%d cols=%d palette_id=%s" % [
+				IMPACT_PNG_PATH, int(_impact_import.get("frame_count", 4)),
+				int(_impact_import.get("frame_width", 128)), int(_impact_import.get("columns", 4)),
+				str(_impact_import.get("palette_id", "?"))])
+	else:
+		print("[R32][impact_fx] 降级：PNG 不可加载，保留既有四项程序化光效")
+
+
+# R32 ② · 4 帧冲击环叠加（复用既有 FXBloom 分派，不新增节点 / 不改节点名）
+#   帧参数全部取自 import.json（frame_width / frame_height / columns / frame_count / actions[0].fps）；
+#   绘制区固定在角色左侧空地（逻辑 640×360），避开 HUD 矩形 x<365,y<110 与角色判定区；
+#   96×96 为运行时绘制尺寸（非素材降采样），texture_filter=Nearest 保硬边。
+func _draw_impact_fx(t: float) -> void:
+	if not impact_fx_enabled:
+		return
+	_ensure_impact_loaded()
+	if _impact_sheet == null or _impact_import.is_empty():
+		return
+	var fw: float = float(_impact_import.get("frame_width", 128))
+	var fh: float = float(_impact_import.get("frame_height", 128))
+	var cols: int = maxi(1, int(_impact_import.get("columns", 4)))
+	var n: int = maxi(1, int(_impact_import.get("frame_count", 4)))
+	var fps: float = 12.0
+	var actions: Array = _impact_import.get("actions", [])
+	if actions.size() > 0 and actions[0] is Dictionary:
+		fps = maxf(1.0, float((actions[0] as Dictionary).get("fps", 12.0)))
+	# [PLACEHOLDER] 演示节奏：按 import.json 的 fps 循环 4 帧，保证 15s 录屏全段可见；
+	#   import.json 的 loop=false 为资产单次播放语义，运行时循环待试玩校准。
+	var idx: int = int(t * fps) % n
+	var col: int = idx % cols
+	var row: int = int(idx / cols)
+	var src := Rect2(float(col) * fw, float(row) * fh, fw, fh)
+	var dst := Rect2(200.0, 150.0, 96.0, 96.0)
+	draw_texture_rect_region(_impact_sheet, dst, src, Color(1.0, 1.0, 1.0, impact_fx_alpha))

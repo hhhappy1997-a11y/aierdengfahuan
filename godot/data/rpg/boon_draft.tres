@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="BoonDraftConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/boon_draft_config.gd" id="1_bdc"]
+
+[resource]
+script = ExtResource("1_bdc")
+boons = Array[Dictionary]([{
+"id": "boon_01_vigor_mend",
+"title": "赐福·生机涌流",
+"description": "立即回复一定生命；代价是下一波敌人生命上限提高，把续航换成硬仗。",
+"effect_key": "hp_restore",
+"effect_value": 40.0,
+"cost_key": "hp_scale",
+"cost_value": 1.15,
+"exclusive_group": "recovery"
+}, {
+"id": "boon_02_poise_edge",
+"title": "赐福·破势锋芒",
+"description": "本场削韧效率提升，更易打出 Boss 处决窗口；代价是下一波敌人出招前摇缩短。",
+"effect_key": "poise_damage_bonus",
+"effect_value": 0.25,
+"cost_key": "telegraph_scale",
+"cost_value": 0.85,
+"exclusive_group": "tempo"
+}, {
+"id": "boon_03_grace_tribute",
+"title": "赐福·恩典供奉",
+"description": "清波结算额外赐福点数，加速长期成长；代价是下一波敌人生命上限提高。",
+"effect_key": "points_bonus",
+"effect_value": 60.0,
+"cost_key": "hp_scale",
+"cost_value": 1.20,
+"exclusive_group": "recovery"
+}])

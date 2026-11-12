@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-074023-416-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "引用 DONE-R32.md 实际结论：① A40 色库两份 palette_256.json 各落盘实测 256 色（前 32 色冻结保留、单帧 ≤16 色索引口径不变、程序化零依赖/零渐变/零噪点/零 dithering）；③ ground_tile.png 精修后 128×128 / 6 色受控板 / alpha 取值集合=[255] / 边缘 diff 左右=0 上下=0 完全无缝 / 16 块砖两两不同，4×4 平铺重复感相对 v090 降低，未改 courtyard.tscn 的 uv（保 A38 断言）；② impact_fx.png 按 import.json 以只读加载方式接入 hd2d_fx.gd 程序化特效层，未改场景节点 41/uv/节点名、未改 presentation.gd，保留降级层开关与 mobile 档不劣化，引擎日志与首帧画面双证生效；④ capture/v100_final.mp4 真跑 450 帧 / 1,475,754 字节 / 15.000000 秒 / h264 1280×720 30fps，一次跑满未触发短录重跑，录屏前已 --headless --import 含 Rank-1 本轮 HUD 分区重构；⑥ 三段门禁两轮 EXIT=0，7 份日志 grep SCRIPT ERROR 全为 0；⑤ A41 三判据目视：J1 10% 剪影可读 / J2 主体与背景明度差 ≥2 档 / J3 同屏高饱和 ≤3 种均达成，面板不遮挡角色、HUD 主面板文字重叠已消除（实测核对 Rank-1 重构生效）、地面重复感降低、暖金收束未过曝、像素精灵硬边 vs 平滑景深对比成立；HD-2D 全绿【未达全绿】——仍是 2D _draw() / screen-reading shader 近似、地面 2D tile 贴 3D 平面、角色 billboard 像素精灵、gl_compatibility 后端无真 DoF/volumetric_fog/SSR/glow，如实列出具体差距，不沿用 R31「全绿达成」自评（A41 纠正）。未完成项：全绿技术前提、tile 周期、impact 事件驱动接线、[PLACEHOLDER] 待试玩校准、128bit 歧义；待裁决项：HD2D-STYLE-ANCHOR-v2.md §5.1/§5.3 等不归本 Rank 文件仍记 32 色，本轮未越界改写。详见 teamwork/Rank-4/DONE-R32.md。"
+}

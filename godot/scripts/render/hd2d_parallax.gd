@@ -154,28 +154,41 @@ func _build_stars() -> void:
 		})
 
 
+# [PLACEHOLDER] R31 / v0.9.0 · 视差光尘密度精修（待试玩校准）
+# rationale：desktop 档新增 16 远 / 12 近光尘并做「金线深蓝」冷暖分层，强化
+#   「像素精灵 vs 平滑景深」；mobile 档逐字保持原 40 / 20 粒与原色原 alpha
+#   （_draw_layered_motes 按 MOTE_BASE_* 门控跳过新增粒）→ 移动端档位零劣化。
+#   三波 WAVE_* / R29 shader 降级层开关 / set_wave_index 接口全部保留不改。
+const MOTE_BASE_FAR: int = 40
+const MOTE_BASE_NEAR: int = 20
+const MOTE_FAR_COUNT: int = 56
+const MOTE_NEAR_COUNT: int = 32
+
+
 func _build_motes() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = SEED
 	_far_motes.clear()
 	_near_motes.clear()
-	for i in range(40):
+	for i in range(MOTE_FAR_COUNT):
 		_far_motes.append({
 			"x0": rng.randf_range(0.0, BUFFER_W),
 			"y0": rng.randf_range(0.0, HORIZON_Y + 40.0),
 			"phase": rng.randf_range(0.0, TAU),
 			"freq": rng.randf_range(TAU / 6.0, TAU / 3.0),
 			"speed": rng.randf_range(1.0, 3.0),
-			"size": rng.randf_range(0.7, 1.6)
+			"size": rng.randf_range(0.7, 1.6),
+			"tone": i % 3
 		})
-	for i in range(20):
+	for i in range(MOTE_NEAR_COUNT):
 		_near_motes.append({
 			"x0": rng.randf_range(0.0, BUFFER_W),
 			"y0": rng.randf_range(0.0, HORIZON_Y + 40.0),
 			"phase": rng.randf_range(0.0, TAU),
 			"freq": rng.randf_range(TAU / 4.0, TAU / 2.0),
 			"speed": rng.randf_range(3.0, 7.0),
-			"size": rng.randf_range(1.0, 2.4)
+			"size": rng.randf_range(1.0, 2.4),
+			"tone": i % 3
 		})
 
 
@@ -308,24 +321,50 @@ func _draw_ground_grade() -> void:
 		glow_hex = "#D89A5A"
 	draw_line(Vector2(-8.0, HORIZON_Y), Vector2(BUFFER_W + 8.0, HORIZON_Y),
 			_c(glow_hex, float(WAVE_HORIZON_GLOW[_w - 1])), 1.0)
+	# [PLACEHOLDER] R31 / v0.9.0 · 湿地倒影衔接（待试玩校准）
+	# rationale：3D 暖金砖地上补离散「冷夜雾 × 暖金」反光横带，与 hd2d_fx.gd 的
+	#   像素角色湿地倒影呼应，强化「像素精灵 vs 平滑景深」对比；低 alpha 不遮挡
+	#   3D 地面 / HUD。仅 desktop 档绘制，mobile 档零新增绘制（不劣化）。
+	if _r29_active_tier != "mobile":
+		for q in range(3):
+			var ry: float = HORIZON_Y + 4.0 + float(q) * 11.0
+			draw_rect(Rect2(-8.0, ry, BUFFER_W + 16.0, 2.0), _c("#16233F", 0.06 + 0.03 * float(q)))
+			var rh: String = "#FFD27A" if _w == 3 else "#7E96BF"
+			draw_line(Vector2(-8.0, ry + 2.0), Vector2(BUFFER_W + 8.0, ry + 2.0),
+					_c(rh, 0.05), 1.0)
 
 
 # ⑥ 分层光尘：远景冷白（小/慢/淡）+ 近景暖金（略大/快/亮），HUD 区逐粒避让
 func _draw_layered_motes(t: float) -> void:
-	for m in _far_motes:
+	var desktop_extra: bool = (_r29_active_tier != "mobile")
+	for i in range(_far_motes.size()):
+		if i >= MOTE_BASE_FAR and not desktop_extra:
+			continue
+		var m: Dictionary = _far_motes[i]
 		var y: float = fposmod(float(m["y0"]) - float(m["speed"]) * t, HORIZON_Y + 40.0)
 		var x: float = float(m["x0"]) + sin(t * float(m["freq"]) + float(m["phase"])) * 3.0
 		if _is_hud_avoid(x, y):
 			continue
-		draw_circle(Vector2(float(round(x)), float(round(y))), float(m["size"]),
-				_c("#BFD0EA", 0.22))
-	for m in _near_motes:
-		var y: float = fposmod(float(m["y0"]) - float(m["speed"]) * t, HORIZON_Y + 40.0)
-		var x: float = float(m["x0"]) + sin(t * float(m["freq"]) + float(m["phase"])) * 4.0
+		var hexf: String = "#BFD0EA"
+		var af: float = 0.22
+		if i >= MOTE_BASE_FAR:
+			hexf = "#4A6089" if int(m["tone"]) == 1 else "#7E96BF"
+			af = 0.30
+		draw_circle(Vector2(float(round(x)), float(round(y))), float(m["size"]), _c(hexf, af))
+	for j in range(_near_motes.size()):
+		if j >= MOTE_BASE_NEAR and not desktop_extra:
+			continue
+		var n: Dictionary = _near_motes[j]
+		var y: float = fposmod(float(n["y0"]) - float(n["speed"]) * t, HORIZON_Y + 40.0)
+		var x: float = float(n["x0"]) + sin(t * float(n["freq"]) + float(n["phase"])) * 4.0
 		if _is_hud_avoid(x, y):
 			continue
-		draw_circle(Vector2(float(round(x)), float(round(y))), float(m["size"]),
-				_c("#FFD27A", 0.38))
+		var hexn: String = "#FFD27A"
+		var an: float = 0.38
+		if j >= MOTE_BASE_NEAR:
+			hexn = "#FFF0C2" if int(n["tone"]) == 1 else "#F0A94C"
+			an = 0.46
+		draw_circle(Vector2(float(round(x)), float(round(y))), float(n["size"]), _c(hexn, an))
 
 
 # ===========================================================================

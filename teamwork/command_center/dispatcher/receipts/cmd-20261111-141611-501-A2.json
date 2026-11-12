@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261111-141611-501-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "R31B 遗留由 R32 合并补齐，详见 DONE-R31B.md（完整交付清单与真跑输出原文见 DONE-R32.md）：新写 verify_trial_modifier_runtime_v090b.gd，用 ResourceLoader.load(..., CACHE_MODE_IGNORE) 回读真实 trial_modifiers.tres 与 wave_trial.tres，实例化 TrialModifierService 断言三词条结算符合 [PLACEHOLDER] 倍率 1.5/1.3/1.4、互斥拒绝、未选回落、余额非负、异常拒绝，真跑 pass=41 fail=0 / RESULT=ALL_MATCH / SCRIPT ERROR=0 / EXIT=0；md5 前后对比 trial_modifiers.tres 7e9e5ac7d35d8d15171e69975ac3356d、wave_trial.tres 793b6daa7c7730feed1a3f849701d58a 前后完全一致，证明既有 .tres 零改动。另写 R31B-INTEGRATION.md（service 由谁调用 / stats 来源 / 落盘责任 Rank / broken 判据 / 待裁决项）。R31B 与 R32 两份回执、两份 DONE 分开登记，未合成一条。"
+}

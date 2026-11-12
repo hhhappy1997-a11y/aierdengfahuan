@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-084053-303-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "见 teamwork/Rank-1/DONE-R33.md 实际结论：R33 三块任务完成。① Tab 互斥在实机真实生效——根因是 R30 CodexDirector 由 call_deferred 晚于 HUD 入树、其 _unhandled_input 逆序优先命中 Tab 并 set_input_as_handled 吞键，致 HUD 收不到 Tab、_codex_open 恒 false、兑换/赐福成长面板常驻；hud.gd 收敛为 HUD 单一 Tab 仲裁者并把互斥落实到真实节点 visible，实机日志 frame=225 codex_panel_open=true|shop_label_visible=false、frame=449 关闭后 shop_label_visible=true 双向实证。verify_hud_layout_v100.gd 新增 H 组 5 条运行时断言（Input.parse_input_event 注入真实 Tab 按下/松开配对 + 读实际节点 visible），既有 19 条不删不放宽，pass=24 fail=0 RESULT=ALL_MATCH。② 新玩法进 15 秒演示序列：可见层 is_inside_tree=true，Boss 韧性条/处决窗口读秒/F 处决反馈（execution_performed bonus=50）、赐福抉择三选一（choices=3）/数字键 2 选中 boon_02_poise_edge 均在 450 帧真跑日志中可见；其中【开窗 apply_hit(100.0) 与卡片 on_wave_cleared() 为演示驱动，非玩家真实操作可达】，F/数字键/Tab 为真实按键注入，生产 HUD 仍缺真实可见节点，仍缺 6 条运行时触发链已列 DONE-R33.md §6/§8 交总指挥裁决，不冒充已完整接线。③ 三段门禁 GATE-1/5×check-only/3×verify/GATE-3/PRES450f 全 EXIT=0，全工程 grep SCRIPT ERROR TOTAL=0、Parse Error=0，三份回归 42/24/16 PASS 全 RESULT=ALL_MATCH，courtyard.tscn 41 节点 / uv 2/1/1 / A38 保持。验收三态：通过如上、失败无、需用户确认=总指挥亲自重跑 15 秒定稿录屏目视（本轮未重复录屏）+ [PLACEHOLDER] 数值校准 + 演示驱动边界 + Tab 仲裁接口归属裁决。零付费、零外部依赖、不启 GPU job、不自行 git、未删 .workbuddy。"
+}

@@ -1,0 +1,165 @@
+{
+  "schema_version": "1.0",
+  "asset_id": "impact_fx_r23_v1",
+  "res_path": "res://assets/generated/r23/impact_fx.png",
+  "sprite_sheet": "impact_fx.png",
+  "frame_width": 128,
+  "frame_height": 128,
+  "columns": 4,
+  "rows": 1,
+  "frame_count": 4,
+  "anchor": {
+    "x": 64,
+    "y": 64,
+    "note": "冲击环/闪光中心锚定（特效类，非脚贴地）；全帧共用，禁止逐帧偏移"
+  },
+  "actions": [
+    {
+      "name": "impact",
+      "start_frame": 0,
+      "end_frame": 3,
+      "fps": 12,
+      "loop": false
+    }
+  ],
+  "pose_names": [
+    "impact"
+  ],
+  "palette": [
+    "#16233F",
+    "#4A6089",
+    "#8A5A22",
+    "#C97A2E",
+    "#E8C479",
+    "#F0A94C",
+    "#FFD27A",
+    "#FFF0C2"
+  ],
+  "palette_id": "hd2d_index_256_v1",
+  "palette_ref": "res://assets/generated/palette_256.json",
+  "canvas_base_px": 128,
+  "base_canvas_px": 128,
+  "indexed": true,
+  "max_colors": 16,
+  "per_frame_max_colors": 16,
+  "color_depth": "RGBA8 (alpha preserved)",
+  "hard_edge": true,
+  "gradient": false,
+  "dithering": false,
+  "noise": false,
+  "alpha_bins": [
+    0,
+    255
+  ],
+  "filter": "nearest",
+  "mipmaps": false,
+  "compression": "lossless",
+  "default_texture_filter": 0,
+  "expected_import_settings": {
+    "compress_mode": "lossless",
+    "mipmaps": false,
+    "texture_filter": "Nearest",
+    "project_default_texture_filter": 0,
+    "fix_alpha_border": true,
+    "process_fix_alpha_border": true
+  },
+  "color_policy": {
+    "contract": "00-协作契约.md §9.3 / I-5（R25 裁决 A15 统一口径）",
+    "two_layers": {
+      "project_palette_min_colors": 256,
+      "per_frame_max_colors": 16
+    },
+    "project_palette": {
+      "palette_id": "hd2d_index_256_v1",
+      "palette_ref": "res://assets/generated/palette_256.json",
+      "declared_max_colors": 256,
+      "measured_color_count": 256,
+      "meets_ge_256": true,
+      "status": "r32_expanded_256_ge256_ok"
+    },
+    "note": "单帧层：每帧从项目级色库取 ≤16 色受控索引，实测见 measured_frame_colors，全部 ≤16。项目级层：按 §9.3 要求项目级色库 ≥256 色；R32 / v0.10.0 由 Rank-4 按派单 ① A40 将 palette_256.json 程序化扩充至实测 256 色（前 32 色冻结保留），已满足 ≥256 下限，落盘实测见 teamwork/Rank-4/DONE-R32.md；本轮 import.json 只同步该状态字段，帧参数 / measured_frame_* 逐字未动。"
+  },
+  "pipeline": "procedural_pil_pixel",
+  "pipeline_tier": "fallback",
+  "zero_gpu_job": true,
+  "zero_paid_service": true,
+  "zero_external_dependency": true,
+  "generated_by": "Pillow 12.3.0 putpixel 逐像素；零渐变/零 dithering/零噪点/零随机",
+  "measured_frame_colors": [
+    8,
+    8,
+    8,
+    8
+  ],
+  "measured_frame_hex": [
+    [
+      "#16233F",
+      "#4A6089",
+      "#C97A2E",
+      "#E8C479",
+      "#F0A94C",
+      "#FFD27A",
+      "#FFF0C2"
+    ],
+    [
+      "#16233F",
+      "#4A6089",
+      "#C97A2E",
+      "#E8C479",
+      "#F0A94C",
+      "#FFD27A",
+      "#FFF0C2"
+    ],
+    [
+      "#16233F",
+      "#4A6089",
+      "#C97A2E",
+      "#E8C479",
+      "#F0A94C",
+      "#FFD27A",
+      "#FFF0C2"
+    ],
+    [
+      "#16233F",
+      "#4A6089",
+      "#8A5A22",
+      "#C97A2E",
+      "#E8C479",
+      "#F0A94C",
+      "#FFF0C2"
+    ]
+  ],
+  "measured_max_per_frame": 8,
+  "measured_within_16": true,
+  "measured_hard_alpha_only_0_255": true,
+  "frames": [
+    {
+      "index": 0,
+      "action": "impact",
+      "measured_colors": 8
+    },
+    {
+      "index": 1,
+      "action": "impact",
+      "measured_colors": 8
+    },
+    {
+      "index": 2,
+      "action": "impact",
+      "measured_colors": 8
+    },
+    {
+      "index": 3,
+      "action": "impact",
+      "measured_colors": 8
+    }
+  ],
+  "sheet_px": [
+    512,
+    128
+  ],
+  "png_bytes": 5095,
+  "notes": "R31 / v0.9.0 新写。4 帧冲击环/暖金闪光，128px 基准画布，RGBA 保 alpha；几何数值为 [PLACEHOLDER] 待试玩校准（rationale：起→扩→峰→收四段半径/星芒/核心演化，frame3 对角扇区断裂表达暖金收束）。ComfyUI 仍是主美术路线，本件是零外部依赖程序化管线产出。",
+  "generated_at": "2026-11-11",
+  "version": "v1"
+}

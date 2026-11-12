@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="StaggerConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/stagger_config.gd" id="1_sc"]
+
+[resource]
+script = ExtResource("1_sc")
+stagger_max = 100.0
+window_duration_sec = 3.0
+execute_bonus_points = 50
+reference_poise_damage = 25.0

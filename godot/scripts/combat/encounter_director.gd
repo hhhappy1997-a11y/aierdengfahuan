@@ -24,6 +24,9 @@ class_name EncounterDirector
 
 signal encounter_finished(won: bool)
 signal grace_rested(rest_count: int)
+## R31B [ROUND=R31B] · HOST 裁决 A39：玩家命中信号，供打击反馈层订阅自动触发。
+## 只新增本信号 + _try_player_hit() 内一处 emit；不改既有数值 / 判定分支 / 帧数据 / 输出格式 / 其它信号。
+signal player_hit_landed(damage: int)
 
 @export var player_table_path: String = "res://data/combat/player_actions.tres"
 @export var boss_data_path: String = "res://data/combat/boss_01_margit.tres"
@@ -177,6 +180,7 @@ func _try_player_hit() -> void:
 	if _boss != null and _boss.has_method("apply_damage"):
 		_boss.call("apply_damage", damage)
 		_hits_landed += 1
+		player_hit_landed.emit(int(damage))   # R31B/A39：唯一新增 emit，供打击反馈层订阅自动触发
 		_resolve_poise_on_hit(action)
 		_apply_action_status(action)
 

@@ -83,6 +83,27 @@ extends SceneTree
 ##   [PLACEHOLDER] CODEX_TAB_FRAME=210 为演示节奏（rationale：留 ≥15 帧输入 flush 余量，
 ##   使 f=225 / f=449 的 EVIDENCE 稳定读回 panel_open=true，避开 R29 实证的 1 帧输入延迟）。
 
+## R33 [ROUND=R33] · 新玩法进实机演示序列（Rank-1 本轮独占本文件 · 派单 cmd-20261112-084053-303-A1）：
+##   总指挥回看 capture/v100_final.mp4 目视结论：15 秒录屏里完全看不到 R32 新增玩法
+##   （Boss 韧性条 / 处决窗口读秒 / 赐福抉择三选一卡片）—— R32 只落了纯逻辑与单元验证，
+##   HUD 侧只有 get_stagger_hud_view() / get_boon_draft_view() 字典快照，
+##   【没有任何真实可见节点】，演示序列也没有触发链。
+##   本轮在 presentation.gd 里补：
+##    ① 运行时挂载独立 CanvasLayer 可见层（ProgressBar 韧性条 + 读秒/F 反馈 Label +
+##       三选一卡片 Label）；文本/数值全部读 HUD 公开快照，不写既有 HUD 的 Label.text、
+##       不调 debug_*、不伪造数值；位置取右上空白区，避开 6 套 HUD / 玩家 / Boss。
+##    ② 绑定 Rank-2 真实 StaggerService / BoonDraftService（CACHE_MODE_IGNORE 回读），
+##       订阅 execution_performed / boon_draft_selected 真实信号回读。
+##    ③ F 键处决 / 数字键 2 选择 / Tab 关闭图鉴 均走既有 _inject_key() →
+##       Input.parse_input_event(InputEventKey) 真实输入路由（真按键纪律）。
+##    ④ 【演示驱动，非玩家真实操作可达】演示序列里没有真实「玩家命中削韧」与「真实清波」
+##       事件，故开窗用显式 StaggerService.apply_hit(100.0)、卡片用显式 HUD.on_wave_cleared()
+##       构造演示状态，每帧 tick/poll 推进读秒；此二者在 DONE-R33.md 如实标注，
+##       仍缺的运行时触发链列为待总指挥裁决项，不冒充已完整接线。
+##    ⑤ Tab 在 f=240 再注入一次关闭图鉴，实证 R33「图鉴开→兑换隐藏 / 关→恢复」互斥。
+##    ⑥ 信号 connect 在 450 帧时间线末尾显式 disconnect（释放路径兜底）。
+##   [PLACEHOLDER] R33 帧点为演示节奏，待试玩校准。
+
 const TOTAL_FRAMES: int = 450
 
 # courtyard.tscn 内节点路径（只读引用，不改场景）
@@ -112,6 +133,31 @@ const ACTION_INTERVAL: int = 6   # [PLACEHOLDER] 动作注入周期（帧），�
 const E_OPEN_FRAME: int = 20     # 教学第 3 步：注入 E（J→Space→E 顺序），同时打开兑换面板并保持全片展开
 const BUY_FRAME: int = 170       # 注入数字键 1 购买一项（教学奖励 + 波次结算已累积赐福点数）
 const TUTORIAL_GUARD_FRAME: int = 40  # 教学状态兜底检查帧（避免三波永久冻结 / 教学与波次双驱动）
+
+# ---- R33 [ROUND=R33] · 新玩法演示（真实按键 + 演示驱动状态构造）----
+const KEY_F_CODE: int = 70             # KEY_F（处决；HUD._process_r32_keys → request_execution）
+const KEY_2_CODE: int = 50             # 数字键 2（赐福抉择选择；boon_draft.select(1)）
+const STAGGER_SVC_PATH: String = "res://scripts/combat/stagger_service.gd"
+const STAGGER_CFG_PATH: String = "res://data/combat/stagger_rules.tres"
+const BOON_SVC_PATH: String = "res://scripts/combat/boon_draft_service.gd"
+const BOON_CFG_PATH: String = "res://data/rpg/boon_draft.tres"
+const R33_LAYER_NAME: String = "R33DemoMechanismsLayer"
+const R33_LAYER_INDEX: int = 48        # 高于 CodexPanelLayer=46 / 兑换层=45 / QualitySettings=40
+# 可见层位置：右上空白区 x∈[900,1276] / y∈[190,352]，与 quality(y<180)、shop(y>358)、
+#   Boss+中央角色(x<880)、codex(x<380)、底部条(y>660) 均无交集，不遮角色、不与既有 HUD 叠压。
+const R33_RECT_LEFT: float = 900.0
+const R33_RECT_TOP: float = 190.0
+const R33_RECT_RIGHT: float = 1276.0
+const R33_RECT_BOTTOM: float = 352.0
+# [PLACEHOLDER] 演示节奏：韧性/处决段 96~145、Tab 关闭 240、抉择段 330~399。
+const STAGGER_BIND_FRAME: int = 96
+const STAGGER_EXEC_FRAME: int = 126
+const STAGGER_END_FRAME: int = 146
+const CODEX_TAB_CLOSE_FRAME: int = 240
+const BOON_BIND_FRAME: int = 330
+const BOON_SELECT_FRAME: int = 352
+const BOON_END_FRAME: int = 400
+
 # R28 既有输入路由节点路径（只读引用）
 const HUD_PATH: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
 const ENCOUNTER_PATH: String = "EncounterRoot"
@@ -143,6 +189,18 @@ var _status_label: Label = null
 # Rank-1 tutorial_director 接口（并发时序下可能未落盘；如实登记，不假设存在）
 var _tutorial_director: Node = null
 var _tutorial_api_available: bool = false
+# ---- R33 新玩法演示运行期引用（防御性解析 / 判空降级，不假设服务已落盘）----
+var _r33_layer: CanvasLayer = null
+var _r33_poise_bar: ProgressBar = null
+var _r33_stagger_label: Label = null
+var _r33_draft_label: Label = null
+var _r33_stagger_svc: Object = null
+var _r33_boon_svc: Object = null
+var _r33_exec_text: String = ""
+var _r33_select_text: String = ""
+var _r33_exec_count: int = 0
+var _r33_select_count: int = 0
+var _r33_signals_connected: bool = false
 
 
 func _initialize() -> void:
@@ -208,6 +266,9 @@ func _initialize() -> void:
 
 	# ⑥ R29：首帧动作帧 1 帧延迟修复 —— 第 0 帧之前预热一次真实输入路由（详见头部 R29 注释）。
 	_prewarm_action_input()
+	# ⑦ R33：新玩法演示可见层 + Rank-2 真实服务绑定 + 信号回读（演示驱动，见 DONE-R33.md）。
+	_build_r33_overlay()
+	_bind_r33_services()
 
 
 ## R29 · _initialize 阶段（第 0 帧之前）预热注入一次真实 J 键，消除录屏首帧 idle 0/0 延迟。
@@ -228,8 +289,10 @@ func _on_frame() -> void:
 	_drive_wave_space(_frame)
 	_drive_growth_hud(_frame)
 	_drive_real_input(_frame)
+	_drive_r33_mechanisms(_frame)
 	_frame += 1
 	if _frame == TOTAL_FRAMES:
+		_r33_release_signals()
 		print("==== [R22 presentation] 时间线完成 frame=%d（--quit-after 450 负责退出）====" % _frame)
 
 
@@ -636,6 +699,19 @@ func _drive_real_input(f: int) -> void:
 	# ⑤ 关键帧只读回读（不写）：验证输入经既有路由生效。
 	if f == 0 or f == E_OPEN_FRAME + 2 or f == BUY_FRAME + 1 or f == 225 or f == 449:
 		_log_input_evidence(f)
+	# ⑥ R33：F 键处决（真实 Input.parse_input_event → HUD._process_r32_keys →
+	#    request_execution() → 真实 StaggerService.try_execute()）。
+	if f == STAGGER_EXEC_FRAME:
+		_inject_key(KEY_F_CODE)
+		print("[R33][INPUT] frame=%d 注入真实按键 F(KEY_F=%d) -> HUD.request_execution() → 真实 StaggerService.try_execute()" % [f, KEY_F_CODE])
+	# ⑦ R33：Tab 再注入一次关闭图鉴（演示「图鉴关闭 → 兑换/赐福成长面板恢复」互斥）。
+	if f == CODEX_TAB_CLOSE_FRAME:
+		_inject_key(KEY_TAB_CODE)
+		print("[R33][INPUT] frame=%d 再注入真实按键 Tab -> 关闭图鉴；HUD 互斥恢复兑换面板 visible（R33 修复实证）" % f)
+	# ⑧ R33：数字键 2 选择赐福抉择（真实输入 → HUD._select_boon_draft(1) → 真实 BoonDraftService.select(1)）。
+	if f == BOON_SELECT_FRAME:
+		_inject_key(KEY_2_CODE)
+		print("[R33][INPUT] frame=%d 注入真实按键 2(KEY_2=%d) -> HUD._select_boon_draft(1) → 真实 BoonDraftService.select(1)" % [f, KEY_2_CODE])
 
 
 ## 教学闭环监测：读 tutorial_director 既有只读快照 + is_tutorial_active()；
@@ -678,5 +754,243 @@ func _log_input_evidence(f: int) -> void:
 		var cd: Node = _courtyard.get_node_or_null("CodexDirector") as Node
 		if cd != null and cd.has_method("is_panel_open"):
 			codex_open = str(cd.call("is_panel_open"))
-	print("[R28][EVIDENCE] frame=%d shop_open=%s shop_message=%s | StatusLabel=%s | codex_panel_open=%s" % [
-			f, shop_open, shop_msg, status, codex_open])
+	# R33：只读回读兑换面板【真实节点 visible】留证 —— f=225（Tab 图鉴开）应为 false、
+	#   f=449（Tab 关）应为 true，即「图鉴打开→兑换确实隐藏 / 关闭→恢复」的实机证据。
+	var shop_visible: String = "n/a"
+	if _hud != null and is_instance_valid(_hud):
+		var lbl: Label = _hud.get("_shop_label") as Label
+		if lbl != null and is_instance_valid(lbl):
+			shop_visible = str(lbl.visible)
+	print("[R28][EVIDENCE] frame=%d shop_open=%s shop_message=%s | StatusLabel=%s | codex_panel_open=%s | shop_label_visible=%s" % [
+			f, shop_open, shop_msg, status, codex_open, shop_visible])
+
+
+## ============================================================================
+## R33 [ROUND=R33] · 新玩法演示可见层 + 真实服务驱动（Rank-1 本轮独占本文件）
+## 可见层文本/数值一律读 HUD 公开快照 get_stagger_hud_view() / get_boon_draft_view()，
+## 不写既有 HUD 的 Label.text、不调 debug_*、不伪造数值；运行时挂载、不写 courtyard.tscn。
+## 【演示驱动】开窗 / 卡片由显式调用 Rank-2 公开方法构造，见 DONE-R33.md 待裁决项。
+## ============================================================================
+
+func _r33_make_label(n: String) -> Label:
+	var l: Label = Label.new()
+	l.name = n
+	l.add_theme_font_size_override("font_size", 16)
+	l.add_theme_color_override("font_color", Color(1.0, 0.96, 0.82, 1.0))
+	l.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.06, 1.0))
+	l.add_theme_constant_override("outline_size", 5)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var bg: StyleBoxFlat = StyleBoxFlat.new()
+	bg.bg_color = Color(0.04, 0.06, 0.12, 0.30)
+	bg.set_corner_radius_all(6)
+	bg.set_border_width_all(1)
+	bg.border_color = Color(0.83, 0.68, 0.3, 0.55)
+	bg.content_margin_left = 10.0
+	bg.content_margin_right = 10.0
+	bg.content_margin_top = 6.0
+	bg.content_margin_bottom = 6.0
+	l.add_theme_stylebox_override("normal", bg)
+	return l
+
+
+func _r33_hide_all() -> void:
+	if _r33_poise_bar != null and is_instance_valid(_r33_poise_bar):
+		_r33_poise_bar.visible = false
+	if _r33_stagger_label != null and is_instance_valid(_r33_stagger_label):
+		_r33_stagger_label.visible = false
+	if _r33_draft_label != null and is_instance_valid(_r33_draft_label):
+		_r33_draft_label.visible = false
+
+
+func _build_r33_overlay() -> void:
+	var layer: CanvasLayer = CanvasLayer.new()
+	layer.name = R33_LAYER_NAME
+	layer.layer = R33_LAYER_INDEX
+	# ① Boss 韧性条：真实 ProgressBar（非文本伪条），value 由 HUD 快照 poise_ratio 驱动。
+	var bar: ProgressBar = ProgressBar.new()
+	bar.name = "R33PoiseBar"
+	bar.min_value = 0.0
+	bar.max_value = 100.0
+	bar.value = 100.0
+	bar.show_percentage = false
+	bar.offset_left = R33_RECT_LEFT + 12.0
+	bar.offset_top = R33_RECT_TOP + 12.0
+	bar.offset_right = R33_RECT_RIGHT - 12.0
+	bar.offset_bottom = R33_RECT_TOP + 34.0
+	layer.add_child(bar)
+	_r33_poise_bar = bar
+	# ② 处决窗口读秒 / F 处决反馈（多行 Label）。
+	var sl: Label = _r33_make_label("R33StaggerLabel")
+	sl.offset_left = R33_RECT_LEFT + 12.0
+	sl.offset_top = R33_RECT_TOP + 40.0
+	sl.offset_right = R33_RECT_RIGHT - 12.0
+	sl.offset_bottom = R33_RECT_BOTTOM - 12.0
+	layer.add_child(sl)
+	_r33_stagger_label = sl
+	# ③ 赐福抉择三选一卡片（与韧性段互斥显示）。
+	var dl: Label = _r33_make_label("R33BoonDraftLabel")
+	dl.offset_left = R33_RECT_LEFT + 12.0
+	dl.offset_top = R33_RECT_TOP + 12.0
+	dl.offset_right = R33_RECT_RIGHT - 12.0
+	dl.offset_bottom = R33_RECT_BOTTOM - 12.0
+	layer.add_child(dl)
+	_r33_draft_label = dl
+	_r33_hide_all()
+	_r33_layer = layer
+	# SceneTree._initialize 已能取到 Courtyard 实例（场景树已构建）；仍用 call_deferred
+	# 双保险，避开 _ready 传播期（同 R29/R30/R31 既有口径）。
+	root.call_deferred("add_child", layer)
+	print("[R33][OVERLAY] 演示可见层组装完成（CanvasLayer layer=%d，rect=(%.0f,%.0f)-(%.0f,%.0f) 避开既有 HUD/角色）→ deferred 入 root" % [
+			R33_LAYER_INDEX, R33_RECT_LEFT, R33_RECT_TOP, R33_RECT_RIGHT, R33_RECT_BOTTOM])
+
+
+func _bind_r33_services() -> void:
+	# Rank-2 真实服务（CACHE_MODE_IGNORE 回读真值）；缺件判空降级、不崩、不伪造。
+	if ResourceLoader.exists(STAGGER_SVC_PATH) and ResourceLoader.exists(STAGGER_CFG_PATH):
+		var ss: Script = ResourceLoader.load(STAGGER_SVC_PATH, "Script", ResourceLoader.CACHE_MODE_IGNORE) as Script
+		var sc: Resource = ResourceLoader.load(STAGGER_CFG_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as Resource
+		if ss != null and sc != null:
+			_r33_stagger_svc = ss.new(sc)
+			if _hud != null and is_instance_valid(_hud) and _hud.has_method("bind_stagger_service"):
+				_hud.call("bind_stagger_service", _r33_stagger_svc)
+	if ResourceLoader.exists(BOON_SVC_PATH) and ResourceLoader.exists(BOON_CFG_PATH):
+		var bs: Script = ResourceLoader.load(BOON_SVC_PATH, "Script", ResourceLoader.CACHE_MODE_IGNORE) as Script
+		var bc: Resource = ResourceLoader.load(BOON_CFG_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as Resource
+		if bs != null and bc != null:
+			_r33_boon_svc = bs.new(bc)
+			if _hud != null and is_instance_valid(_hud) and _hud.has_method("bind_boon_draft_service"):
+				_hud.call("bind_boon_draft_service", _r33_boon_svc)
+	# 真实信号回读（只登记，不伪造画面数值）；末尾 _r33_release_signals() 显式释放。
+	if _hud != null and is_instance_valid(_hud):
+		if _hud.has_signal("execution_performed"):
+			_hud.connect("execution_performed", Callable(self, "_r33_on_execution"))
+			_r33_signals_connected = true
+		if _hud.has_signal("boon_draft_selected"):
+			_hud.connect("boon_draft_selected", Callable(self, "_r33_on_boon_selected"))
+			_r33_signals_connected = true
+	print("[R33][SVC] stagger=%s boon=%s | 演示驱动：开窗/卡片由显式调用 Rank-2 公开方法构造，见 DONE-R33.md" % [
+			str(_r33_stagger_svc != null), str(_r33_boon_svc != null)])
+
+
+func _r33_on_execution(_window_id: String, bonus_points: int) -> void:
+	_r33_exec_count += 1
+	_r33_exec_text = "处决成功！额外点数 +%d（F 键）" % bonus_points
+	print("[R33][EXEC] execution_performed 真实信号回读 bonus=%d count=%d" % [bonus_points, _r33_exec_count])
+
+
+func _r33_on_boon_selected(index: int, choice_id: String) -> void:
+	_r33_select_count += 1
+	_r33_select_text = "已选择第 %d 项（%s）｜数字键确认" % [index + 1, choice_id]
+	print("[R33][BOON] boon_draft_selected 真实信号回读 index=%d id=%s count=%d" % [
+			index, choice_id, _r33_select_count])
+
+
+func _r33_release_signals() -> void:
+	if not _r33_signals_connected or _hud == null or not is_instance_valid(_hud):
+		return
+	var cb1: Callable = Callable(self, "_r33_on_execution")
+	if _hud.has_signal("execution_performed") and _hud.is_connected("execution_performed", cb1):
+		_hud.disconnect("execution_performed", cb1)
+	var cb2: Callable = Callable(self, "_r33_on_boon_selected")
+	if _hud.has_signal("boon_draft_selected") and _hud.is_connected("boon_draft_selected", cb2):
+		_hud.disconnect("boon_draft_selected", cb2)
+	_r33_signals_connected = false
+	print("[R33][RELEASE] execution_performed / boon_draft_selected 信号连接已释放（_exit_tree 兜底口径）")
+
+
+func _r33_open_stagger_window(f: int) -> void:
+	_r33_exec_text = ""
+	if _r33_stagger_svc == null:
+		print("[R33][STAGGER] frame=%d 真实 StaggerService 不可用，韧性演示如实跳过（不伪造）" % f)
+		return
+	# 【演示驱动】真实「玩家命中 → apply_hit」链未接入演示序列（无真实命中削韧事件），
+	# 显式调用 Rank-2 公开 apply_hit(100.0) 构造「破韧开窗」演示状态（签名见 DONE-R32.md §3）。
+	var r: Dictionary = _r33_stagger_svc.call("apply_hit", 100.0) as Dictionary
+	if _hud != null and is_instance_valid(_hud) and _hud.has_method("poll_stagger_service"):
+		_hud.call("poll_stagger_service")
+	print("[R33][STAGGER] frame=%d apply_hit(100.0) → opened_now=%s window=%s remaining=%s（演示驱动：非玩家真实命中链）" % [
+			f, str(r.get("opened_now", "?")), str(r.get("window_open", "?")), str(r.get("window_remaining", "?"))])
+
+
+func _r33_refresh_stagger(f: int) -> void:
+	_r33_hide_all()
+	if _r33_poise_bar == null or _r33_stagger_label == null:
+		return
+	var v: Dictionary = {}
+	if _hud != null and is_instance_valid(_hud) and _hud.has_method("get_stagger_hud_view"):
+		v = _hud.call("get_stagger_hud_view") as Dictionary
+	_r33_poise_bar.value = clampf(float(v.get("poise_ratio", 1.0)) * 100.0, 0.0, 100.0)
+	var lines: Array[String] = []
+	lines.append(str(v.get("poise_text", "Boss 韧性")))
+	lines.append(str(v.get("window_text", "")))
+	if not _r33_exec_text.is_empty():
+		lines.append(_r33_exec_text)
+	_r33_stagger_label.text = "\n".join(PackedStringArray(lines))
+	_r33_poise_bar.visible = true
+	_r33_stagger_label.visible = true
+	if f == STAGGER_BIND_FRAME or f == STAGGER_EXEC_FRAME or f == STAGGER_END_FRAME - 1:
+		print("[R33][STAGGER][HUD] frame=%d poise=[%s] window=[%s] exec=[%s]（读 HUD 真实快照渲染可见层）" % [
+				f, str(v.get("poise_text", "?")), str(v.get("window_text", "?")), _r33_exec_text])
+
+
+func _r33_open_boon_draft(f: int) -> void:
+	_r33_select_text = ""
+	if _hud == null or not is_instance_valid(_hud) or not _hud.has_method("on_wave_cleared"):
+		print("[R33][BOON] frame=%d HUD 不可用，抉择演示如实跳过（不伪造）" % f)
+		return
+	# 【演示驱动】真实「清波 → wave_cleared → 抉择」链未接入演示序列（无真实清波事件），
+	# 显式调用 HUD.on_wave_cleared()（内部读真实 BoonDraftService 候选）构造三选一卡片。
+	_hud.call("on_wave_cleared")
+	print("[R33][BOON] frame=%d on_wave_cleared() → 三选一卡片打开（演示驱动：非玩家真实清波可达）" % f)
+
+
+func _r33_refresh_boon_draft(f: int) -> void:
+	_r33_hide_all()
+	if _r33_draft_label == null:
+		return
+	var v: Dictionary = {}
+	if _hud != null and is_instance_valid(_hud) and _hud.has_method("get_boon_draft_view"):
+		v = _hud.call("get_boon_draft_view") as Dictionary
+	var choices: Array = v.get("choices", []) as Array
+	var lines: Array[String] = []
+	lines.append("赐福抉择 · 三选一（数字键 1 / 2 / 3 选择）")
+	for i: int in range(choices.size()):
+		var c: Variant = choices[i]
+		var title: String = ""
+		if typeof(c) == TYPE_DICTIONARY:
+			var d: Dictionary = c as Dictionary
+			title = String(d.get("title", d.get("id", "")))
+		lines.append("  %d. %s" % [i + 1, title])
+	if not _r33_select_text.is_empty():
+		lines.append(_r33_select_text)
+	elif bool(v.get("open", false)):
+		lines.append("提示：按 1 / 2 / 3 选择一项")
+	_r33_draft_label.text = "\n".join(PackedStringArray(lines))
+	_r33_draft_label.visible = true
+	if f == BOON_BIND_FRAME or f == BOON_SELECT_FRAME or f == BOON_END_FRAME - 1:
+		print("[R33][BOON][HUD] frame=%d open=%s choices=%d select=[%s]（读 HUD 真实快照渲染可见层）" % [
+				f, str(v.get("open", "?")), choices.size(), _r33_select_text])
+
+
+## 逐帧驱动：韧性/处决段（96~145）与赐福抉择段（330~399）互斥显示；其余帧隐藏。
+func _drive_r33_mechanisms(f: int) -> void:
+	if f == STAGGER_BIND_FRAME:
+		# 可见层入树回读：证明 deferred add_child 已生效（CanvasLayer 能被 MovieMaker 渲染的前提）。
+		print("[R33][OVERLAY] frame=%d 可见层入树回读 is_inside_tree=%s（CanvasLayer 渲染前提）" % [
+				f, str(_r33_layer != null and _r33_layer.is_inside_tree())])
+		_r33_open_stagger_window(f)
+	if f >= STAGGER_BIND_FRAME and f < STAGGER_END_FRAME:
+		# 真实服务 tick(delta) 推进窗口倒计时 + HUD.poll_stagger_service() 回读真实快照；
+		# 二者均由显式逐帧调用驱动（演示序列确定性，不读引擎真实时钟）。
+		if _r33_stagger_svc != null and _r33_stagger_svc.has_method("tick"):
+			_r33_stagger_svc.call("tick", 1.0 / 30.0)
+		if _hud != null and is_instance_valid(_hud) and _hud.has_method("poll_stagger_service"):
+			_hud.call("poll_stagger_service")
+		_r33_refresh_stagger(f)
+		return
+	if f == BOON_BIND_FRAME:
+		_r33_open_boon_draft(f)
+	if f >= BOON_BIND_FRAME and f < BOON_END_FRAME:
+		_r33_refresh_boon_draft(f)
+		return
+	_r33_hide_all()

@@ -23,6 +23,9 @@ signal grace_selected(target_grace_id: String)     # 菜单选中某个已解锁
 signal travel_confirmed(target_grace_id: String)   # 确认传送；等价触发 GameEvents.travel_requested
 signal rest_requested(grace_id: String)            # 请求休息（→ grace_rest 落盘，由 3 号状态机处理）
 signal hud_refreshed()                             # 一次完整 refresh_all() 完成（自检 / 调试）
+# R32 [ROUND=R32] 新增信号（既有 4 信号逐字未动、既有验证断言不回退）：
+signal execution_performed(window_id: String, bonus_points: int)   # 机制 B：处决窗口内按 F 完成处决
+signal boon_draft_selected(index: int, choice_id: String)         # 机制 A：赐福抉择三选一
 
 # ==========================================================================
 # 常量
@@ -124,6 +127,15 @@ const SHOP_RECT_BOTTOM: float = 568.0
 const CODEX_DIRECTOR_PATH: String = "res://scripts/combat/codex_director.gd"
 const CODEX_DIRECTOR_NAME: String = "CodexDirector"
 
+# ---- R31 [ROUND=R31] · 打击反馈层运行时挂载（唯一新增接线，1~9 节逐字未动）----
+# 只做「运行时 new + call_deferred add_child」，不写 courtyard.tscn 任何场景节点
+#   （静态节点数保持 41 / uv 2/1/1 原样）、不改既有兑换逻辑与四套 HUD 文本。
+# 反馈层按实接入 EncounterDirector 既有信号；低画质 / 移动端由 set_low_quality 降级为只保留闪光；
+# Tab 图鉴 / 兑换面板打开时 set_panel_open 追加强化避让，反馈层不遮文字。
+# 独立 hud.tscn 实例（--script 验证）祖先链无 SubViewportContainer → 判空返回、不建节点。
+const IMPACT_FEEDBACK_PATH: String = "res://scripts/render/impact_feedback.gd"
+const IMPACT_LAYER_NAME: String = "ImpactFeedbackLayer"
+
 # ==========================================================================
 # 依赖注入 / 运行期引用
 # ==========================================================================
@@ -159,6 +171,8 @@ var _grace_ws: Node = null                    # 注入优先（验证），否�
 var _grace_writer: Node = null
 var _grace_runtime: Node = null
 var _grace_encounter: Node = null
+# R31：运行时挂载的打击反馈层（CanvasLayer，非场景静态节点）。
+var _impact_feedback: Node = null
 
 # ==========================================================================
 # 1) 生命周期 / 依赖绑定
@@ -188,6 +202,10 @@ func _ready() -> void:
 	_refresh_shop_hud()
 	# R30：运行时挂赐福图鉴导演（不改场景节点 / 不动兑换逻辑与四套 HUD 文本）。
 	_ensure_codex_director()
+	# R31：运行时挂打击反馈层（不改场景节点；面板避让 / 信号按实接入 / 画质降级见 §10）。
+	_ensure_impact_feedback()
+	# R32：HUD 分区布局初始化（纯内存、不写场景节点；分区 / 互斥 / 新机制见 §11~§14）。
+	_init_r32_layout()
 
 
 ## 注入 WorldState 引用并连信号；重复绑定先断开旧连接，避免重复回调。
@@ -879,6 +897,8 @@ func _deferred_shop_readable(outside_root: Node) -> void:
 
 ## 渲染三项可兑换增益（名称 / cost / 是否已解锁 / 当前余额）+ 可读提示到 GraceShopLabel。
 func _refresh_shop_hud() -> void:
+	# R31：兑换面板开闭同步给反馈层（面板打开时强化避让，闪光不遮文字）。
+	_sync_impact_panels()
 	if _shop_label == null:
 		return
 	var v: Dictionary = get_shop_view()
@@ -886,7 +906,9 @@ func _refresh_shop_hud() -> void:
 	# R29B：GraceShopLabel 与其 normal stylebox（深底 + 金边）整体随 shop_open 显隐。
 	#   shop_open=false（首帧 / 关闭 / 购买会话结束）→ visible=false，画面不出现大矩形；
 	#   仅 E 键打开（shop_open=true）才显示。既有文本 / 兑换逻辑逐字不动。
-	_shop_label.visible = is_open
+	# R32：显隐再叠加右侧面板互斥（Tab 图鉴 / 赐福抉择打开时隐藏兑换面板、关闭恢复）；
+	#   默认态 is_side_panel_visible("shop") 等价于 shop_open，既有断言不回退。
+	_shop_label.visible = is_side_panel_visible("shop")
 	if not is_open:
 		_shop_label.text = "赐福成长 · 按 E 打开兑换"
 		return
@@ -917,6 +939,10 @@ func _toggle_shop() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# R32：新增键（F 处决 / Tab 图鉴 / 抉择卡片数字键）走独立状态隔离处理；
+	# 既有 interact / 兑换数字键逻辑在其后逐字不变（保护既有回归断言）。
+	if _process_r32_keys(event):
+		return
 	if event.is_action_pressed("interact"):
 		_toggle_shop()
 		return
@@ -1036,7 +1062,13 @@ func _ensure_codex_director() -> void:
 	if container == null:
 		return
 	var mount: Node = container.get_parent()
-	if mount == null or mount.get_node_or_null(NodePath(CODEX_DIRECTOR_NAME)) != null:
+	if mount == null:
+		return
+	# R33：已挂载（场景复用 / 二次 _ready）时只补引用 + 重新收敛 Tab 仲裁，不重复建节点。
+	var existing: Node = mount.get_node_or_null(NodePath(CODEX_DIRECTOR_NAME))
+	if existing != null:
+		_codex_director = existing
+		call_deferred("_r33_arbitrate_codex_tab")
 		return
 	var script: Script = load(CODEX_DIRECTOR_PATH) as Script
 	if script == null:
@@ -1046,5 +1078,594 @@ func _ensure_codex_director() -> void:
 	if director == null:
 		return
 	director.name = CODEX_DIRECTOR_NAME
+	# R33：保存真实引用，供 Tab 互斥仲裁读 is_panel_open() / 驱动 toggle_panel()。
+	_codex_director = director
 	mount.call_deferred("add_child", director)
+	# R33：deferred 顺序在 add_child（→ director._ready 里 set_process_unhandled_input(true)）
+	#   之后执行，此时关闭其 Tab 监听才不会被 _ready 覆盖；HUD 成为唯一 Tab 仲裁者。
+	call_deferred("_r33_arbitrate_codex_tab")
 	print("[R30][HUD] 运行时挂载 %s → Courtyard（独立 CanvasLayer 由导演自建，不写 courtyard.tscn）" % CODEX_DIRECTOR_NAME)
+
+
+## R33 · Tab 仲裁收敛：director 已入树、_ready 已执行完，关闭其自身 _unhandled_input，
+## 由 HUD 统一处理 Tab（消除两个独立监听者状态不同步 / set_input_as_handled 吞键）。
+## 只改运行时节点属性，不改 codex_director.gd 文件、不写 courtyard.tscn（静态节点数 41 保持）。
+func _r33_arbitrate_codex_tab() -> void:
+	if _codex_director == null or not is_instance_valid(_codex_director):
+		return
+	_codex_director.set_process_unhandled_input(false)
+	apply_side_panel_visibility()
+	print("[R33][HUD] Tab 互斥仲裁收敛：CodexDirector 自身 Tab 监听关闭，HUD._unhandled_input 统一处理 Tab 并经 toggle_panel() 同步真实图鉴面板 visible")
+
+
+## R33 · 把互斥态落实到 CodexDirector 的真实图鉴面板节点（CanvasLayer.visible）。
+## 只经公开方法 is_panel_open()/toggle_panel() 鸭子类型适配：不读私有字段、不改其文件。
+## want 取 is_side_panel_visible("codex")（单一事实源）：赐福抉择 / 兑换优先时图鉴面板
+## 确实隐藏，关闭后恢复；director 缺失（--script 独立 hud 实例）判空降级、既有断言不回退。
+func _sync_codex_panel_visible() -> void:
+	if _codex_director == null or not is_instance_valid(_codex_director):
+		return
+	var cd: Node = _codex_director
+	if not cd.has_method("is_panel_open") or not cd.has_method("toggle_panel"):
+		return
+	var want: bool = is_side_panel_visible("codex")
+	if bool(cd.call("is_panel_open")) != want:
+		cd.call("toggle_panel")
+
+
+# ==========================================================================
+# 10) R31 [ROUND=R31] · 打击反馈层运行时挂载（唯一新增接线，1~9 节逐字未动）
+# ==========================================================================
+## 沿父链找到 SubViewportContainer，取其父节点 Courtyard 作挂载根（与 R29 兑换层 /
+## R30 CodexDirector 同口径：SubViewport 之外、铺满真实 1280x720 视口）。
+## call_deferred 避开 _ready() 传播期 "Parent node is busy setting up children"（R29 实证）。
+## 独立 hud.tscn 实例无 SubViewportContainer → 降级不建节点、不崩、既有回归不回退。
+func _ensure_impact_feedback() -> void:
+	var container: SubViewportContainer = null
+	var p: Node = get_parent()
+	while p != null:
+		if p is SubViewportContainer:
+			container = p as SubViewportContainer
+			break
+		p = p.get_parent()
+	if container == null:
+		return
+	var mount: Node = container.get_parent()
+	if mount == null or mount.get_node_or_null(NodePath(IMPACT_LAYER_NAME)) != null:
+		return
+	var script: Script = load(IMPACT_FEEDBACK_PATH) as Script
+	if script == null:
+		push_warning("[HUD] ImpactFeedback 脚本不可用，打击反馈层降级（不崩）")
+		return
+	var layer: Node = script.new() as Node
+	if layer == null:
+		return
+	layer.name = IMPACT_LAYER_NAME
+	_impact_feedback = layer
+	mount.call_deferred("add_child", layer)
+	# 按实接入 EncounterDirector 既有信号（反馈层内部 get_signal_connection_list 去重 connect）。
+	var director: Node = mount.get_node_or_null(NodePath("EncounterRoot"))
+	if director != null and layer.has_method("bind_director"):
+		layer.call("bind_director", director)
+	# 低画质 / 移动端只保留闪光（读 QualitySettings 既有 get_quality_preset，不每帧轮询）。
+	var quality: Node = mount.get_node_or_null(NodePath("QualitySettings"))
+	if quality != null and quality.has_method("get_quality_preset") \
+			and layer.has_method("set_low_quality"):
+		var preset: String = str(quality.call("get_quality_preset"))
+		layer.call("set_low_quality", preset == "low" or preset == "mobile")
+	_sync_impact_panels()
+	print("[R31][HUD] 运行时挂载 %s → Courtyard（CanvasLayer，不写 courtyard.tscn；按实接入既有战斗信号 / 画质降级 / 面板避让）" % IMPACT_LAYER_NAME)
+
+
+## 面板开闭同步：兑换面板由 shop_open 门控；Tab 图鉴面板只读 CodexDirector.is_panel_open()。
+## 事件驱动（_refresh_shop_hud / 挂载完成时各一次），不在 _process 每帧轮询。
+## 反馈层默认已常驻避让全部 HUD 文字 / 面板矩形，set_panel_open 再追加强化避让，
+## 故面板打开期间反馈层不遮挡文字；依赖缺失一律判空降级、不产生 SCRIPT ERROR。
+func _sync_impact_panels() -> void:
+	var fb: Node = _impact_feedback
+	if fb == null or not is_instance_valid(fb) or not fb.has_method("set_panel_open"):
+		return
+	# R33：与 apply_side_panel_visibility 共用单一事实源 is_side_panel_visible(...)，
+	#   不再用 shop_open 原态 / 另读 CodexDirector，避免反馈层避让与面板真实 visible 不一致。
+	fb.call("set_panel_open", "shop", is_side_panel_visible("shop"))
+	fb.call("set_panel_open", "codex", is_side_panel_visible("codex"))
+	fb.call("set_panel_open", "boon_draft", is_side_panel_visible("boon_draft"))
+
+
+# ==========================================================================
+# 11) R32 [ROUND=R32] · HUD 分区避让（归一化锚点 / 包围盒，不硬编码像素堆叠）
+# ==========================================================================
+# 根因（总指挥回看 capture/v090_demo.mp4 首/中/尾三帧目视实证）：
+#   a) 赐福引导行「已完成(3/3)/按T重开教学」与波次行「第 N/3 波｜赐福点数｜前计时｜历史最佳」
+#      挤在同一水平带 → 文字重叠；
+#   b) Tab 图鉴面板展开时与波次行 / 赐福成长面板文字叠压；
+#   c) 右上「画质设置·低/中/高」面板与右侧「赐福成长」面板同时常驻、文字叠压。
+# 修法：把 HUD 划成 6 个【两两不相交】的分区 + 1 个中央角色保护区，用
+#   【归一化锚点 Rect2（[0,1] 比例，position+size）】定义，不硬编码像素堆叠；
+#   运行时按当前视口尺寸线性缩放 → 任意分辨率（含降级档）都不出界、不重叠。
+#   右侧「兑换 / 图鉴 / 赐福抉择」三面板共用 ANCHOR_SIDE 同一分区且状态互斥（§12/§14）。
+# [PLACEHOLDER] 锚点为目视布局初值，待试玩校准；rationale：分区间保留安全缝
+#   （归一化后随缩放保持），配合 autowrap 保证长文本不越界、不叠压；调参只改本节常量。
+const LAYOUT_BASE: Vector2 = Vector2(1280.0, 720.0)
+const ANCHOR_TITLE: Rect2 = Rect2(0.01875, 0.02222, 0.37500, 0.11667)     # 左上标题
+const ANCHOR_QUALITY: Rect2 = Rect2(0.60625, 0.02222, 0.37500, 0.16667)   # 右上画质
+const ANCHOR_WAVE: Rect2 = Rect2(0.01875, 0.27778, 0.27813, 0.04167)      # 左中·波次带
+const ANCHOR_GUIDE: Rect2 = Rect2(0.01875, 0.33056, 0.27813, 0.04167)     # 左中·引导带（与波次分两行）
+const ANCHOR_STATUS: Rect2 = Rect2(0.01875, 0.92222, 0.96250, 0.05000)    # 左下状态条
+const ANCHOR_SIDE: Rect2 = Rect2(0.70313, 0.41667, 0.27813, 0.41667)      # 右侧面板（兑换/图鉴/抉择 互斥）
+const ANCHOR_CHAR: Rect2 = Rect2(0.31250, 0.31944, 0.37500, 0.47222)      # 中央角色保护区（非文字）
+
+var _layout_viewport: Vector2 = LAYOUT_BASE
+
+
+func _init_r32_layout() -> void:
+	set_layout_viewport(LAYOUT_BASE)
+
+
+## 降级分辨率入口：由 QualitySettings / 集成层按真实视口调用（不每帧轮询）。
+func set_layout_viewport(size: Vector2) -> void:
+	_layout_viewport = Vector2(maxf(1.0, size.x), maxf(1.0, size.y))
+
+
+func _scaled_rect(anchor: Rect2) -> Rect2:
+	return Rect2(anchor.position.x * _layout_viewport.x,
+			anchor.position.y * _layout_viewport.y,
+			anchor.size.x * _layout_viewport.x,
+			anchor.size.y * _layout_viewport.y)
+
+
+## 6 个 HUD 文字 / 面板分区的实际包围盒（供布局断言与运行时定位）。
+func get_layout_rects() -> Array[Dictionary]:
+	return [
+		{"id": "title", "rect": _scaled_rect(ANCHOR_TITLE)},
+		{"id": "quality", "rect": _scaled_rect(ANCHOR_QUALITY)},
+		{"id": "wave", "rect": _scaled_rect(ANCHOR_WAVE)},
+		{"id": "guide", "rect": _scaled_rect(ANCHOR_GUIDE)},
+		{"id": "status", "rect": _scaled_rect(ANCHOR_STATUS)},
+		{"id": "side", "rect": _scaled_rect(ANCHOR_SIDE)},
+	]
+
+
+func get_center_char_rect() -> Rect2:
+	return _scaled_rect(ANCHOR_CHAR)
+
+
+func get_hud_layout() -> Dictionary:
+	return {
+		"viewport": _layout_viewport,
+		"rects": get_layout_rects(),
+		"center_char": get_center_char_rect(),
+		"visible_side_panels": get_visible_side_panels(),
+		"codex_open": is_codex_open(),
+		"boon_draft_open": is_boon_draft_open(),
+	}
+
+
+# ==========================================================================
+# 12) R32 · 右侧面板互斥状态机（Tab 图鉴 ↔ 兑换 ↔ 赐福抉择）
+# ==========================================================================
+var _codex_open: bool = false
+var _boon_draft_open: bool = false
+# R33 [ROUND=R33] · 赐福图鉴导演真实引用（右侧面板互斥的唯一仲裁者 = HUD）。
+# 根因（总指挥回看 capture/v100_final.mp4 目视实证）：R30 的 CodexDirector 由
+#   call_deferred 挂载、晚于 HUD 入树，其 _unhandled_input 在逆序分发中优先命中 Tab
+#   并 vp.set_input_as_handled() 吞键 → HUD 收不到 Tab、_codex_open 恒 false、
+#   get_visible_side_panels() 恒按 shop_open 返回 shop → 兑换/赐福成长面板常驻；
+#   而 R32 的 19 条包围盒断言只读布局/逻辑态、直接 set_codex_open 绕过真实输入路径，
+#   故全 PASS 却与实机不符。
+# 修法：_ensure_codex_director() 保存引用并在 director 入树（_ready 执行完）后关闭
+#   其自身 Tab 监听，由 HUD._unhandled_input → _process_r32_keys 统一仲裁；
+#   apply_side_panel_visibility() 经公开 toggle_panel()/is_panel_open() 把互斥落实到
+#   CodexDirector 真实 CanvasLayer.visible 与兑换 Label.visible（不是只做包围盒）。
+# 独立 hud.tscn --script 实例无 SubViewportContainer → 引用恒 null、判空降级，
+#   既有 19 条断言 / 58·30·11·127 PASS 逐字不回退。
+var _codex_director: Node = null
+
+
+func set_codex_open(open: bool) -> void:
+	_codex_open = open
+	apply_side_panel_visibility()
+
+
+func is_codex_open() -> bool:
+	return _codex_open
+
+
+func _toggle_codex_panel() -> void:
+	set_codex_open(not _codex_open)
+
+
+## 右侧面板互斥：同一时刻最多 1 个可见；优先级 赐福抉择 > 图鉴 > 兑换。
+## Tab 图鉴打开时隐藏常驻兑换面板、关闭时按 shop_open 原态恢复（shop_open 本身不变）。
+func get_visible_side_panels() -> Array[String]:
+	var out: Array[String] = []
+	if _boon_draft_open:
+		out.append("boon_draft")
+	elif _codex_open:
+		out.append("codex")
+	elif shop_open:
+		out.append("shop")
+	return out
+
+
+func is_side_panel_visible(panel: String) -> bool:
+	return get_visible_side_panels().has(panel)
+
+
+## 把互斥状态落实到真实节点 / 打击反馈层：图鉴或抉择打开时强制隐藏兑换 Label，
+## 关闭后按 shop_open 恢复；R33 再把互斥落实到 CodexDirector 真实图鉴面板 visible，
+## 使「图鉴打开 → 兑换/赐福成长确实隐藏；关闭 → 恢复」在真实 Tab 输入路径上生效，
+## 不再只是包围盒布局。set_panel_open 让反馈层在面板区强化避让、不遮文字。
+func apply_side_panel_visibility() -> void:
+	var shop_visible: bool = is_side_panel_visible("shop")
+	if _shop_label != null and is_instance_valid(_shop_label):
+		_shop_label.visible = shop_visible
+	_sync_codex_panel_visible()
+	var fb: Node = _impact_feedback
+	if fb != null and is_instance_valid(fb) and fb.has_method("set_panel_open"):
+		fb.call("set_panel_open", "codex", is_side_panel_visible("codex"))
+		fb.call("set_panel_open", "boon_draft", is_side_panel_visible("boon_draft"))
+		fb.call("set_panel_open", "shop", shop_visible)
+
+
+# ==========================================================================
+# 13) R32 · 机制 B：Boss 韧性处决窗口（订阅 Rank-2 stagger_service 公开接口）
+# ==========================================================================
+# 边界：Rank-2 stagger_service.gd 为 RefCounted 纯逻辑、本轮并行交付（此刻未落盘）。
+#   本层【只经公开方法 / 信号】鸭子类型适配，绝不静态引用其 class_name、绝不直接读
+#   其私有实现字段；契约候选名成组登记，命中即用、缺失即降级、不伪造联调结果。
+#   待 Rank-2 落盘后按真实接口名复跑 verify_stagger_runtime_v100.gd（见 DONE-R32.md）。
+const STAGGER_SIGNAL_OPEN_CANDIDATES: Array[String] = [
+	"execution_window_opened", "window_opened", "stance_broken"]
+const STAGGER_SIGNAL_CLOSE_CANDIDATES: Array[String] = [
+	"execution_window_closed", "window_closed"]
+## Rank-2 真实服务还有 stagger_value_changed(current, maximum) 驱动韧性条（事件驱动，不轮询）。
+const STAGGER_SIGNAL_CHANGED_CANDIDATES: Array[String] = ["stagger_value_changed"]
+const STAGGER_METHOD_IS_OPEN: Array[String] = [
+	"is_execution_window_open", "is_window_open", "window_open"]
+const STAGGER_METHOD_REMAINING: Array[String] = [
+	"get_window_remaining_sec", "get_window_remaining", "get_remaining_sec"]
+const STAGGER_METHOD_POISE: Array[String] = [
+	"get_poise_ratio", "get_boss_poise_ratio", "get_poise"]
+const STAGGER_METHOD_EXECUTE: Array[String] = [
+	"perform_execution", "try_execute", "execute"]
+## [PLACEHOLDER] 处决窗口默认读秒：Rank-2 stagger_rules.tres 落盘前 HUD 侧降级初值。
+## rationale：给「处决窗口」读秒一个可见但短促的初值，真实时长以 Rank-2 信号 / 方法为准。
+const STAGGER_WINDOW_FALLBACK_SEC: float = 3.0
+
+var _stagger_service: Object = null
+var _stagger_window_open: bool = false
+var _stagger_window_remaining: float = 0.0
+var _stagger_poise_ratio: float = 1.0
+var _stagger_execution_consumed: bool = false
+var _execution_count: int = 0
+var _stagger_window_id: String = ""
+var _stagger_window_bonus: int = 0
+
+
+## 绑定 Rank-2 服务：按契约候选信号名 connect（去重），再读一次公开态。
+func bind_stagger_service(svc: Object) -> void:
+	_unbind_stagger_signals()
+	_stagger_service = svc
+	if svc == null:
+		return
+	for sig: String in STAGGER_SIGNAL_OPEN_CANDIDATES:
+		if svc.has_signal(sig):
+			_dedup_connect_stagger(svc, sig, "_on_stagger_window_opened")
+			break
+	for sig: String in STAGGER_SIGNAL_CLOSE_CANDIDATES:
+		if svc.has_signal(sig):
+			_dedup_connect_stagger(svc, sig, "_on_stagger_window_closed")
+			break
+	for sig: String in STAGGER_SIGNAL_CHANGED_CANDIDATES:
+		if svc.has_signal(sig):
+			_dedup_connect_stagger(svc, sig, "_on_stagger_value_changed")
+			break
+	poll_stagger_service()
+
+
+func _dedup_connect_stagger(svc: Object, sig: String, method: String) -> void:
+	var cb: Callable = Callable(self, method)
+	for conn in svc.get_signal_connection_list(sig):
+		var c: Callable = conn.get("callable", Callable())
+		if c.get_object() == self and String(c.get_method()) == method:
+			return
+	svc.connect(sig, cb)
+
+
+## _exit_tree 兜底 disconnect：信号连接必须有明确释放路径，卸载后不留悬空 Callable。
+func _unbind_stagger_signals() -> void:
+	if _stagger_service == null or not is_instance_valid(_stagger_service):
+		return
+	var all_sigs: Array = STAGGER_SIGNAL_OPEN_CANDIDATES \
+			+ STAGGER_SIGNAL_CLOSE_CANDIDATES + STAGGER_SIGNAL_CHANGED_CANDIDATES
+	for sig: String in all_sigs:
+		if not _stagger_service.has_signal(sig):
+			continue
+		var cb_open: Callable = Callable(self, "_on_stagger_window_opened")
+		if _stagger_service.is_connected(sig, cb_open):
+			_stagger_service.disconnect(sig, cb_open)
+		var cb_close: Callable = Callable(self, "_on_stagger_window_closed")
+		if _stagger_service.is_connected(sig, cb_close):
+			_stagger_service.disconnect(sig, cb_close)
+		var cb_changed: Callable = Callable(self, "_on_stagger_value_changed")
+		if _stagger_service.is_connected(sig, cb_changed):
+			_stagger_service.disconnect(sig, cb_changed)
+
+
+## 真实服务 execution_window_opened(remaining_sec: float, bonus_points: int) 为 2 参：
+## 第 2 参是额外点数（不是 window_id），此处按公开签名如实承接。
+func _on_stagger_window_opened(remaining_sec: Variant = null, bonus_points: Variant = null, _c: Variant = null) -> void:
+	_open_execution_window(remaining_sec, bonus_points)
+
+
+func _on_stagger_window_closed(_a: Variant = null, _b: Variant = null, _c: Variant = null) -> void:
+	_close_execution_window()
+
+
+## 真实服务 stagger_value_changed(current, maximum) → 韧性条比例（事件驱动，不轮询）。
+func _on_stagger_value_changed(current: Variant = null, maximum: Variant = null, _c: Variant = null) -> void:
+	if current == null or maximum == null:
+		return
+	if (typeof(current) == TYPE_FLOAT or typeof(current) == TYPE_INT) \
+			and (typeof(maximum) == TYPE_FLOAT or typeof(maximum) == TYPE_INT):
+		var mx: float = float(maximum)
+		if mx > 0.0:
+			_stagger_poise_ratio = clampf(float(current) / mx, 0.0, 1.0)
+
+
+func _open_execution_window(remaining: Variant, bonus: Variant) -> void:
+	var sec: float = STAGGER_WINDOW_FALLBACK_SEC
+	if remaining != null and (typeof(remaining) == TYPE_FLOAT or typeof(remaining) == TYPE_INT):
+		sec = maxf(0.0, float(remaining))
+	_stagger_window_open = true
+	_stagger_window_remaining = sec
+	_stagger_execution_consumed = false
+	_stagger_window_bonus = int(bonus) if (bonus != null \
+			and (typeof(bonus) == TYPE_INT or typeof(bonus) == TYPE_FLOAT)) else 0
+	# 真实服务不提供 window_id，留空如实登记；bonus_points 由信号第 2 参给出。
+	_stagger_window_id = ""
+
+
+func _close_execution_window() -> void:
+	_stagger_window_open = false
+	_stagger_window_remaining = 0.0
+
+
+## 从公开方法回读状态（不碰私有字段）：由信号回调 / 显式推进调用，不在 _process 每帧轮询。
+func poll_stagger_service() -> void:
+	if _stagger_service == null or not is_instance_valid(_stagger_service):
+		return
+	var svc: Object = _stagger_service
+	# 首选 get_snapshot()（Rank-2 真实服务稳定公开接口）：一次读回韧性 / 窗口态，
+	# 不碰任何私有字段；缺失再回落候选方法（兼容替身 / 旧口径）。
+	if svc.has_method("get_snapshot"):
+		var snap: Variant = svc.call("get_snapshot")
+		if typeof(snap) == TYPE_DICTIONARY:
+			var d: Dictionary = snap as Dictionary
+			var cur: float = float(d.get("stagger", 0.0))
+			var mx: float = float(d.get("stagger_max", 1.0))
+			if mx > 0.0:
+				_stagger_poise_ratio = clampf(cur / mx, 0.0, 1.0)
+			var wo: Variant = d.get("window_open", null)
+			if typeof(wo) == TYPE_BOOL:
+				if bool(wo) and not _stagger_window_open:
+					_open_execution_window(d.get("window_remaining", null), d.get("execute_bonus_points", null))
+				elif not bool(wo) and _stagger_window_open:
+					_close_execution_window()
+			if _stagger_window_open and d.has("window_remaining"):
+				_stagger_window_remaining = maxf(0.0, float(d.get("window_remaining", 0.0)))
+			return
+	for m: String in STAGGER_METHOD_POISE:
+		if svc.has_method(m):
+			_stagger_poise_ratio = clampf(float(svc.call(m)), 0.0, 1.0)
+			break
+	var is_open: Variant = null
+	for m: String in STAGGER_METHOD_IS_OPEN:
+		if svc.has_method(m):
+			is_open = svc.call(m)
+			break
+	if is_open != null and typeof(is_open) == TYPE_BOOL:
+		if bool(is_open) and not _stagger_window_open:
+			_open_execution_window(null, null)
+		elif not bool(is_open) and _stagger_window_open:
+			_close_execution_window()
+	if _stagger_window_open:
+		for m: String in STAGGER_METHOD_REMAINING:
+			if svc.has_method(m):
+				_stagger_window_remaining = maxf(0.0, float(svc.call(m)))
+				break
+
+
+## 处决窗口读秒推进（显式驱动，确定性；超时自动关窗 = 契约「超时关闭」）。
+func tick_stagger(delta: float) -> void:
+	if not _stagger_window_open:
+		return
+	_stagger_window_remaining = maxf(0.0, _stagger_window_remaining - maxf(0.0, delta))
+	if _stagger_window_remaining <= 0.0:
+		_close_execution_window()
+
+
+## 窗口内触发一次处决：重复触发 / 窗口外一律拒绝；成功后 emit execution_performed。
+func request_execution() -> Dictionary:
+	if not _stagger_window_open:
+		return {"ok": false, "reason": "window_closed"}
+	if _stagger_execution_consumed:
+		return {"ok": false, "reason": "already_executed"}
+	_stagger_execution_consumed = true
+	_execution_count += 1
+	var bonus: int = 0
+	if _stagger_service != null and is_instance_valid(_stagger_service):
+		for m: String in STAGGER_METHOD_EXECUTE:
+			if _stagger_service.has_method(m):
+				var r: Variant = _stagger_service.call(m)
+				if typeof(r) == TYPE_DICTIONARY:
+					bonus = int((r as Dictionary).get("bonus_points", 0))
+				break
+	execution_performed.emit(_stagger_window_id, bonus)
+	# 处决消耗本窗口一次机会；窗口本身由 tick_stagger 超时 / Rank-2 closed 信号关闭。
+	# 窗口内重复 F 由 _stagger_execution_consumed 拒绝（契约「重复触发拒绝」）。
+	return {"ok": true, "reason": "ok",
+			"execution_count": _execution_count, "bonus_points": bonus}
+
+
+func _try_execution_input() -> void:
+	request_execution()
+
+
+## HUD 显示数据（Boss 韧性条 / 处决窗口读秒），纯只读快照供验证与渲染回读。
+func get_stagger_hud_view() -> Dictionary:
+	return {
+		"window_open": _stagger_window_open,
+		"remaining_sec": _stagger_window_remaining,
+		"poise_ratio": _stagger_poise_ratio,
+		"execution_consumed": _stagger_execution_consumed,
+		"execution_count": _execution_count,
+		"window_id": _stagger_window_id,
+		"window_bonus": _stagger_window_bonus,
+		"service_available": _stagger_service != null and is_instance_valid(_stagger_service),
+		"poise_text": "Boss 韧性 %d%%" % int(_stagger_poise_ratio * 100.0),
+		"window_text": ("处决窗口 %.1fs · 按 F" % _stagger_window_remaining) if _stagger_window_open else "",
+	}
+
+
+# ==========================================================================
+# 14) R32 · 机制 A：赐福抉择三选一卡片（调用 Rank-2 boon_draft_service.select）
+# ==========================================================================
+const BOON_METHOD_CANDIDATES: Array[String] = ["get_candidates", "get_options", "get_choices"]
+
+var _boon_draft_service: Object = null
+var _boon_draft_choices: Array = []
+var _boon_draft_selected_index: int = -1
+var _boon_draft_last_result: Dictionary = {}
+
+
+func bind_boon_draft_service(svc: Object) -> void:
+	_boon_draft_service = svc
+
+
+## 每波清波后钩子（wave_cleared）：显示三选一卡片；与图鉴 / 兑换互斥、不遮中央角色。
+func on_wave_cleared(_index: Variant = null, _points: Variant = null) -> void:
+	show_boon_draft()
+
+
+func show_boon_draft(choices: Array = []) -> void:
+	_boon_draft_choices = choices.duplicate(true)
+	if _boon_draft_choices.is_empty() and _boon_draft_service != null \
+			and is_instance_valid(_boon_draft_service):
+		for m: String in BOON_METHOD_CANDIDATES:
+			if _boon_draft_service.has_method(m):
+				var c: Variant = _boon_draft_service.call(m)
+				if typeof(c) == TYPE_ARRAY:
+					_boon_draft_choices = (c as Array).duplicate(true)
+				break
+		# 契约适配：真实 BoonDraftService 的候选在 get_config() → BoonDraftConfig.boons
+		# （Array[Dictionary]）；用鸭子类型读，不静态引用 Rank-2 class_name、不读私有实现。
+		if _boon_draft_choices.is_empty() and _boon_draft_service.has_method("get_config"):
+			var cfg: Object = _boon_draft_service.call("get_config") as Object
+			if cfg != null:
+				var raw: Variant = cfg.get("boons")
+				if typeof(raw) == TYPE_ARRAY:
+					for row: Variant in (raw as Array):
+						if typeof(row) == TYPE_DICTIONARY:
+							var d: Dictionary = row as Dictionary
+							_boon_draft_choices.append({
+								"id": String(d.get("id", "")),
+								"title": String(d.get("title", "")),
+							})
+	_boon_draft_open = true
+	_boon_draft_selected_index = -1
+	_boon_draft_last_result = {}
+	apply_side_panel_visibility()
+
+
+func close_boon_draft() -> void:
+	_boon_draft_open = false
+	apply_side_panel_visibility()
+
+
+func is_boon_draft_open() -> bool:
+	return _boon_draft_open
+
+
+## 数字键 1/2/3 选择：与既有兑换数字键做状态隔离（_process_r32_keys 拦截），不误触。
+func _select_boon_draft(index: int) -> Dictionary:
+	if not _boon_draft_open:
+		return {"ok": false, "reason": "draft_closed"}
+	if index < 0 or index > 2:
+		return {"ok": false, "reason": "invalid_index"}
+	var result: Dictionary = {"ok": true, "reason": "selection_recorded"}
+	if _boon_draft_service != null and is_instance_valid(_boon_draft_service) \
+			and _boon_draft_service.has_method("select"):
+		var r: Variant = _boon_draft_service.call("select", index)
+		if typeof(r) == TYPE_DICTIONARY:
+			result = r as Dictionary
+	else:
+		result["service_available"] = false
+	_boon_draft_selected_index = index
+	_boon_draft_last_result = result
+	var choice_id: String = ""
+	if index < _boon_draft_choices.size():
+		var c: Variant = _boon_draft_choices[index]
+		if typeof(c) == TYPE_DICTIONARY:
+			choice_id = String((c as Dictionary).get("id", ""))
+	boon_draft_selected.emit(index, choice_id)
+	close_boon_draft()
+	return result
+
+
+func get_boon_draft_view() -> Dictionary:
+	return {
+		"open": _boon_draft_open,
+		"choices": _boon_draft_choices.duplicate(true),
+		"selected_index": _boon_draft_selected_index,
+		"last_result": _boon_draft_last_result.duplicate(),
+		"service_available": _boon_draft_service != null and is_instance_valid(_boon_draft_service),
+		"rect": _scaled_rect(ANCHOR_SIDE),
+		"overlaps_center_char": _scaled_rect(ANCHOR_SIDE).intersection(get_center_char_rect()).get_area() > 0.0,
+	}
+
+
+# ==========================================================================
+# 15) R32 · 输入状态隔离（既有 _unhandled_input 逻辑逐字保留在其后）
+# ==========================================================================
+func _digit_index(pc: int, kc: int) -> int:
+	for i: int in range(3):
+		var key_code: int = KEY_1 + i
+		if pc == key_code or kc == key_code:
+			return i
+	return -1
+
+
+## 返回是否消费该事件。抉择卡片打开时数字键 1/2/3 只走抉择、其余键一律拦截，
+## 绝不落到既有兑换逻辑（状态隔离避免误触）。F / Tab 走处决 / 图鉴互斥。
+func _process_r32_keys(event: InputEvent) -> bool:
+	if not (event is InputEventKey):
+		return false
+	var k: InputEventKey = event as InputEventKey
+	if not k.pressed or k.echo:
+		return false
+	var pc: int = k.physical_keycode
+	var kc: int = k.keycode
+	if _boon_draft_open:
+		var di: int = _digit_index(pc, kc)
+		if di >= 0:
+			_select_boon_draft(di)
+		return true
+	if pc == KEY_TAB or kc == KEY_TAB:
+		_toggle_codex_panel()
+		return true
+	if pc == KEY_F or kc == KEY_F:
+		_try_execution_input()
+		return true
+	return false
+
+
+## 验证 / 注入入口：与 _unhandled_input 走完全相同的 R32 键处理路径（确定性，不需帧分发）。
+func process_key_event(event: InputEvent) -> bool:
+	return _process_r32_keys(event)
+
+
+func _exit_tree() -> void:
+	_unbind_stagger_signals()
+	_codex_director = null

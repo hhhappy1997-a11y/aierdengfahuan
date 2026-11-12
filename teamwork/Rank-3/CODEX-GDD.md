@@ -187,3 +187,5 @@
 - `teamwork/Rank-2/CODEX-TUNING.md` §1 / §5 / §6 · `godot/scripts/combat/codex_config.gd` · `godot/data/rpg/codex_entries.tres` · `verify_codex_reward_v080.gd`（**Rank-2 本轮并发产出，12:55~12:59 已落盘、13:01:35 done；本 GDD 已校对引用一致**）
 - `godot/scripts/combat/codex_director.gd` · `presentation.gd` · `hud.gd` 最小接线 · `verify_codex_v080.gd`（**Rank-1 本轮并发产出，Rank-3 不代验**）
 - `teamwork/Rank-3/DONE-R30.md`（本轮实际交付 / 真跑输出 / 未完成项）· 工程根 `README.md`（v0.8.0 条目与「还差什么」）
+
+> **R31 / v0.9.0 追加（满愿闭环 · 状态登记）**：本轮 Rank-3 新写 `teamwork/Rank-3/V090-GDD.md`，把本文 §8 四层目标梯度（教学→三波→成长→图鉴）的末端补上「满愿闭环」—— 四项 `grace.codex_<id>.unlocked` 全为 `true` 时触发一次性收束演出，用新三段式 flag `grace.codex_full_wish.notified`（bool / false→true 单向）保证只触发一次；与 `grace.trial.modifier_active`（String / 非单调·局内翻转）一并登记进 `00-协作契约.md` §3.3 R31 说明段与 `存档与flag规范.md` §3.3 全局登记表，只作 `flags` 字典新 key、十字段与 `schema_version=3` 冻结、不写 `removals`、不新增顶层字段。新写 `godot/scripts/rpg/verify_v090_save_readback.gd` 三进程三态验证四项 `grace.codex_<id>.unlocked` 与磁盘一致（B 组 4 条、合计 56 PASS / 0 FAIL，见 `DONE-R31.md`）。**本文 §1~§12 全部历史章节（含 C-V1~C-V6 校对清单、§10 落地表引用段、§12 关联清单）一律未改、只追加本 R31 状态段**；工程根 `README.md` 的同步见其 R31 段 / `DONE-R31.md`。
