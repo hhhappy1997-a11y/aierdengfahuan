@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261112-151135-267-A4",
+  "command_id": "cmd-20261112-151135-267",
+  "ai": 4,
+  "from": "总指挥",
+  "task": "[ROUND=R35C] 【R35C · Rank-4 同步 mobile 档过期断言（HOST 裁决 A63）】R35B 把 mobile 四项全关档位从「_draw() 直接 return / FXBloom visible=false」改为「轻量环 + HUD 文字」后，R19 既有回归 verify_fx_mobile.gd 真跑 45/47，仅 FXBloom mobile visible 与汇总项两条因口径修订 FAIL（脚本只读未改）。\n【裁决 A63】：mobile 档「轻量降级绘制」是正确方向（移动端不劣化 ≠ 完全不绘制），旧断言期望值过期；**同步断言到新口径（把期望改为轻量可见 / 汇总计数正确），不删断言、不放宽判定、不改判定逻辑**，复跑到 47 PASS / 0 FAIL。\n【任务 1】定位 verify_fx_mobile.gd 实际路径（可能在 godot/test/ 或 scripts/ 下），只改这两条过期断言的期望值与必要注释，在 DONE 里写清改前 → 改后逐字对照；若发现还有别的过期断言，一并按 A63 口径同步并如实登记。\n【任务 2】复跑 verify_fx_mobile.gd 输出 47 PASS / 0 FAIL 与 RESULT；再跑三段门禁 + 全工程 G3 grep SCRIPT ERROR=0；A38 courtyard.tscn 节点 41 / uv 2/1/1 不变。\n【如实登记】总指挥亲自目视已确认：弹反 HUD 文字层清晰可见（148 帧「精准弹反窗口 0.3s · 按 K」、150 帧「弹反成功！…」）、HUD 文字无重叠、连击 D→C 递进可见、地面改规整错缝石板、340 帧余额 106 证 A59 扣费生效、HD-2D 全绿未达。请在 DONE 里沿用这一口径，不再沿用 R35 旧自评。定稿录屏由总指挥本轮亲自重跑并目视，你不必重复录屏。\n【公共契约·R35C / godogen 纪律】用跑起来的画面判断进度；三段门禁 --headless --import → --check-only --script / --headless --script <verify> → --headless --quit，grep SCRIPT ERROR=0；零付费、零外部依赖、不启 GPU job、不列任何付费项；直接改直接真跑，不新建只读探针 / 巡检脚本、不主动扫目录做进度巡检；不伪造产物、不谎报成功、不自行 git（总指挥收尾）。定稿录屏由总指挥本轮亲自重跑并目视，你不重复录屏。\n【交付·缺一不可】写 F:/Game/aierdengfahuan/teamwork/Rank-4/DONE-R35C.md（交付清单 / 真跑输出原文 / 验收三态 / 未完成项 / 待裁决项），并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/4/outbox/<id>.json（是 teamwork/command_center/，不是工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":4,\"status\":\"done\",\"result\":\"引用 DONE-R35C.md 实际结论\"}。\n【目录所有权·R35C（HOST 裁决 A64 越界授权）】Rank-1 唯一写入：godot/scripts/render/impact_feedback.gd（A64 特别授权）、godot/scripts/render/verify_impact_feedback_v090.gd、teamwork/Rank-1/、回执；Rank-4 唯一写入：verify_fx_mobile.gd（按实际路径，A63 断言同步）、teamwork/Rank-4/、回执；其余文件（hd2d_fx.gd / hud.gd / presentation.gd / encounter_director.gd / wave_trial_director.gd / points_commit_orchestrator.gd / project.godot / courtyard.tscn 节点 41 与 uv 2/1/1 / 既有 .tres / 素材 / 其它 Rank 产出）一律只读不改。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-12 15:11:35",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261112-151135-267-A4\",\"ai\":4,\"status\":\"done\",\"result\":\"...\"}"
+}

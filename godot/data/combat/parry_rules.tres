@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ParryConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/parry_config.gd" id="1_pc"]
+
+[resource]
+script = ExtResource("1_pc")
+window_sec = 0.35
+cooldown_sec = 1.2
+poise_bonus = 25.0
+points_bonus = 50
+combo_keep = true
+fail_penalty = 10

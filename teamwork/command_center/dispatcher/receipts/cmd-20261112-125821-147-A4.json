@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-125821-147-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "R35 / v0.12.0 Rank-4 完成，实际结论见 teamwork/Rank-4/DONE-R35.md：① hd2d_fx.gd 精准弹反视觉反馈层落地（订阅 ParryService 4 公开信号、A54 唯一实例 get_parry_service 不自建、A48① 生产订阅者 FXBloom、三层 _draw() 金色预兆环/冷蓝→暖金成功闪光/失败冷夜雾、[PLACEHOLDER]+rationale、零新增色号、移动端不劣化、降级层保留）；② ground_tile.png 精修为轴对齐错缝矩形石板（裂缝连贯直线、锯齿消除），实测 6 色 / 128x128 / alpha {255} / EDGE_DIFF=0，courtyard.tscn uv 零改动（A38，node_count=41）；③ 15 秒定稿录屏 capture/v120_final.mp4：磁盘 450 帧连续、ffprobe 450 帧 15.000000s、1,784,400 字节（引擎日志 411 frames 口径差异如实留档）；④ 三段门禁 + 最终统一门禁全 EXIT=0 / 全工程 SCRIPT ERROR=0 / PARSE_ERROR=0；⑤ A41 目视如实：弹反金色预兆环与成功闪光【链路已接线/绑定成功/生产开窗3次+一次成功弹反，但本次15秒录屏画面未能明确目视辨识（唯一成功弹反落在 frame150 mobile 四项全关切换点、开窗0.35s过短、既有 R32 impact_fx 自带同心圆刻度易混淆）】，D→C 递进可见、D→A/S级爆发未覆盖，HUD 文字重叠（既有），地面裂缝明显改善，暖金未过曝，像素硬边 vs 平滑景深成立但为 2D 近似，HD-2D 全绿【未达成】（不沿用 R31 自评）。未完成项/待裁决项见 DONE-R35.md §5/§6。零付费、零 GPU job、不自行 git。"
+}

@@ -1,41 +1,94 @@
 {
   "schema_version": "1.0",
-  "round": "R34",
-  "task_id": "cmd-20261112-091304-459-A4",
-  "asset_id": "ground_tile_r34_v1",
+  "round": "R35",
+  "task_id": "cmd-20261112-125821-147-A4",
+  "asset_id": "ground_tile_r35_v1",
   "res_path": "res://assets/generated/r23/ground_tile.png",
-  "note": "R34 地面平铺精修的独立登记文件。r23/import.json 是 impact_fx.png 专用（hd2d_fx.gd R32 只读加载其帧参数），本轮逐字未动，避免破坏打击反馈；本文件单独登记 ground_tile 规格与实测。",
+  "note": "R35 地面裂缝精修的独立登记文件。r23/import.json 是 impact_fx.png 专用（hd2d_fx.gd R32 只读加载其帧参数），本轮逐字未动。本文件单独登记 ground_tile 规格与落盘实测。",
   "spec": {
     "canvas": "128x128（128px 基准画布不变）",
     "mode": "RGBA",
-    "palette_layer": "6 色受控板（逐字沿用前版 ground_tile.png 实测 6 色，零新增色号）",
-    "colors_6": ["#2C4C8C", "#1B2A4A", "#3F6FC4", "#060A14", "#0A1020", "#79B4E8"],
+    "palette_layer": "6 色受控板（逐字沿用 R34 实测 6 色，零新增色号）",
+    "colors_6": [
+      "#060A14",
+      "#0A1020",
+      "#1B2A4A",
+      "#2C4C8C",
+      "#3F6FC4",
+      "#79B4E8"
+    ],
     "hard_edge": true,
     "gradient": false,
     "dithering": false,
     "noise": false,
-    "seamless": "左右列逐像素相等 + 上下行逐像素相等（diff=0），沿用 R23 严格口径",
+    "seamless": "左右列逐像素相等 + 上下行逐像素相等（diff=0），127 核心周期 wrap + 复制边界列/行",
     "uv_unchanged": "courtyard.tscn 的 ground_tile.png 引用路径与 3 处 uv1_scale (2,2,1)/(1,1,1)/(1,1,1) 逐字未动（保 A38 断言）"
   },
   "technique": {
-    "name": "deterministic_tileable_voronoi_flagstone",
+    "name": "deterministic_tileable_ashlar_running_bond",
     "core_period_px": 127,
-    "seeds": 24,
     "seed": 20261112,
-    "method": "24 个确定性种子 × 9 个 wrap 镜像（-127/0/+127）做最近距离分类 → 不规则多边形石板；1px 硬边深色缝；每块 2×2 硬边高光点；核心 127×127 按周期 127 tileable，扩充到 128×128 时第 127 列/行复制第 0 列/行 → col0==col127 / row0==row127 严格 diff=0，且 x=126 与 x=127(=x=0) 内部连续。删除旧图 4×4 规整网格与对角斜线纹装饰，降低平铺周期感。",
+    "bands": 5,
+    "band_heights": [
+      26,
+      25,
+      28,
+      24,
+      24
+    ],
+    "col_widths": [
+      31,
+      31,
+      32,
+      33
+    ],
+    "band_offsets": [
+      0,
+      15,
+      8,
+      22,
+      12
+    ],
+    "bricks": 20,
+    "method": "把 127 核心周期按 5 条水平缝线 + 每行 4 条错缝垂直缝线切成轴对齐矩形石板；每块边界全为水平/垂直直线，裂缝是连贯 1px 深色直线网格（不破碎、无斜向阶梯锯齿）；每块 3 阶明度（左上受光/主体/右下背光，受控板内）+ 1 个 2x2 硬边高光点。跨 0 段经 %127 wrap 自动无缝，输出 128 时第 127 列/行复制第 0 列/行 → col0==col127 / row0==row127 严格 diff=0。",
+    "vs_r34": "R34 为 24 个 Voronoi 种子 → 斜向多边形边（阶梯锯齿）+ 深色裂缝破碎、细碎；本轮改轴对齐错缝矩形石板，边界直线化、裂缝连贯化、锯齿消除，达成『更规整石板分区 / 减少细碎锯齿』。",
     "placeholder": {
-      "seeds_24": "[PLACEHOLDER] 石板数，待试玩校准；rationale：块均 ~27px 与旧 32px 石板同量级，形状/排布不规则、无单一方向周期；调参只改生成参数与登记，不改算法/场景/uv。",
+      "band_heights": "[PLACEHOLDER] 5 段行高 26/25/28/24/24，待试玩校准；rationale：总和恰为 127 核心周期、行高微扰降低 4x4 死板网格周期感，调参只改生成参数与登记、不改算法/场景/uv。",
+      "col_widths": "[PLACEHOLDER] 4 段列宽 31/31/32/33，待试玩校准；rationale：总和 127、列宽微扰与错缝配合制造 running bond 不规则度。",
+      "band_offsets": "[PLACEHOLDER] 每行错缝 offset [0,15,8,22,12]；rationale：确定性错缝打破垂直缝对齐、避免竖缝贯穿整幅形成网格感。",
       "seed_20261112": "[PLACEHOLDER] 确定性随机种子（本轮日期）；rationale：固定 seed 保证可复现、零随机噪点。",
-      "core_period_127": "[PLACEHOLDER] Voronoi 核心周期；rationale：127 核心 + 1 复制边界列/行满足严格 diff=0 无缝且内部连续。"
+      "core_period_127": "[PLACEHOLDER] tileable 核心周期；rationale：127 核心 + 1 复制边界列/行满足严格 diff=0 无缝且内部连续。"
     }
   },
   "measured": {
-    "size": [128, 128],
+    "size": [
+      128,
+      128
+    ],
     "unique_rgb": 6,
-    "hex_sorted": ["#060A14", "#0A1020", "#1B2A4A", "#2C4C8C", "#3F6FC4", "#79B4E8"],
-    "counts": {"#3F6FC4": 3199, "#0A1020": 1147, "#060A14": 292, "#2C4C8C": 10319, "#1B2A4A": 1381, "#79B4E8": 46},
-    "alpha_set": [255],
-    "alpha_bins": [0, 255],
+    "hex_sorted": [
+      "#060A14",
+      "#0A1020",
+      "#1B2A4A",
+      "#2C4C8C",
+      "#3F6FC4",
+      "#79B4E8"
+    ],
+    "counts": {
+      "#3F6FC4": 6140,
+      "#1B2A4A": 4699,
+      "#2C4C8C": 3343,
+      "#060A14": 1281,
+      "#79B4E8": 556,
+      "#0A1020": 365
+    },
+    "alpha_set": [
+      255
+    ],
+    "alpha_bins": [
+      0,
+      255
+    ],
     "LR_col_mismatch_px": 0,
     "TB_row_mismatch_px": 0,
     "edge_diff": 0,
@@ -48,9 +101,9 @@
     "note": "单帧 6 色 ≤16 受控上限；项目级色库 ≥256 沿用 palette_256.json（R32 已扩充至实测 256 色）。本件零新增色号，两层口径均不变。00-协作契约.md §9.3 把程序化管线定位为降级/占位；本件属本地零付费程序化素材管线，ComfyUI 仍是主美术路线，不宣称已能出图。"
   },
   "visual_review": {
-    "before": "capture/r34_ground_2x2_before.png — 4×4 规整网格 + 若干格对角斜线纹，2×2 平铺周期感明显",
-    "after": "capture/r34_ground_2x2_after.png — 不规则多边形石板、斜线纹/网格消除、平铺接缝不可见；整 tile 重复仍为平铺固有，个别长直边存在",
-    "conclusion": "大斜条纹的明显周期感已降低（如实登记，非『完全无周期』）"
+    "before": "capture/r34_ground_2x2_after.png — R34 Voronoi 不规则多边形、斜向阶梯锯齿边、深色裂缝破碎细碎",
+    "after": "capture/r35_ground_2x2_after.png — R35 轴对齐错缝矩形石板、边界直线、1px 连贯深色缝、锯齿消除",
+    "conclusion": "裂缝由『斜向破碎 + 细碎锯齿』收敛为『规整连贯直线网格』，杂乱感明显降低（如实登记；整 tile 重复为平铺固有、仍存在）"
   },
   "zero_gpu_job": true,
   "zero_paid_service": true,

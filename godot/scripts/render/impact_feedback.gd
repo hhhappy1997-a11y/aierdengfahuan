@@ -44,6 +44,15 @@ extends CanvasLayer
 ##   自动 flush _ready()，验证脚本须显式 call("_ready") 后再 set_process(false)，
 ##   全部状态推进经公共 advance_frame() 显式驱动，确定性、不依赖帧循环。
 ## 全静态类型标注 · 中文 UTF-8 · Godot 4.7.2。
+##
+## R35C [ROUND=R35C] / HOST 裁决 A64：把「暖金闪光安全单元网格」由铺满中景的
+##   半透明大矩形底板（x≈388..1280 / y≈188..720）收敛为「围绕命中点的局部网格」。
+##   做法：_rebuild_flash_rects() 的扫描线切分范围由整个 SCREEN 收敛为
+##   [FLASH_ANCHOR ± FLASH_RADIUS] 局部作用域；7 区 HUD 几何避让逻辑（cell 与避让
+##   矩形交集面积为 0 才保留）逐字保留 → 避让区像素仍为 0。
+##   既有 [PLACEHOLDER] 数值语义 / 降级开关 / 闪光衰减单调 / 微震·hitstop 上限 /
+##   重复 connect 去重 / 无信号不自发光 全部不动；FlashPainter._draw() 与
+##   sample_flash() 经 get_flash_rects() 自动只画 / 只判局部网格，无需改动。
 
 # ==========================================================================
 # 既有战斗信号名（按实接入，不臆造；来源行号见文件头）
@@ -81,6 +90,23 @@ const AVOID_MARGIN: float = 8.0
 ## 即使几何有微缝，层级也在 HUD 文字之下，双保险不遮文字。
 const LAYER_INDEX: int = 12
 const PAINTER_NAME: String = "ImpactFlashPainter"
+
+# ==========================================================================
+# R35C [ROUND=R35C] / A64：局部闪光作用域（收敛暖金闪光安全单元网格底板）
+# [PLACEHOLDER] 数值待试玩校准；调参唯一入口 = 本区常量表（只改表不改算法）
+# ==========================================================================
+## 局部闪光锚点（屏幕 1280x720）：既有战斗信号不带命中坐标（_on_combat_signal 无参 /
+##   request_impact(intensity) 无位置参数），故用固定 [PLACEHOLDER] 锚点对齐全景战斗
+##   中心 / 角色区，与 verify G5 采样点 (640,400) 同口径 → 局部闪光仍覆盖角色区。
+##   rationale：不改既有信号签名、不改其它文件（hud.gd / encounter_director.gd 只读），
+##   以常量锚点收敛绘制范围；集成层后续若带命中坐标，可在本层新增可选参数扩展。
+const FLASH_ANCHOR: Vector2 = Vector2(640.0, 400.0)
+## 局部闪光半径（逻辑px）：以锚点为中心的正方形半边长，局部作用域 = [锚点 ± R]，
+##   边宽 2R。rationale：把改前铺满中景 x≈388..1280 / y≈188..720（约 892x532）的
+##   大面积半透明底板收敛为「围绕命中点」的局部网格；2R=240 ≪ 中景尺寸，
+##   覆盖面积由「全屏安全区」量级降到 ≤ (2R)²=57600 px² 量级，不再大面积覆盖。
+##   [PLACEHOLDER] 待试玩校准；调参入口：改本常量即可（只改表不改算法）。
+const FLASH_RADIUS: float = 120.0
 
 # ==========================================================================
 # 屏幕与 HUD 文字 / 面板避让矩形（层局部 == 屏幕坐标；沿用既有真跑避让口径）
@@ -343,22 +369,30 @@ func _rebuild_avoid_rects() -> void:
 		_avoid_rects.append(RECT_CODEX.grow(AVOID_MARGIN * 2.0))
 
 
-## 扫描线矩形分解：用所有避让矩形的 x/y 边界把屏幕切成网格单元，
-## 只保留与任何避让矩形交集面积为 0 的安全单元 → _draw() 只画这些单元。
+## R35C/A64：扫描线矩形分解仍保证 7 区 HUD 几何避让（cell 与任一避让矩形交集为 0
+##   才保留 → _draw() 只画安全单元、避让区像素恒 0），但切分范围由「整个 SCREEN」
+##   收敛为「命中锚点 ±FLASH_RADIUS」的局部作用域 → _flash_rects 只覆盖围绕命中点的
+##   局部网格，不再产生 x≈388..1280 / y≈188..720 的大面积半透明底板。
+## 既有 [PLACEHOLDER] 数值语义 / 避让几何 / 衰减 / 降级 / 上限 全部逐字保留。
 func _rebuild_flash_rects() -> void:
 	_flash_rects.clear()
-	var xs: Array = [SCREEN.position.x, SCREEN.end.x]
-	var ys: Array = [SCREEN.position.y, SCREEN.end.y]
+	var local: Rect2 = Rect2(
+			FLASH_ANCHOR - Vector2(FLASH_RADIUS, FLASH_RADIUS),
+			Vector2(FLASH_RADIUS * 2.0, FLASH_RADIUS * 2.0)).intersection(SCREEN)
+	if local.get_area() <= 0.0:
+		return
+	var xs: Array = [local.position.x, local.end.x]
+	var ys: Array = [local.position.y, local.end.y]
 	for r in _avoid_rects:
-		var c: Rect2 = r.intersection(SCREEN)
+		var c: Rect2 = r.intersection(local)
 		if c.get_area() <= 0.0:
 			continue
 		xs.append(c.position.x)
 		xs.append(c.end.x)
 		ys.append(c.position.y)
 		ys.append(c.end.y)
-	var ux: Array[float] = _sorted_unique(xs, SCREEN.position.x, SCREEN.end.x)
-	var uy: Array[float] = _sorted_unique(ys, SCREEN.position.y, SCREEN.end.y)
+	var ux: Array[float] = _sorted_unique(xs, local.position.x, local.end.x)
+	var uy: Array[float] = _sorted_unique(ys, local.position.y, local.end.y)
 	for i: int in range(ux.size() - 1):
 		for j: int in range(uy.size() - 1):
 			var cell: Rect2 = Rect2(ux[i], uy[j], ux[i + 1] - ux[i], uy[j + 1] - uy[j])

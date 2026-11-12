@@ -40,6 +40,8 @@ const DEFAULT_TABLE_PATH: String = "res://data/rpg/wave_trial.tres"
 # 两张表只读（CACHE_MODE_IGNORE 回读真值）；既有 .tres 数值一律不改。
 const COMBO_RULES_PATH: String = "res://data/rpg/combo_rules.tres"     # 新增表（R34）
 const BOON_DRAFT_PATH: String = "res://data/rpg/boon_draft.tres"       # 既有表（R32），只读
+# ---- R35 / v0.12.0 最小接线 · 精准弹反 Parry（Rank-2 唯一写入）----
+const PARRY_RULES_PATH: String = "res://data/combat/parry_rules.tres"   # 新增表（R35），只读
 const REQUIRED_WAVE_FIELDS: PackedStringArray = [
 	"telegraph_sec", "time_limit_sec", "reward_points"
 ]
@@ -135,6 +137,18 @@ var _last_combo_multiplier: float = 1.0
 var _last_combo_count: int = 0
 var _settlement_count: int = 0
 
+# ---- R35 / v0.12.0 最小接线 · 精准弹反 Parry（Rank-2 唯一写入）----
+# A54 唯一实例：ParryService 由本导演装配，Rank-1 / Rank-4 经 get_parry_service() 复用。
+var _parry: ParryService = null
+var _parry_poise_acc: float = 0.0       # 本波弹反成功累积削韧加成（并入既有削韧结算记录）
+var _parry_points_acc: int = 0          # 本波弹反成功累积点数加成（并入清波结算基数）
+var _parry_success_count: int = 0       # 本局弹反成功累计（只读统计）
+var _parry_fail_count: int = 0          # 本局弹反失败累计（只读统计）
+var _parry_window_opened_count: int = 0 # 本局开窗累计（生产订阅者实证）
+var _parry_last_poise_applied: float = 0.0  # 实际作用于既有 StaggerService.apply_hit 的量
+var _parry_last_combo_keep: bool = false
+var _parry_last_close_reason: String = ""
+
 
 func _ready() -> void:
 	_label = get_node_or_null(hud_label_path) as Label
@@ -168,6 +182,9 @@ func _process(delta: float) -> void:
 	if _tutorial_freeze:
 		return
 	_tick_auto_start()
+	# R35：精准弹反窗口 / 冷却由导演层每帧确定性推进（纯逻辑不读真实时钟）。
+	if _parry != null:
+		_parry.tick(delta)
 	_advance(delta)
 
 
@@ -516,6 +533,8 @@ func _enter_telegraph() -> void:
 	wave_started.emit(_index, _total)
 	# R34 最小接线（波次开始）：消费上一波抉择挂起的 cost_key / effect_key，并让连击从本波重算。
 	_consume_pending_boon()
+	# R35 最小接线（波次开始）：精准弹反从本波干净重算、按 Boss 出招节奏开窗（生产链路）。
+	_open_parry_window_for_wave()
 	_refresh_hud()
 
 
@@ -596,6 +615,13 @@ func _clear_wave() -> void:
 		if bool(boon_settled.get("ok", false)):
 			base_for_combo = maxi(0, int(boon_settled.get("total_points", pts)))
 		_boon.reset()   # 本波抉择已消费完，为下一轮抉择留干净态
+	# ---- R35 最小接线 ③：本波弹反成功累积 points_bonus 并入清波点数结算基数 ----
+	#      沿用 A57：base_for_combo 经 combo.settle() 得到唯一最终结算值，HUD 经
+	#      get_last_settlement() 取该值发 points_awarded 一次入账，绝不二次入账。
+	base_for_combo = maxi(0, base_for_combo + _parry_points_acc)
+	# ---- R35：最后一波（Boss 波）死亡 → ParryService 不再开窗 ----
+	if _index + 1 >= _total and _parry != null:
+		_parry.on_boss_defeated()
 	# ---- R34 最小接线 ②：把 ComboService 评级倍率并入清波点数结算。
 	var settled_points: int = base_for_combo
 	if _combo != null:
@@ -757,6 +783,14 @@ func _init_combat_services() -> void:
 		_boon = BoonDraftService.new(boon_cfg)
 	else:
 		push_warning("[WaveTrial] BoonDraftService 规则表不可用：抉择不作结算（不崩）")
+	# ---- R35 / v0.12.0：装配 ParryService 唯一实例 + 生产运行时订阅者 ----
+	var parry_cfg: ParryConfig = ResourceLoader.load(
+			PARRY_RULES_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as ParryConfig
+	if parry_cfg != null:
+		_parry = ParryService.new(parry_cfg)
+		_bind_parry_signals()
+	else:
+		push_warning("[WaveTrial] ParryService 规则表不可用：精准弹反降级为不开窗（不崩）")
 	if _combo != null:
 		_combo.reset()
 
@@ -774,6 +808,15 @@ func _reset_r34_records() -> void:
 	_last_combo_multiplier = 1.0
 	_last_combo_count = 0
 	_settlement_count = 0
+	# ---- R35：新一局清空精准弹反记录 ----
+	_parry_poise_acc = 0.0
+	_parry_points_acc = 0
+	_parry_success_count = 0
+	_parry_fail_count = 0
+	_parry_window_opened_count = 0
+	_parry_last_poise_applied = 0.0
+	_parry_last_combo_keep = false
+	_parry_last_close_reason = ""
 	if _boon != null:
 		_boon.reset()
 
@@ -800,6 +843,107 @@ func get_boon_service() -> BoonDraftService:
 	return _boon
 
 
+# ===========================================================================
+# R35 / v0.12.0 最小接线 · 精准弹反 Parry（Rank-2 唯一写入）
+#   - A48①：本导演（挂 courtyard.tscn 的生产节点）在装配时 connect 全部 4 信号，
+#     生产运行时订阅者真实存在，绝不在验证脚本里才订阅；
+#   - A54：唯一实例 _parry 由本导演装配，经 get_parry_service() 供 Rank-1 / Rank-4 复用；
+#   - 不改既有判定分支 / 帧数据 / 输出格式 / 既有 .tres 数值；
+#   - 弹反奖励并入既有削韧（StaggerService.apply_hit）与清波点数结算基数，
+#     沿用 A57 经 points_awarded 发最终值、不二次入账；Rank-2 不写存档、不碰渲染。
+# ===========================================================================
+
+## 取本导演装配的 ParryService 唯一实例（供 Rank-1 接线 / Rank-4 视觉反馈 / A54 复用）。
+func get_parry_service() -> ParryService:
+	return _parry
+
+
+## A48① 生产订阅者：4 个公开信号在装配时即 connect 到本导演（非验证脚本）。
+func _bind_parry_signals() -> void:
+	if _parry == null:
+		return
+	var pairs: Array = [
+		["parry_window_opened", "_on_parry_window_opened"],
+		["parry_succeeded", "_on_parry_succeeded"],
+		["parry_failed", "_on_parry_failed"],
+		["parry_window_closed", "_on_parry_window_closed"],
+	]
+	for p: Array in pairs:
+		var sig: String = str(p[0])
+		var method: String = str(p[1])
+		if not _parry.has_signal(sig):
+			continue
+		var cb: Callable = Callable(self, method)
+		if not _parry.is_connected(sig, cb):
+			_parry.connect(sig, cb)
+	print("[R35][WaveTrial] 精准弹反生产订阅者已装配：ParryService 唯一实例 + 4 信号 connect（A48①/A54）")
+
+
+func _on_parry_window_opened(_window_sec: float) -> void:
+	_parry_window_opened_count += 1
+
+
+## 弹反成功：poise_bonus 并入既有削韧、points_bonus 累计到清波结算基数。
+## 既有 StaggerService 经 encounter_director.get_stagger_service() 取同一实例（A54 口径延展），
+## 调既有 apply_hit()，不改其判定分支；依赖缺失（--script / 无 EncounterDirector）只记录、不崩。
+func _on_parry_succeeded(poise_bonus: float, points_bonus: int, combo_keep: bool) -> void:
+	_parry_success_count += 1
+	var pb: float = maxf(0.0, poise_bonus)
+	_parry_poise_acc += pb
+	_parry_points_acc = maxi(0, _parry_points_acc + int(points_bonus))
+	_parry_last_combo_keep = combo_keep
+	var ss: Object = null
+	if _encounter != null and is_instance_valid(_encounter) \
+			and _encounter.has_method("get_stagger_service"):
+		ss = _encounter.call("get_stagger_service") as Object
+	if ss != null and is_instance_valid(ss) and ss.has_method("apply_hit"):
+		var hit: Dictionary = ss.call("apply_hit", pb) as Dictionary
+		if bool(hit.get("ok", false)):
+			_parry_last_poise_applied += pb
+
+
+func _on_parry_failed(_reason: String, _fail_penalty: int) -> void:
+	_parry_fail_count += 1
+	# fail_penalty 只作记录 / 信号 payload，不扣减既有赐福点数（守住只增不减 / 余额非负）。
+
+
+func _on_parry_window_closed(reason: String) -> void:
+	_parry_last_close_reason = reason
+
+
+## 波次 / Boss 出招开窗：清上一波窗口 / 冷却 / 本波累计，再开本波精准弹反窗口。
+func _open_parry_window_for_wave() -> void:
+	if _parry == null:
+		return
+	_parry.reset()
+	_parry.open_window()
+	# 每波清「本波累计」，避免上一波弹反奖励在下一波清波重复并入（不二次入账）。
+	_parry_poise_acc = 0.0
+	_parry_points_acc = 0
+	_parry_last_poise_applied = 0.0
+	print("[R35][WaveTrial] 波次开始精准弹反开窗：index=%d window_sec=%.2f（生产链路，非验证脚本模拟）" % [
+			_index + 1, _parry.get_window_sec()])
+
+
+## ---- R35 真实输入驱动口（供 Rank-1 输入层 / 验证调用；转调 A54 唯一实例）----
+func try_parry() -> Dictionary:
+	if _parry == null:
+		return {"ok": false, "reason": "no_parry_service"}
+	return _parry.try_parry()
+
+
+func on_boss_move_telegraph() -> Dictionary:
+	if _parry == null:
+		return {"ok": false, "reason": "no_parry_service"}
+	return _parry.open_window()
+
+
+func on_boss_move_landed() -> Dictionary:
+	if _parry == null:
+		return {"ok": false, "reason": "no_parry_service"}
+	return _parry.on_boss_move_landed()
+
+
 ## 抉择三选一注入口（未来 UI / 验证脚本调用）；本导演不替玩家选择、不含数值。
 func select_boon(index: Variant) -> Dictionary:
 	if _boon == null:
@@ -817,6 +961,12 @@ func get_settlement_snapshot() -> Dictionary:
 		"boon_effect_key": _active_effect_key,
 		"boon_cost_value": _active_cost_value,
 		"settlement_count": _settlement_count,
+		# ---- R35 新增只读 key（既有 key 逐字不动）----
+		"parry_points_bonus": _parry_points_acc,
+		"parry_poise_bonus": _parry_poise_acc,
+		"parry_poise_applied": _parry_last_poise_applied,
+		"parry_success_count": _parry_success_count,
+		"parry_combo_keep": _parry_last_combo_keep,
 	}
 
 
@@ -860,4 +1010,13 @@ func get_snapshot() -> Dictionary:
 		"boon_effect_key": _active_effect_key,
 		"boon_cost_value": _active_cost_value,
 		"settlement_count": _settlement_count,
+		# ---- R35 新增只读 key（既有 27 + R34 8 个 key 逐字不动，回归不回退）----
+		"parry_poise_acc": _parry_poise_acc,
+		"parry_points_acc": _parry_points_acc,
+		"parry_success_count": _parry_success_count,
+		"parry_fail_count": _parry_fail_count,
+		"parry_window_opened_count": _parry_window_opened_count,
+		"parry_poise_applied": _parry_last_poise_applied,
+		"parry_last_combo_keep": _parry_last_combo_keep,
+		"parry_last_close_reason": _parry_last_close_reason,
 	}

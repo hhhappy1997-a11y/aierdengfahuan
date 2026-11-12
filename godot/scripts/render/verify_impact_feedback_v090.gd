@@ -31,6 +31,12 @@ extends SceneTree
 ##     不加载 BossController / 不改既有战斗件；真实信号名由 A 组从脚本列表读回证明。
 ## 输出：逐条 PASS/FAIL + SUMMARY 计数 + RESULT=ALL_MATCH（全通过）/ MISMATCH（有失败）。
 ## 中文 UTF-8 · Godot 4.7.2 全静态类型 · 零付费 · 零外部依赖。
+##
+## R35C [ROUND=R35C] / HOST 裁决 A64 回归：既有 A~L 共 42 条断言逐字未动、不删不放宽；
+##   新增 M 组（闪光绘制包围盒不再覆盖中景大矩形 / 远锚点像素 0 / 局部网格围绕锚点）
+##   与 N 组（HUD 避让区像素仍为 0 / 收敛后几何避让仍 0）两类运行时断言，并输出
+##   改前（全屏安全网格）/ 改后（局部 flash_rects）覆盖面积实证。
+##   SUMMARY total 由 42 → 47；全通过仍输出 RESULT=ALL_MATCH。
 ## ===========================================================================
 
 const FEEDBACK_PATH: String = "res://scripts/render/impact_feedback.gd"
@@ -45,6 +51,9 @@ const RECT_TITLE: Rect2 = Rect2(0.0, 0.0, 730.0, 220.0)
 const RECT_SHOP: Rect2 = Rect2(740.0, 358.0, 536.0, 210.0)
 const RECT_CODEX: Rect2 = Rect2(24.0, 272.0, 356.0, 236.0)
 const NODE_COUNT_EXPECTED: int = 41
+## R35C/A64：中景半透明大矩形（R35B 精确定位 x≈388..1280 / y≈188..720）作为
+##   「不再被闪光覆盖」的对照矩形；M 组断言收敛后 bbox 不覆盖它、其远锚点像素为 0。
+const MID_RECT: Rect2 = Rect2(388.0, 188.0, 892.0, 532.0)
 
 
 ## 既有信号替身：只声明 encounter_director.gd 里真实存在的两个 signal，
@@ -153,6 +162,68 @@ func _max_pixel(fb: Node, rects: Array) -> float:
 	return worst
 
 
+## R35C/A64 改前对照：按 R31 原「全屏扫描线安全网格」算法重算覆盖面积
+##   （纯几何计算，不改生产代码、不新建探针脚本），用于改前/改后覆盖面积实证。
+func _fullscreen_safe_area(avoid: Array) -> float:
+	var xs: Array = [SCREEN.position.x, SCREEN.end.x]
+	var ys: Array = [SCREEN.position.y, SCREEN.end.y]
+	for a in avoid:
+		var rr: Rect2 = a
+		var c: Rect2 = rr.intersection(SCREEN)
+		if c.get_area() <= 0.0:
+			continue
+		xs.append(c.position.x)
+		xs.append(c.end.x)
+		ys.append(c.position.y)
+		ys.append(c.end.y)
+	var ux: Array = xs.duplicate()
+	ux.sort()
+	var uy: Array = ys.duplicate()
+	uy.sort()
+	var uxu: Array[float] = []
+	for v in ux:
+		var f: float = clampf(float(v), SCREEN.position.x, SCREEN.end.x)
+		if uxu.is_empty() or absf(f - uxu[uxu.size() - 1]) > 0.01:
+			uxu.append(f)
+	var uyu: Array[float] = []
+	for v in uy:
+		var f2: float = clampf(float(v), SCREEN.position.y, SCREEN.end.y)
+		if uyu.is_empty() or absf(f2 - uyu[uyu.size() - 1]) > 0.01:
+			uyu.append(f2)
+	var total: float = 0.0
+	for i: int in range(uxu.size() - 1):
+		for j: int in range(uyu.size() - 1):
+			var cell: Rect2 = Rect2(uxu[i], uyu[j], uxu[i + 1] - uxu[i], uyu[j + 1] - uyu[j])
+			if cell.get_area() <= 0.0:
+				continue
+			var blocked: bool = false
+			for a in avoid:
+				var rr2: Rect2 = a
+				if cell.intersection(rr2).get_area() > 0.0:
+					blocked = true
+					break
+			if not blocked:
+				total += cell.get_area()
+	return total
+
+
+## 求一组矩形的合并包围盒（纯 min/max，不依赖 Rect2.merge）。
+func _union_bbox(rects: Array) -> Rect2:
+	if rects.is_empty():
+		return Rect2()
+	var minx: float = SCREEN.end.x
+	var miny: float = SCREEN.end.y
+	var maxx: float = SCREEN.position.x
+	var maxy: float = SCREEN.position.y
+	for a in rects:
+		var rr: Rect2 = a
+		minx = minf(minx, rr.position.x)
+		miny = minf(miny, rr.position.y)
+		maxx = maxf(maxx, rr.end.x)
+		maxy = maxf(maxy, rr.end.y)
+	return Rect2(minx, miny, maxx - minx, maxy - miny)
+
+
 func _initialize() -> void:
 	print("[V090] ==== verify_impact_feedback_v090 真跑开始 | cmd-20261111-133549-878-A1 [ROUND=R31] Rank-1 ====")
 	_fb_script = ResourceLoader.load(
@@ -175,6 +246,8 @@ func _initialize() -> void:
 	_test_a38()
 	_test_hud_wiring()
 	_test_r31b_director_hit()
+	_test_r35c_local_flash()
+	_test_r35c_hud_avoid_pixels()
 	_finish()
 
 
@@ -577,6 +650,103 @@ func _test_r31b_director_hit() -> void:
 			"flash=%.4f shake=%s hitstop=%s max_avoid_pixel=%.4f" % [
 					flash_low, str(sd.get("shake_amplitude", "?")),
 					str(sd.get("hitstop_frames", "?")), pix_low])
+
+
+# ---------------------------------------------------------------------------
+# M) R35C/A64 局部收敛：闪光绘制包围盒不再覆盖中景大矩形 + 改前/改后覆盖面积实证
+# N) R35C/A64 HUD 避让区像素仍为 0（A64 保留项，收敛后回归）
+#    既有 A~L 共 42 条断言逐字未动、不删不放宽；本 M/N 两组为新增运行时断言。
+# ---------------------------------------------------------------------------
+func _test_r35c_local_flash() -> void:
+	var fb: Node = _new_feedback()
+	fb.call("request_impact", 1.0)   # 峰值态，最强条件
+	var rects: Array = fb.call("get_flash_rects") as Array
+	var avoid: Array = fb.call("get_avoid_rects") as Array
+	var cmap: Dictionary = _fb_script.get_script_constant_map()
+	var radius: float = float(cmap.get("FLASH_RADIUS", -1.0))
+	var anchor: Vector2 = cmap.get("FLASH_ANCHOR", Vector2.ZERO)
+	var diameter: float = radius * 2.0
+	# 改前（全屏安全网格）/ 改后（局部 flash_rects）覆盖面积实证
+	var area_before: float = _fullscreen_safe_area(avoid)
+	var area_after: float = 0.0
+	for a in rects:
+		var rr: Rect2 = a
+		area_after += rr.get_area()
+	var bbox: Rect2 = _union_bbox(rects)
+	var ratio: float = area_after / area_before if area_before > 0.0 else 0.0
+	print("[V090] [R35C] FLASH_COVERAGE_BEFORE=%.1f px2 AFTER=%.1f px2 ratio=%.4f" % [
+			area_before, area_after, ratio])
+	print("[V090] [R35C] FLASH_BBOX=(%.1f,%.1f,%.1f,%.1f) MID_RECT=(388,188,892,532) radius=%.1f anchor=(%.1f,%.1f)" % [
+			bbox.position.x, bbox.position.y, bbox.size.x, bbox.size.y, radius, anchor.x, anchor.y])
+	# M1：闪光绘制包围盒不再覆盖中景大矩形（宽/高 <= 局部作用域直径、面积 << 中景 892x532）
+	var m1: bool = radius > 0.0 \
+			and bbox.size.x <= diameter + 0.01 \
+			and bbox.size.y <= diameter + 0.01 \
+			and bbox.get_area() < MID_RECT.get_area()
+	_ck("M1 [R35C/A64] 闪光绘制包围盒不再覆盖中景大矩形（bbox<=局部直径、面积<<892x532）",
+			m1, "bbox_size=(%.1f,%.1f) diameter=%.1f bbox_area=%.1f mid_area=%.1f" % [
+					bbox.size.x, bbox.size.y, diameter, bbox.get_area(), MID_RECT.get_area()])
+	# M2：中景大矩形内「远离锚点」的 5 处代表点改后 flash 像素为 0（改前峰值态为 0.42）
+	var mid_points: Array[Vector2] = [
+			Vector2(1000.0, 600.0), Vector2(1200.0, 620.0),
+			Vector2(1250.0, 300.0), Vector2(450.0, 600.0), Vector2(900.0, 300.0),
+	]
+	var worst_mid: float = 0.0
+	for p in mid_points:
+		worst_mid = maxf(worst_mid, float(fb.call("sample_flash", p.x, p.y)))
+	_ck("M2 [R35C/A64] 中景大矩形远锚点 5 处采样 flash 像素全 0（改前峰值态为 0.42）",
+			worst_mid == 0.0, "worst_mid_pixel=%.4f points=%d" % [worst_mid, mid_points.size()])
+	# M3：局部网格非空、锚点闪光>0、所有 flash_rect 落在局部作用域内
+	var anchor_pix: float = float(fb.call("sample_flash", anchor.x, anchor.y))
+	var local_rect: Rect2 = Rect2(anchor - Vector2(radius, radius), Vector2(diameter, diameter))
+	var all_local: bool = rects.size() > 0
+	for a in rects:
+		var rr: Rect2 = a
+		if not local_rect.encloses(rr):
+			all_local = false
+	_ck("M3 [R35C/A64] 局部网格非空、锚点闪光>0、所有 flash_rect 落在局部作用域内",
+			all_local and anchor_pix > 0.0,
+			"rects=%d anchor=(%.1f,%.1f) anchor_pixel=%.4f all_local=%s" % [
+					rects.size(), anchor.x, anchor.y, anchor_pix, str(all_local)])
+
+
+func _test_r35c_hud_avoid_pixels() -> void:
+	var fb: Node = _new_feedback()
+	fb.call("request_impact", 1.0)   # 峰值态
+	var avoid: Array = fb.call("get_avoid_rects") as Array
+	var rects: Array = fb.call("get_flash_rects") as Array
+	# N1：7 区避让矩形 9 点密集采样（中心/四角内缩/四边中点）flash 像素恒 0
+	var worst: float = 0.0
+	var samples: int = 0
+	for a in avoid:
+		var rr: Rect2 = a
+		var pts: Array[Vector2] = [
+				rr.position + rr.size * 0.5,
+				rr.position + Vector2(2.0, 2.0),
+				Vector2(rr.end.x - 2.0, rr.position.y + 2.0),
+				Vector2(rr.position.x + 2.0, rr.end.y - 2.0),
+				rr.end - Vector2(2.0, 2.0),
+				Vector2(rr.position.x + rr.size.x * 0.5, rr.position.y + 2.0),
+				Vector2(rr.position.x + rr.size.x * 0.5, rr.end.y - 2.0),
+				Vector2(rr.position.x + 2.0, rr.position.y + rr.size.y * 0.5),
+				Vector2(rr.end.x - 2.0, rr.position.y + rr.size.y * 0.5),
+		]
+		for p in pts:
+			worst = maxf(worst, float(fb.call("sample_flash", p.x, p.y)))
+			samples += 1
+	_ck("N1 [R35C/A64] 峰值态 7 区 HUD 避让矩形 9 点密集采样 flash 像素全 0",
+			worst == 0.0, "samples=%d worst_pixel=%.4f avoid_rects=%d" % [
+					samples, worst, avoid.size()])
+	# N2：收敛后每个 flash_rect 与每个避让矩形几何交集面积仍 == 0（A64 保留项）
+	var worst_area: float = 0.0
+	for r in rects:
+		var rr: Rect2 = r
+		for a in avoid:
+			var aa: Rect2 = a
+			worst_area = maxf(worst_area, rr.intersection(aa).get_area())
+	_ck("N2 [R35C/A64] 收敛后每个 flash_rect 与每个 avoid_rect 几何交集面积仍 == 0",
+			worst_area == 0.0, "worst_overlap=%.4f px2 flash_rects=%d" % [
+					worst_area, rects.size()])
 
 
 func _finish() -> void:

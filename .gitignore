@@ -47,8 +47,12 @@ capture/v100_host_*.png
 capture/v100_key_*.png
 capture/r32_ground_tile_2x2.png
 capture/v110_final[0-9]*.png
+capture/v120_final[0-9]*.png
+capture/v120_final_r35b*.png
 capture/r34_host_*.png
 capture/r34_review_*.png
+capture/r35_host_*.png
+capture/r35b_*.png
 capture/*.wav
 
 # 临时文件

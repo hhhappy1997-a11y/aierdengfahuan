@@ -164,6 +164,12 @@ func _verify_profile(children: Array[Node], profile: String) -> void:
 
 func _verify_node(n: Node, profile: String) -> void:
 	var exp_vis: bool = (profile == "desktop")
+	# A63（R35C）：mobile 档 FXBloom 走「轻量降级绘制」（轻量环 + HUD 文字，
+	# 移动端不劣化 ≠ 完全不绘制），该节点 mobile 下保持 visible=true；
+	# 其余 3 个 FX 节点仍四项全关 visible=false。
+	# 仅同步本条 visible 断言的期望值，判定逻辑（v == exp_vis 严格相等）不变。
+	if profile == "mobile" and str(n.name) == "FXBloom":
+		exp_vis = true
 	var exp_all: bool = (profile == "desktop")
 	var exp_prof: String = profile
 	var v: bool = bool(n.get("visible"))
@@ -231,13 +237,17 @@ func _print_diff(children: Array[Node]) -> void:
 		print("[R19_DIFF][%s] desktop{visible=%s _all_on=%s fx_profile=%s filter=%d gates=[%s]} | mobile{visible=%s _all_on=%s fx_profile=%s filter=%d gates=[%s]}" % [
 				nm, str(dv), str(da), dp, df, " ".join(d_gates),
 				str(mv), str(ma), mp, mf, " ".join(m_gates)])
+		# A63（R35C）：mobile 档 FXBloom 轻量降级绘制 → visible 期望 true；
+		# 其余 3 节点 mobile 全关 → visible 期望 false。
+		# 仅把 mobile visible 期望参数化（严格相等 mv == exp_mobile_vis），不放宽判定、不改其它项。
+		var exp_mobile_vis: bool = (nm == "FXBloom")
 		var hit: bool = dv and da and (dp == "desktop") \
-			and (not mv) and (not ma) and (mp == "mobile") \
+			and (mv == exp_mobile_vis) and (not ma) and (mp == "mobile") \
 			and (mf == CanvasItem.TEXTURE_FILTER_NEAREST) \
 			and (df == CanvasItem.TEXTURE_FILTER_NEAREST) and gates_diff_ok
 		diff_ok = diff_ok and hit
 	_check("⑦ desktop_vs_mobile_diff_all_4", diff_ok,
-			"4 节点两档实际值对照：desktop 四项全开(visible/_all_on/四门=true) / mobile 四项全关(全=false)，两档 texture_filter 均 Nearest")
+			"4 节点两档实际值对照：desktop 四项全开(visible/_all_on/四门=true) / mobile 四项绘制门全关(_all_on/四门=false)，其中 FXBloom 轻量可见(visible=true)、其余 3 节点 visible=false；两档 texture_filter 均 Nearest")
 	print("---- [R19 desktop vs mobile 差异对照] END ----")
 
 

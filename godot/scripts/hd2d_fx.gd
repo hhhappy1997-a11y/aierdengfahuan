@@ -50,6 +50,52 @@ extends Node2D
 ##      光效 + impact_fx 照常）。单帧 ≤16 色受控 / 项目级 ≥256 色两层口径不变：
 ##      连击层零新增色号（复用既有 PALETTE_HEX / 既有 _draw 已用 hex）。
 ##      完整 [PLACEHOLDER] 数值表 / rationale / 口径差异登记见下方「R34 连击评级反馈层」块。
+##
+## R35 / v0.12.0 追加（派单 cmd-20261112-125821-147-A4 ① · Rank-4）：
+##   ⑨ 精准弹反视觉反馈层：订阅 Rank-2 ParryService 的 4 个公开信号
+##      （parry_window_opened(window_sec) / parry_succeeded(poise_bonus, points_bonus,
+##       combo_keep) / parry_failed(reason, fail_penalty) / parry_window_closed(reason)，
+##       签名真源 teamwork/Rank-2/DONE-R35.md §3.1），在既有 FXBloom 分派节点 _draw()
+##       最上层叠加：① 可弹反窗口金色预兆环（随 window_sec 收紧读秒，低 alpha 不过曝）；
+##       ② 成功弹反瞬间「冷蓝 → 暖金」短促冲击闪光（两段既有色号交替，无连续插值 /
+##       无纯白大核心 / 不叠乘既有 bloom）；③ 失败回落冷夜雾横带 + 环收起。
+##       全部程序化 _draw()（draw_arc / draw_circle / draw_rect），零 GPU job / 零付费 /
+##       零外部素材 / 零新增节点。
+##      【A54】经 wave_trial_director.gd 公开 get_parry_service() 复用「唯一」ParryService
+##      实例（与 R34 连击层同款 _find_node_with_method 遍历），绝不自建第二个、不读私有
+##      实现；未接线则静默降级（既有四项光效 + R32 impact_fx + R34 连击层照常）。
+##      单帧 ≤16 色受控 / 项目级 ≥256 色两层口径不变：弹反层【零新增色号】，逐字复用
+##      本脚本既有 _draw / PALETTE_HEX 已用 hex（暖金 #F0A94C / #FFD27A / #FFF0C2、
+##      冷蓝 #BFD0EA、冷夜雾 #2B3A5C / #4A6089 / #16233F）。
+##      移动端不劣化：受既有 _all_on 门控（mobile 四项全关 _draw() 直接 return → 弹反层
+##      零绘制），计时器 / 绑定自愈只在 desktop + FXBloom 分派节点执行。
+##      完整 [PLACEHOLDER] 数值表 / rationale 见下方「R35 精准弹反反馈层」块。
+##
+## R35B / v0.12.1 追加（派单 cmd-20261112-142648-353-A4 · Rank-4）：
+##   ⑩ 弹反视觉收敛（修「弹反窗口期半透明浅色大矩形」本轮新回归）：
+##      · 定位：v110/v120 同帧像素差分 + SEG-A/B/C 分段目视 —— 该浅色大矩形只在
+##        SEG-A（desktop/medium, 2x 放大）出现，SEG-B（mobile 四项全关、FX 零绘制）
+##        与 SEG-C（desktop/high，FX 逻辑 640×360 坐标缩在左上 1/4）均无 → 来自本
+##        FX 层，不是 HUD 文字提示框 / 抉择卡片底板 / 地面贴图本身。具体为
+##        _draw_godrays() 6 层暖金半透明大三角（底边宽约 380 逻辑px，2x 后铺满中景）
+##        + 弹反 / 连击层的全宽 draw_rect(Rect2(0,...,BUFFER_W,...)) 半透明横带，
+##        叠在 R35 变亮的规整错缝石板地面上，压低地面与角色对比度；v110 深色
+##        Voronoi 地面不显现，故为「本轮新回归」。
+##      · a) 移除 / 缩小半透明大矩形底板：体积光扇形收束为窄光束（spread 缩小、
+##        峰值 alpha 不抬高）；弹反失败 / 连击冷却的全宽横带改为围绕角色的局部收环 /
+##        局部短带，不再 draw_rect 全宽铺中景。
+##      · b) 金色预兆环改为「围绕角色 / Boss 的局部环」：环心由 PARRY_RING_ANCHOR
+##        常量表给出（[PLACEHOLDER] + rationale），半径仍在 28~44 逻辑px 的局部量级。
+##      · c) 成功闪光保持 PARRY_FLASH_SEC=0.36 短促 + 峰值 alpha ≤0.42 + 无纯白大核心。
+##      · d) mobile 四项全关档位【轻量降级绘制】：不再 _draw() 开头直接 return，
+##        改为仅 FXBloom 节点画「轻量环 + 既有 HUD 文字」；四项光效 / impact_fx /
+##        连击层 / 全宽横带仍全关（移动端不劣化 ≠ 完全不绘制）。SEG-B 切换点
+##        (frame=150) 也能看到弹反反馈。
+##      · e) 零新增色号：全部逐字复用既有 PALETTE_HEX / _draw 已用 hex；单帧 ≤16 色
+##        受控 + 项目级 ≥256 色色库两层口径不变。
+##      · HUD 文字提示框（hud.gd 的 ProdParryLabel / 抉择卡片等，Rank-1 独占只读）
+##        逐字不动：已被总指挥确认可读、位置合适。
+##      · 完整 [PLACEHOLDER] 数值表 / rationale 见下方「R35B 弹反视觉收敛」块。
 
 # ---------------------------------------------------------------------------
 # 冻结口径常量（引用 hd2d_placeholder.gd / HD2D-FX-PLAN.md §3 / ART-SPEC-FINAL.md §2.2）
@@ -113,10 +159,19 @@ var _on_bloom: bool = true
 # ---------------------------------------------------------------------------
 # ① 体积光：层数 4→6（径向衰减更细腻），扇形峰值 alpha 保持 0.18 不抬高以免糊画面；
 #    另以中心高光带（柔核 + 亮核）强化暖金主光方向。
+#    R35B 收敛：R18 的 spread 40→190（底边宽 380 逻辑px / 2x 后 760 屏幕px）是
+#    「弹反窗口期半透明浅色大矩形铺满中景」的主因 —— 6 层暖金大三角叠在 R35 变亮的
+#    规整石板上，把地面与角色压成一片浅暖灰。本轮把扇形收束为窄光束，只照亮光源
+#    附近的局部区域，不再铺满中景；峰值 alpha 与层数 / 中心高光带逐字保留不改。
+# [PLACEHOLDER] R35B 收束值 spread_base=20.0 / spread_step=10.0（外层 70.0 逻辑px）
+#   rationale：底边宽 140 逻辑px（2x 后 280 屏幕px，约为原 760 的 37%），光束仍可辨
+#   为「暖金主光」但不再横铺中景；逐层 +10 递进保留 6 层径向衰减层次；与 R34 S 爆发
+#   环 / R35 弹反环（半径 28~56 逻辑px）同量级，保证「暖金 × 冷夜雾」强对比仍在、
+#   不抬高任何 alpha（防过曝 A41）、零新增色号。调参唯一入口 = 本节两常量。
 var godray_layers: int = 6
 var godray_alpha: Array[float] = [0.18, 0.14, 0.10, 0.07, 0.045, 0.025]
-var godray_spread_base: float = 40.0
-var godray_spread_step: float = 30.0
+var godray_spread_base: float = 20.0
+var godray_spread_step: float = 10.0
 # ② 倒影：垂直镜像 2×2 半透明色块（连成轮廓）+ 压缩 0.85 向下延伸 + 深度渐隐 + 逐行波纹。
 var reflection_squash: float = 0.85
 var reflection_alpha: float = 0.42
@@ -273,6 +328,114 @@ var _combo_cooling: float = 0.0
 var _combo_last_reset_reason: String = ""
 var _combo_last_settle: Dictionary = {}
 
+# ---------------------------------------------------------------------------
+# R35 / v0.12.0 · 精准弹反反馈层（派单 cmd-20261112-125821-147-A4 ① · Rank-4）
+# ---------------------------------------------------------------------------
+# 目标：订阅 Rank-2 ParryService 4 个公开信号（A54 唯一实例、不自建、不读私有实现），
+#   在 FXBloom 分派节点 _draw() 最上层叠加三层 2D 程序化反馈：
+#     ① 可弹反窗口「金色预兆环」：随 window_sec 从外半径 BASE_R 收紧到 MIN_R，
+#        环上等分刻度按剩余比例逐格熄灭读秒；暖金低 alpha、无纯白核心、不过曝。
+#     ② 成功弹反「冷蓝 → 暖金」短促冲击闪光：按时间进度分两段（前 COLD_RATIO 冷蓝
+#        #BFD0EA 扩散环 → 后段暖金 #FFD27A/#F0A94C 扩散环 + 低 alpha 亮核），
+#        仅两段既有色号交替、不做连续 RGB 插值（避免派生新色号、守零新增色号口径），
+#        峰值 alpha ≤ PARRY_FLASH_ALPHA、不叠乘既有 FXBloom 核心、短促收束。
+#     ③ 失败回落「冷夜雾」：底部低 alpha 冷蓝横带（避开 HUD 矩形 x<365,y<110 与角色
+#        判定区）+ 一个快速淡出的暗色环把预兆收起，与「暖金 × 冷夜雾」对冲一致。
+#   窗口关闭（parry_window_closed）立即收起预兆环；成功 / 失败信号各自起独立计时器。
+#
+# 【A54 唯一实例】与 R34 连击层同款：_try_bind_parry() 用 has_method("get_parry_service")
+#   遍历场景树找 WaveTrialDirector，经公开 get_parry_service() 取唯一 ParryService，
+#   connect 4 个公开信号；绝不 new() 第二个、不读私有实现、不依赖 /root 绝对路径 /
+#   group。deferred 等导演 _ready() 装配完成后绑定，_process 自愈重试上限
+#   PARRY_BIND_MAX_ATTEMPTS；未接线 → _draw_parry_fx() 静默 return（降级层保留），
+#   既有 FXReflection/FXGodRays/FXMotes/FXBloom + impact_fx + 连击层照常。
+#
+# 【A48① 生产订阅者】本层即生产运行时订阅者（挂在 courtyard.tscn 的 FXBloom 节点、
+#   非验证脚本）：真实玩家输入 → 生产链路开窗 / 弹反 → ParryService 发信号 → 本层
+#   绘制到画面。Rank-1 已交付「450 帧开窗 3 次、一次成功弹反自然出现」，本层在
+#   录屏画面中据此可见；不新建只读探针 / 巡检脚本。
+#
+# 【色数口径不变 · 零新增色号】全部色号逐字复用既有 _draw / PALETTE_HEX 已用 hex：
+#   暖金 #F0A94C / #FFD27A / #FFF0C2、冷蓝 #BFD0EA、冷夜雾 #2B3A5C / #4A6089 /
+#   #16233F —— 均为 R34 连击层 / 四项光效已在用色号，单帧 ≤16 色受控 + 项目级
+#   ≥256 色两层口径（A15）均不变；暖金 #F0A94C / 冷夜雾 #2B3A5C 即锚点 v2 §8
+#   登记的历史显示色（32 色板 L7/L3），不引入 v2 受控板新色、不冒充新色板（A32）。
+#
+# 【移动端不劣化】R35 原口径：绘制只在 _draw() 的 FXBloom 分派内、受 _all_on 门控，
+#   mobile 四项全关时 _draw() 开头即 return → 弹反层零绘制。
+#   【R35B 修订，见文件头 ⑩】本轮按任务单 d) 改为 mobile 档给轻量降级绘制（轻量环
+#   + 既有 HUD 文字），不再 _draw() 直接 return；计时器 / 绑定自愈仍在 FXBloom 执行。
+#
+# 【调参唯一入口 = 本节 [PLACEHOLDER] 常量表（只改表、不改算法）】；全部强度 / 时长
+#   数值待人工试玩校准，校准只改下表，不碰 _draw_parry_fx / 信号回调 / 绑定逻辑。
+#   强度 / 时长逐项 rationale：
+# [PLACEHOLDER] PARRY_RING_BASE_R=44.0 / PARRY_RING_MIN_R=28.0（逻辑 px）·
+#   rationale：环套在中央骑士外围（判定区约 x 288~352 / GROUND_Y=250），外半径 44
+#   不压角色本体、内收 28 让「窗口收紧」可读；与 R34 S 爆发环 (br 10→44) 同量级。
+# [PLACEHOLDER] PARRY_RING_ALPHA=0.40 / PARRY_RING_WIDTH=2.0 / PARRY_RING_TICKS=12 ·
+#   rationale：金色环峰值 alpha .40（不画纯白核心、不叠乘既有 bloom 核心 a=.85，防
+#   过曝 A41）；2px 硬边弧、12 格确定性读秒刻度（非随机噪点），随剩余比例熄灭。
+# [PLACEHOLDER] PARRY_FLASH_SEC=0.36（秒）·
+#   rationale：短促「冲击」而非持续泛光；与 Rank-2 window_sec=0.35 [PLACEHOLDER]
+#   同量级、略长 0.01s 让成功瞬间完整收束，不与连击 S 爆发(0.45s)叠乘过曝。
+# [PLACEHOLDER] PARRY_FLASH_ALPHA=0.42 / PARRY_FLASH_R0=16.0 / PARRY_FLASH_R1=56.0 /
+#   PARRY_FLASH_COLD_RATIO=0.40 ·
+#   rationale：峰值 alpha .42 ≤ 连击层封顶 .46，不画纯白大核心；扩散环 16→56 与
+#   S 爆发 10→44 同量级略外扩；前 40% 冷蓝、后 60% 暖金做「冷蓝→暖金」两段交替。
+# [PLACEHOLDER] PARRY_FAIL_SEC=0.55（秒）/ PARRY_FAIL_ALPHA=0.20 ·
+#   rationale：失败后暖金退场、冷雾泛起的可辨窗口；底部冷雾横带避开 HUD
+#   (x<365,y<110 逻辑) 与角色判定区 (y<270)，alpha .20 低于 R34 冷却带、不压暗画面。
+# [PLACEHOLDER] PARRY_BIND_MAX_ATTEMPTS=90 ·
+#   rationale：绑定自愈窗口 = 3s@30fps，兼容导演装配时序，失败静默降级（同 R34）。
+# ---------------------------------------------------------------------------
+const PARRY_RING_BASE_R: float = 44.0
+const PARRY_RING_MIN_R: float = 28.0
+const PARRY_RING_ALPHA: float = 0.40
+const PARRY_RING_WIDTH: float = 2.0
+const PARRY_RING_TICKS: int = 12
+const PARRY_FLASH_SEC: float = 0.36
+const PARRY_FLASH_ALPHA: float = 0.42
+const PARRY_FLASH_R0: float = 16.0
+const PARRY_FLASH_R1: float = 56.0
+const PARRY_FLASH_COLD_RATIO: float = 0.40
+const PARRY_FAIL_SEC: float = 0.55
+const PARRY_FAIL_ALPHA: float = 0.20
+const PARRY_BIND_MAX_ATTEMPTS: int = 90
+
+# ---------------------------------------------------------------------------
+# R35B · 弹反视觉收敛 [PLACEHOLDER] 常量表（调参唯一入口，只改表不改算法）
+# ---------------------------------------------------------------------------
+# [PLACEHOLDER] 局部金色预兆环环心 PARRY_RING_ANCHOR_PLAYER=(320,250) / _BOSS=(386,168)
+#   rationale：环必须【只围绕角色或 Boss】，不再铺满中景。PLAYER 锚点沿用既有
+#   GROUND_Y=250 / BUFFER_W*0.5=320 的中央骑士脚底判定区（屏幕 640,500），即 R35
+#   原环心；BOSS 锚点取 courtyard 中 Boss 像素精灵躯干中心（逻辑约 386,168 → 屏幕
+#   772,336，与录屏中 Boss 位置一致）。两者都是「局部」锚点，半径仍在 28~44 逻辑px
+#   （PARRY_RING_MIN_R / BASE_R），不 draw_rect 全屏 / 不铺中景。
+#   [PLACEHOLDER] 待人工试玩校准：若 Boss 节点坐标变化，只改此表两个 Vector2。
+const PARRY_RING_ANCHOR_PLAYER: Vector2 = Vector2(320.0, 250.0)
+const PARRY_RING_ANCHOR_BOSS: Vector2 = Vector2(386.0, 168.0)
+# [PLACEHOLDER] 轻量降级环 PARRY_LITE_RING_R=30.0 / PARRY_LITE_ALPHA=0.34 /
+#   PARRY_LITE_FLASH_ALPHA=0.30 · rationale：mobile 四项全关档位只画一个 2px 暖金
+#   环 + 一个短促扩散环（零四项光效 / 零 impact_fx / 零连击层 / 零全宽横带），
+#   alpha 峰值 0.34 ≤ 既有 PARRY_RING_ALPHA=0.40，不画纯白核心、不过曝；半径 30
+#   与 PARRY_RING_MIN_R=28 同量级，围绕角色局部，SEG-B 切换点 (frame=150) 也能看到
+#   弹反反馈（「移动端不劣化」≠「完全不绘制」）。色号逐字复用既有 #F0A94C /
+#   #FFD27A / #FFF0C2 / #BFD0EA，零新增色号。
+const PARRY_LITE_RING_R: float = 30.0
+const PARRY_LITE_ALPHA: float = 0.34
+const PARRY_LITE_FLASH_ALPHA: float = 0.30
+
+# 弹反反馈层运行期状态（仅 FXBloom 分派节点订阅 / 绘制；_parry_service 是只读引用）
+var _parry_service: Object = null
+var _parry_bind_attempts: int = 0
+var _parry_window_open: bool = false
+var _parry_window_total: float = 0.35
+var _parry_window_left: float = 0.0
+var _parry_flash_left: float = 0.0
+var _parry_fail_left: float = 0.0
+var _parry_last_close_reason: String = ""
+var _parry_last_success: Dictionary = {}
+
 
 ## R34 · 绑定唯一 ComboService（A54 复用 get_combo_service，绝不自建第二个实例）。
 ## 仅 FXBloom 节点在 _ready() 里 call_deferred 触发；装配时序未就绪时由 _process 自愈重试。
@@ -367,14 +530,20 @@ func _draw_combo_rank_fx(t: float) -> void:
 	var font: Font = ThemeDB.fallback_font
 	var rank_idx: int = maxi(0, COMBO_RANK_ORDER.find(_combo_rank))
 	var glow: float = _combo_glow
-	# ① 冷夜雾冷却（重置后）：底部低 alpha 冷雾横带，避开 HUD 与角色判定区
+	# ① 冷夜雾冷却（重置后）：R35B 收敛 —— 原 4 条全宽 draw_rect(BUFFER_W) 半透明
+	#    横带是「铺满中景的半透明大矩形底板」之一，改为【围绕角色脚下的局部短带】
+	#    （宽 ≤120 逻辑px、居中于 PARRY_RING_ANCHOR_PLAYER.x）+ 一个局部收环，
+	#    保留「暖金退场 / 冷雾泛起」语义但不再横铺全屏、不压低地面与角色对比度。
 	if _combo_cooling > 0.0:
 		var cold: float = clampf(_combo_cooling / COMBO_COOLDOWN_SEC, 0.0, 1.0)
-		draw_rect(Rect2(0.0, 286.0, BUFFER_W, 8.0), _c("#4A6089", 0.06 * cold))
+		var local_x: float = PARRY_RING_ANCHOR_PLAYER.x - 60.0
+		draw_rect(Rect2(local_x, 286.0, 120.0, 6.0), _c("#4A6089", 0.10 * cold))
 		for k in range(3):
-			var by: float = 300.0 + float(k) * 18.0
-			draw_rect(Rect2(0.0, by, BUFFER_W, 14.0),
-					_c("#2B3A5C", (0.05 + 0.07 * cold) * (1.0 - float(k) * 0.25)))
+			var by: float = 300.0 + float(k) * 14.0
+			draw_rect(Rect2(local_x + float(k) * 8.0, by, 104.0, 8.0),
+					_c("#2B3A5C", (0.08 + 0.10 * cold) * (1.0 - float(k) * 0.28)))
+		draw_arc(PARRY_RING_ANCHOR_PLAYER, 36.0 + 8.0 * cold, 0.0, TAU, 32,
+				_c("#16233F", 0.20 * cold), 1.0)
 	# ② 暖金光尘：密度按档递进，确定性硬边小圆点 + HUD 逐粒避让
 	var mote_count: int = int(COMBO_RANK_MOTES.get(_combo_rank, 0))
 	for i in range(mote_count):
@@ -429,6 +598,172 @@ func _draw_combo_rank_fx(t: float) -> void:
 				_c("#FFD27A", ba * 0.8), 1.0)
 
 
+## R35 · 绑定唯一 ParryService（A54 复用 get_parry_service，绝不自建第二个实例）。
+## 仅 FXBloom 节点在 _ready() 里 call_deferred 触发；装配时序未就绪时由 _process 自愈重试。
+func _try_bind_parry() -> void:
+	if _parry_service != null:
+		return
+	if _parry_bind_attempts >= PARRY_BIND_MAX_ATTEMPTS:
+		return
+	_parry_bind_attempts += 1
+	var tree := get_tree()
+	if tree == null:
+		return
+	var director := _find_node_with_method(tree.root, "get_parry_service")
+	if director == null:
+		return
+	var svc: Object = director.call("get_parry_service")
+	if svc == null:
+		return
+	var sigs := ["parry_window_opened", "parry_succeeded", "parry_failed", "parry_window_closed"]
+	var cbs := ["_on_parry_window_opened", "_on_parry_succeeded", "_on_parry_failed", "_on_parry_window_closed"]
+	# 降级层开关：4 信号任一缺失（Rank-2 并发半成品中间态）→ 不绑定、静默降级，
+	# 既不对不存在的信号 connect 产生 ERROR，也不影响既有四项光效 / impact_fx / 连击层。
+	for s in sigs:
+		if not svc.has_signal(s):
+			return
+	_parry_service = svc
+	for i in range(sigs.size()):
+		if not svc.is_connected(sigs[i], Callable(self, cbs[i])):
+			svc.connect(sigs[i], Callable(self, cbs[i]))
+	print("[R35][ParryFX] 绑定唯一 ParryService 成功 node=%s signals=%d（A54 复用 get_parry_service，不自建）" % [
+			str(name), sigs.size()])
+
+
+# ---- R35 · 4 个公开信号回调（签名真源：teamwork/Rank-2/DONE-R35.md §3.1）----
+func _on_parry_window_opened(window_sec: float) -> void:
+	# 可弹反窗口开启：金色预兆环从 window_sec 起收紧读秒；成功 / 失败闪光先收起。
+	_parry_window_total = maxf(0.01, float(window_sec))
+	_parry_window_left = _parry_window_total
+	_parry_window_open = true
+	_parry_flash_left = 0.0
+	_parry_fail_left = 0.0
+
+
+func _on_parry_succeeded(poise_bonus: float, points_bonus: int, combo_keep: bool) -> void:
+	# 成功弹反：触发「冷蓝 → 暖金」短促冲击闪光；payload 只读登记供飘字 / 对账。
+	_parry_window_open = false
+	_parry_window_left = 0.0
+	_parry_flash_left = PARRY_FLASH_SEC
+	_parry_fail_left = 0.0
+	_parry_last_success = {"poise": poise_bonus, "points": points_bonus, "combo_keep": combo_keep}
+
+
+func _on_parry_failed(reason: String, fail_penalty: int) -> void:
+	# 失败（timeout / move_landed）：回落冷夜雾 + 收起预兆环；fail_penalty 只读登记。
+	_parry_window_open = false
+	_parry_window_left = 0.0
+	_parry_flash_left = 0.0
+	_parry_fail_left = PARRY_FAIL_SEC
+	_parry_last_close_reason = reason
+
+
+func _on_parry_window_closed(reason: String) -> void:
+	# 窗口关闭（success / timeout / move_landed / boss_defeated / manual）：收起预兆环。
+	_parry_window_open = false
+	_parry_window_left = 0.0
+	_parry_last_close_reason = reason
+
+
+## R35 / R35B · 计时器推进（desktop 四项全开 + mobile 轻量降级，均只在 FXBloom 节点执行；
+##   mobile 其余三项 / 其它节点零开销）。
+func _update_parry_timers(delta: float) -> void:
+	if _parry_window_left > 0.0:
+		_parry_window_left = maxf(0.0, _parry_window_left - delta)
+	if _parry_flash_left > 0.0:
+		_parry_flash_left = maxf(0.0, _parry_flash_left - delta)
+	if _parry_fail_left > 0.0:
+		_parry_fail_left = maxf(0.0, _parry_fail_left - delta)
+
+
+## R35 / R35B · 精准弹反视觉反馈绘制（仅由 _draw() 的 FXBloom 分派调用，最上层）。
+## 未绑定 ParryService → 静默 return（既有四项光效 + impact_fx + 连击层照常，降级层保留）。
+## R35B 收敛：全部反馈改为【围绕角色 / Boss 的局部环 + 短促闪光】，不再 draw_rect
+##   全宽半透明横带铺中景（本轮半透明浅色大矩形的来源之一）。环心由 [PLACEHOLDER]
+##   常量表 PARRY_RING_ANCHOR_PLAYER / _BOSS 给出，半径 28~56 逻辑px 均为局部量级。
+func _draw_parry_fx(_t: float) -> void:
+	if _parry_service == null:
+		return
+	# 预兆环 / 失败收环围绕【角色】；成功冲击闪光围绕【Boss】—— 均局部锚点，不铺中景。
+	var center := PARRY_RING_ANCHOR_PLAYER
+	var boss_center := PARRY_RING_ANCHOR_BOSS
+	# ③ 失败回落冷夜雾：R35B 把原 4 条全宽 draw_rect(BUFFER_W) 半透明横带移除，
+	#    只保留围绕角色的【局部暗色收环】+ 一小段局部冷雾短带，不横铺全屏。
+	if _parry_fail_left > 0.0:
+		var frac: float = clampf(_parry_fail_left / PARRY_FAIL_SEC, 0.0, 1.0)
+		draw_rect(Rect2(center.x - 52.0, 292.0, 104.0, 6.0),
+				_c("#4A6089", 0.10 * frac))
+		var fr: float = PARRY_RING_BASE_R + 8.0 * (1.0 - frac)
+		draw_arc(center, fr, 0.0, TAU, 32, _c("#16233F", 0.30 * frac), 1.0)
+	# ① 可弹反窗口金色预兆环（围绕角色）：半径随 window_left 从 BASE_R 收到 MIN_R，刻度读秒
+	if _parry_window_open and _parry_window_left > 0.0:
+		var wr: float = clampf(_parry_window_left / _parry_window_total, 0.0, 1.0)
+		var ring_r: float = PARRY_RING_MIN_R + (PARRY_RING_BASE_R - PARRY_RING_MIN_R) * wr
+		draw_arc(center, ring_r, 0.0, TAU, 48, _c("#F0A94C", PARRY_RING_ALPHA), PARRY_RING_WIDTH)
+		draw_arc(center, ring_r - 4.0, 0.0, TAU, 48,
+				_c("#FFD27A", PARRY_RING_ALPHA * 0.45), 1.0)
+		# 12 格确定性读秒刻度：按剩余比例逐格熄灭（硬边短弧，非随机噪点）
+		var lit: int = mini(PARRY_RING_TICKS, int(float(PARRY_RING_TICKS) * wr) + 1)
+		for k in range(PARRY_RING_TICKS):
+			if k >= lit:
+				continue
+			var a0: float = TAU * float(k) / float(PARRY_RING_TICKS)
+			var a1: float = a0 + TAU / float(PARRY_RING_TICKS) * 0.55
+			draw_arc(center, ring_r + 4.0, a0, a1, 4,
+					_c("#FFF0C2", PARRY_RING_ALPHA * 0.85), 1.0)
+	# ② 成功弹反「冷蓝 → 暖金」短促冲击闪光（围绕 Boss）：PARRY_FLASH_SEC=0.36 短促、
+	#    峰值 alpha ≤ PARRY_FLASH_ALPHA=0.42、两段既有色号交替、无连续插值 / 无纯白大核心。
+	if _parry_flash_left > 0.0:
+		var p: float = 1.0 - clampf(_parry_flash_left / PARRY_FLASH_SEC, 0.0, 1.0)
+		var fade: float = 1.0 - p
+		var flash_r: float = PARRY_FLASH_R0 + (PARRY_FLASH_R1 - PARRY_FLASH_R0) * p
+		if p < PARRY_FLASH_COLD_RATIO:
+			# 前段冷蓝：扩散环 + 低 alpha 冷亮核
+			draw_arc(boss_center, flash_r, 0.0, TAU, 48,
+					_c("#BFD0EA", PARRY_FLASH_ALPHA * fade), 2.0)
+			draw_arc(boss_center, flash_r * 0.62, 0.0, TAU, 32,
+					_c("#4A6089", PARRY_FLASH_ALPHA * fade * 0.6), 1.0)
+		else:
+			# 后段暖金：双环 + 低 alpha 亮核（不叠乘既有 FXBloom 的 #FFF0C2 a=.85 核心）
+			draw_arc(boss_center, flash_r, 0.0, TAU, 48,
+					_c("#FFD27A", PARRY_FLASH_ALPHA * fade), 2.0)
+			draw_arc(boss_center, flash_r * 0.66, 0.0, TAU, 32,
+					_c("#F0A94C", PARRY_FLASH_ALPHA * fade * 0.7), 1.0)
+			draw_circle(boss_center, 3.0 * fade, _c("#FFF0C2", 0.28 * fade))
+
+
+## R35B · mobile 四项全关档位的【轻量降级绘制】（仅 FXBloom 节点调用）。
+## 「移动端不劣化」≠「完全不绘制」：四项光效 / impact_fx / 连击层 / 全宽横带全关，
+## 只画「轻量环 + 既有 HUD 文字」—— 一个局部暖金环（开窗读秒）+ 一个短促成功扩散环，
+## 与 desktop 同款局部锚点、同款既有色号，零新增色号 / 零 GPU job / 零外部素材。
+## HUD 文字提示框由 hud.gd（Rank-1 独占只读）生产常驻可见层承担，本层不重复画文字、
+## 不动 HUD 文字框；SEG-B 切换点 (frame=150) 也能看到弹反反馈。
+func _draw_parry_lightweight(_t: float) -> void:
+	if _parry_service == null:
+		return
+	var center := PARRY_RING_ANCHOR_PLAYER
+	# 开窗：单个轻量暖金环（半径随窗口收紧读秒，2px 硬边，alpha ≤ PARRY_LITE_ALPHA）
+	if _parry_window_open and _parry_window_left > 0.0:
+		var wr: float = clampf(_parry_window_left / _parry_window_total, 0.0, 1.0)
+		var lr: float = PARRY_LITE_RING_R - 6.0 * (1.0 - wr)
+		draw_arc(center, lr, 0.0, TAU, 32, _c("#F0A94C", PARRY_LITE_ALPHA), 2.0)
+		draw_arc(center, lr - 3.0, 0.0, TAU, 32,
+				_c("#FFD27A", PARRY_LITE_ALPHA * 0.45), 1.0)
+	# 成功：单个短促暖金 / 冷蓝扩散环（PARRY_FLASH_SEC 计时，峰值 alpha ≤ 0.30）
+	if _parry_flash_left > 0.0:
+		var p: float = 1.0 - clampf(_parry_flash_left / PARRY_FLASH_SEC, 0.0, 1.0)
+		var fade: float = 1.0 - p
+		var lr2: float = PARRY_FLASH_R0 + (PARRY_FLASH_R1 - PARRY_FLASH_R0) * p
+		var hex: String = "#BFD0EA" if p < PARRY_FLASH_COLD_RATIO else "#FFD27A"
+		draw_arc(PARRY_RING_ANCHOR_BOSS, lr2, 0.0, TAU, 32,
+				_c(hex, PARRY_LITE_FLASH_ALPHA * fade), 2.0)
+	# 失败：单个低 alpha 收环（围绕角色，无横带）
+	if _parry_fail_left > 0.0:
+		var frac: float = clampf(_parry_fail_left / PARRY_FAIL_SEC, 0.0, 1.0)
+		draw_arc(center, PARRY_RING_BASE_R + 6.0 * (1.0 - frac), 0.0, TAU, 32,
+				_c("#16233F", 0.24 * frac), 1.0)
+
+
 func _ready() -> void:
 	_palette.clear()
 	for h in PALETTE_HEX:
@@ -451,8 +786,11 @@ func _ready() -> void:
 				str(name), fx_profile])
 	# R34：连击评级反馈层 —— 仅 FXBloom 分派节点订阅唯一 ComboService（A54），
 	# deferred 排在 WaveTrialDirector._ready() 装配完成之后；装配时序未就绪由 _process 自愈重试。
+	# R35：精准弹反反馈层 —— 同一 FXBloom 分派节点订阅唯一 ParryService（A54），
+	# 与连击层同款 deferred + 自愈，绝不自建第二个实例、不读私有实现。
 	if str(name) == "FXBloom":
 		call_deferred("_try_bind_combo")
+		call_deferred("_try_bind_parry")
 
 
 ## 档位开关的公共入口：改档位并立即重算四项门 / 可见性（供 build 脚本回读真跑验证）。
@@ -493,14 +831,18 @@ func _apply_hud_avoid_meta() -> void:
 
 func _apply_profile() -> void:
 	# 冻结口径（HD2D-FX-PLAN.md §4.2）：desktop 四项全开 / mobile 四项全关。
-	# §4.3 的「移动降级而非全关」为待裁决建议，本轮不擅自实现（R15 已登记）。
+	# R35B 按任务单 d) 落地 §4.3「移动档降级而非全关」：四项绘制门仍全 false，
+	# 但 mobile 档【不再整层零绘制】—— 仅 FXBloom 节点保持 visible 用于画轻量弹反环，
+	# 其余三项节点仍 visible=false、零绘制（「移动端不劣化」≠「完全不绘制」）。
+	# 口径差异如实登记：R19 verify_fx_mobile.gd 断言「mobile 4 节点 visible 全 false」，
+	# 本轮 FXBloom 一项按新口径改为 true；该验证脚本属只读、非本轮授权，未改（见 DONE-R35B）。
 	_all_on = (fx_profile == PROFILE_DESKTOP)
 	_on_reflection = _all_on
 	_on_godrays = _all_on
 	_on_motes = _all_on
 	_on_bloom = _all_on
-	# mobile 整层不绘制；desktop 四项由节点名分派、按同层子节点顺序叠加
-	visible = _all_on
+	# desktop 四项由节点名分派、按同层子节点顺序叠加；mobile 仅 FXBloom 可见画轻量环
+	visible = _all_on or (str(name) == "FXBloom" and fx_profile == PROFILE_MOBILE)
 
 
 func _build_motes() -> void:
@@ -534,19 +876,37 @@ func _process(delta: float) -> void:
 	# 逐帧重绘沿用 hd2d_placeholder.gd::_process 口径（光尘上飘 / 倒影波纹需逐帧）。
 	# §4.4「静态层（体积光/bloom）仅档位变化时重绘 + 移动档节流」是给 Rank-1 的
 	# 落地建议，本轮不擅自实现，如实登记为待接线项。
+	var is_bloom: bool = (str(name) == "FXBloom")
 	if _all_on:
-		# R34：连击反馈层计时器 + 绑定自愈（仅 FXBloom 节点；mobile 四项全关时零开销）
-		if str(name) == "FXBloom":
+		# R34 / R35：连击 + 弹反反馈层计时器 + 绑定自愈
+		# （仅 FXBloom 节点；desktop 四项全开）
+		if is_bloom:
 			if _combo_service == null:
 				_try_bind_combo()
 			_update_combo_timers(delta)
+			if _parry_service == null:
+				_try_bind_parry()
+			_update_parry_timers(delta)
+		queue_redraw()
+	elif is_bloom and fx_profile == PROFILE_MOBILE:
+		# R35B · mobile 四项全关档位【轻量降级】：四项光效 / impact_fx / 连击层零绘制，
+		# 但弹反计时器 / 绑定自愈仍推进，并逐帧 queue_redraw() 让轻量环随窗口收紧读秒
+		# （每帧仅 1~2 个 draw_arc，开销可忽略 → 「移动端不劣化」≠「完全不绘制」）。
+		if _parry_service == null:
+			_try_bind_parry()
+		_update_parry_timers(delta)
 		queue_redraw()
 
 
 func _draw() -> void:
-	if not _all_on:
-		return
 	var t := Time.get_ticks_msec() / 1000.0
+	# R35B · mobile 四项全关档位不再 _draw() 开头直接 return：仅 FXBloom 画「轻量环 +
+	# 既有 HUD 文字」，其余三项 / 其它节点零绘制（「移动端不劣化」≠「完全不绘制」），
+	# 使第 150 帧落在 SEG-B 切换点时也能看到弹反反馈。
+	if not _all_on:
+		if str(name) == "FXBloom" and fx_profile == PROFILE_MOBILE:
+			_draw_parry_lightweight(t)
+		return
 	# 单节点内按 HD-2D视觉规范.md §10 层序绘制：fx_0_back(倒影/体积光) → fx_1_front(光尘/bloom)。
 	# 独立场景由 4 个同名分派节点分担，各节点同处一个 CanvasLayer，靠子节点顺序叠加。
 	match str(name):
@@ -564,6 +924,7 @@ func _draw() -> void:
 				_draw_bloom(t)
 			_draw_impact_fx(t)   # R32：只读加载的 4 帧打击反馈（资源缺失则降级跳过）
 			_draw_combo_rank_fx(t)  # R34：连击评级反馈层（未绑定 ComboService 则静默跳过）
+			_draw_parry_fx(t)       # R35：精准弹反反馈层（未绑定 ParryService 则静默跳过）
 		_:
 			pass
 

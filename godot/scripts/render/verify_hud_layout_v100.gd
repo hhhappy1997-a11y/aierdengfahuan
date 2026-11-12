@@ -160,6 +160,7 @@ func _initialize() -> void:
 	_test_real_boon_draft()
 	_test_real_tab_mutex()
 	_test_r34c_real_rects()
+	_test_r35_parry_rects()
 	_finish()
 
 
@@ -566,6 +567,88 @@ func _test_r34c_real_rects() -> void:
 	hud.call("close_boon_draft")
 	hud.call("set_codex_open", false)
 	hud.set("shop_open", false)
+
+
+# ---------------------------------------------------------------------------
+# J) R35 · 精准弹反金色预兆文字【真实节点 rect】避让断言（既有 24 条不删不放宽）
+#   R35 新增 ProdParryLabel 按独立归一化锚点 ANCHOR_PARRY 定位；开窗后读真实节点
+#   get_global_rect()，断言与 6 分区 / 赐福成长标题行 / 连击评级条 / 右上韧性·卡片区
+#   等所有其它文字包围盒不相交，且四档降级不出界 / 不遮中央角色。
+# ---------------------------------------------------------------------------
+func _j_blocks(hud: Node, layer: Node) -> Array:
+	var blocks: Array = []
+	for e in hud.call("get_layout_rects") as Array:
+		blocks.append(_rect_of(e))
+	blocks.append(hud.call("get_shop_title_rect") as Rect2)
+	blocks.append(hud.call("get_production_mechanism_rect") as Rect2)
+	if layer != null and is_instance_valid(layer):
+		for n: String in ["ProdComboLabel", "ProdStaggerLabel", "ProdDraftLabel"]:
+			var l: Label = layer.get_node_or_null(NodePath(n)) as Label
+			if l != null and is_instance_valid(l):
+				blocks.append(l.get_global_rect())
+	return blocks
+
+
+func _j_worst(pr: Rect2, blocks: Array) -> float:
+	var worst: float = 0.0
+	for b in blocks:
+		worst = maxf(worst, pr.intersection(b as Rect2).get_area())
+	return worst
+
+
+func _test_r35_parry_rects() -> void:
+	var hud: Node = _hud
+	print("[V100HUD] ==== J 组 R35 金色预兆文字真实节点 rect 避让断言 ====")
+	hud.call("set_layout_viewport", Vector2(1280.0, 720.0))
+	var layer: Node = hud.get_node_or_null(NodePath("ProductionMechanismsLayer"))
+	var pl: Label = layer.get_node_or_null(NodePath("ProdParryLabel")) as Label if layer != null else null
+	var pl_ok: bool = pl != null and is_instance_valid(pl)
+	_ck("J1 生产常驻可见层含 R35 金色预兆真实节点 ProdParryLabel（hud.gd 自建，非演示构造）",
+			pl_ok, "node=%s" % str(pl_ok))
+	# 开窗（生产 HUD 公开入口）→ 真实文本 / 节点可见
+	hud.call("_r35_open_parry_window", 1.0, "")
+	hud.call("_r34_refresh_visible")
+	var pv: Dictionary = hud.call("get_parry_hud_view") as Dictionary
+	var ptext: String = String(pv.get("telegraph_text", ""))
+	_ck("J1b 开窗后金色预兆文本含「精准弹反 / 按 K」且真实节点 visible=true",
+			pl_ok and pl.visible and ptext.contains("精准弹反") and ptext.contains("按 K"),
+			"text=[%s] visible=%s" % [ptext, str(pl.visible) if pl_ok else "?"])
+	# J2 1280x720 基准：预兆文字 vs 所有其它文字块两两不相交
+	var pr: Rect2 = pl.get_global_rect() if pl_ok else Rect2()
+	var blocks: Array = _j_blocks(hud, layer)
+	var worst: float = _j_worst(pr, blocks)
+	_ck("J2 ★ HUD 预兆文字不与其它文字包围盒相交（6 分区 + 赐福成长标题行 + 连击评级条 + 右上韧性/卡片区）",
+			pl_ok and pr.get_area() > 0.0 and worst == 0.0,
+			"parry_rect=%s blocks=%d worst_overlap=%.4f px²" % [str(pr), blocks.size(), worst])
+	# J3 四档降级：不出界 / 不遮中央角色 / 不与其它文字相交
+	var all_ok: bool = true
+	var details: Array[String] = []
+	for vp: Vector2 in VIEWPORTS:
+		hud.call("set_layout_viewport", vp)
+		var r2: Rect2 = pl.get_global_rect() if pl_ok else Rect2()
+		var chr: Rect2 = hud.call("get_center_char_rect") as Rect2
+		var blocks2: Array = _j_blocks(hud, layer)
+		var bounded: bool = r2.position.x >= -0.001 and r2.position.y >= -0.001 \
+				and r2.end.x <= vp.x + 0.001 and r2.end.y <= vp.y + 0.001 \
+				and r2.get_area() > 0.0
+		var ov: float = _j_worst(r2, blocks2)
+		var ok: bool = bounded and r2.intersection(chr).get_area() == 0.0 and ov == 0.0
+		if not ok:
+			all_ok = false
+		details.append("%dx%d:rect=%s bounded=%s char_ov=%.2f text_ov=%.2f" % [
+				int(vp.x), int(vp.y), str(r2), str(bounded),
+				r2.intersection(chr).get_area(), ov])
+	_ck("J3 1280x720 + 三档降级：金色预兆节点不出界 / 不遮中央角色 / 不与任一文字包围盒相交",
+			all_ok, str(details))
+	hud.call("set_layout_viewport", Vector2(1280.0, 720.0))
+	# J4 按独立分区锚点定位（非硬编码像素堆叠）
+	var anchor: Rect2 = hud.call("get_parry_telegraph_rect") as Rect2
+	var pr2: Rect2 = pl.get_global_rect() if pl_ok else Rect2()
+	_ck("J4 金色预兆真实节点 rect 与独立分区锚点 rect 一致（按锚点定位）",
+			pl_ok and pr2.is_equal_approx(anchor),
+			"node_rect=%s anchor_rect=%s" % [str(pr2), str(anchor)])
+	# 恢复干净态（关窗，不影响 _finish 释放）
+	hud.call("_r35_close_parry_window")
 
 
 func _finish() -> void:

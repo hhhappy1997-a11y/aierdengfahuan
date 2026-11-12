@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-125821-139-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "R35 / v0.12.0「精准弹反 · 消费闭合」交付完成，实际结论见 teamwork/Rank-2/DONE-R35.md：① 新增 godot/data/combat/parry_rules.tres + parry_config.gd(ParryConfig) + parry_service.gd(ParryService, 6 个 [PLACEHOLDER] 字段 + rationale + 调参唯一入口)；② wave_trial_director.gd 最小接线（唯一写入方）：波次开窗、弹反 points_bonus/poise_bonus 并入既有削韧与清波点数结算，沿用 A57 经 points_awarded 发唯一最终值、不二次入账，既有判定分支/帧数据/输出格式/既有 .tres 零改动；③ 新增 verify_parry_v120.gd 与 verify_parry_settlement_v120.gd；④ 三段门禁 GATE-1/2a/2b/3 全 EXIT=0、最终统一 SCRIPT ERROR=0，两份自测 RESULT=ALL_MATCH（58+80=138 PASS / 0 FAIL），8 份既有 .tres md5 前后一致零改动（只新增 parry_rules.tres），courtyard.tscn node_count=41 保持；⑤ A48① 4 信号生产订阅者=wave_trial_director._bind_parry_signals()（生产节点，非验证脚本）、A54 唯一实例经 get_parry_service() 复用（Rank-1 hud.gd 鸭子类型候选命中）；⑥ 供 Rank-1/Rank-4 的公开方法与信号完整签名见 DONE-R35.md §3；未完成项见 §6、待总指挥裁决项见 §7（含 window_id/combo_keep/fail_penalty 接口差异、Rank-1 运行时接线、实机录屏）。如实登记：GATE-3 在 Rank-1 并行写入 hud.gd/encounter_director.gd 半成品中间态曾间歇出现 SCRIPT ERROR: Parse Error（全部归属 Rank-1 唯一写入方文件、非本轮引入、Rank-2 只读未改），Rank-1 写入完成后的最终统一门禁 SCRIPT ERROR=0。"
+}

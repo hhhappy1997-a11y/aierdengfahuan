@@ -33,6 +33,11 @@ signal points_awarded(reason: String, points: int, source: String)
 signal boon_draft_applied(index: int, choice_id: String, effect_key: String, effect_value: float, cost_key: String, cost_value: float)
 #   d 链：下一波开始时把上一波抉择的修正广播给下一波消费方（作用于下一波）。
 signal production_wave_modifier(wave_index: int, effect_key: String, effect_value: float, cost_key: String, cost_value: float)
+# ---- R35 [ROUND=R35] 新增信号（既有 9 信号逐字不动）----
+#   精准弹反：窗口内真实 K → 成功结算 → 广播。
+#   A48①：生产运行时订阅者 = EncounterDirector（_r35_bootstrap 里 connect），
+#          成功时由导演层真实削韧并保护连击不断；绝不只是验证脚本订阅。
+signal parry_performed(window_id: String, bonus_points: int, poise_bonus: float)
 
 # ==========================================================================
 # 常量
@@ -1216,6 +1221,18 @@ const ANCHOR_CHAR: Rect2 = Rect2(0.31250, 0.31944, 0.37500, 0.47222)      # 中�
 #   status 0.92222 留 0.01666 安全缝、与 char/side/shop 下沿留 ≥0.06 垂直缝；
 #   左半宽 0.60 避开右下侧面板余量，长文本 autowrap 不越界；调参只改本节常量）。
 const ANCHOR_COMBO: Rect2 = Rect2(0.01875, 0.85556, 0.60000, 0.05000)    # 左下·生产机制评级条（独立分区）
+# ---- R35 [ROUND=R35] · 精准弹反「金色预兆 / 读秒」文本【独立分区】----
+#   落在左侧波次带(0.27778~0.31944) / 引导带(0.33056~0.37222) 之下、
+#   连击评级条(0.85556~0.90556) / 底部状态条(0.92222~) 之上；
+#   x 0.01875~0.29688 严格在中央角色保护区(ANCHOR_CHAR x≥0.31250) 之左，
+#   与右侧面板 / 兑换面板 / 右上韧性条(x≥0.70313) 天然不相交。
+#   归一化锚点随 _layout_viewport 等比缩放 → 四档降级均不出界 / 不与任一文字包围盒相交。
+#   【不并入 get_layout_rects() 的 6 分区数组】（保护既有 A1「size()==6」断言不放宽），
+#   只经 get_parry_telegraph_rect() 暴露，供真实节点定位与 HUD 布局断言读取。
+# [PLACEHOLDER] 锚点为布局初值，待试玩目视校准
+#   （rationale：与上方 guide 下沿 0.37222 留 0.03056 垂直安全缝、与下方 combo 留 ≥0.36 缝；
+#   与中央角色左沿 0.31250 留 0.01562 水平缝；长文本 autowrap 不越界；调参只改本节常量）。
+const ANCHOR_PARRY: Rect2 = Rect2(0.01875, 0.40278, 0.27813, 0.08333)    # 左中·精准弹反金色预兆带（独立分区）
 
 var _layout_viewport: Vector2 = LAYOUT_BASE
 
@@ -1229,6 +1246,8 @@ func set_layout_viewport(size: Vector2) -> void:
 	_layout_viewport = Vector2(maxf(1.0, size.x), maxf(1.0, size.y))
 	# R34C：生产机制连击文本真实节点随视口重定位（降级档不出界 / 不遮角色 / 不重叠）。
 	_r34_apply_combo_rect()
+	# R35：精准弹反金色预兆真实节点随视口重定位（独立分区，四档降级不与文字相交）。
+	_r35_apply_parry_rect()
 
 
 func _scaled_rect(anchor: Rect2) -> Rect2:
@@ -1265,6 +1284,13 @@ func get_production_mechanism_rect() -> Rect2:
 func get_shop_title_rect() -> Rect2:
 	return Rect2(SHOP_RECT_LEFT, SHOP_RECT_TOP,
 			SHOP_RECT_RIGHT - SHOP_RECT_LEFT, SHOP_RECT_BOTTOM - SHOP_RECT_TOP)
+
+
+## R35 · 精准弹反金色预兆文本【独立分区】的实际包围盒（归一化锚点 → 当前视口线性缩放）。
+##   供 ProdParryLabel 真实节点定位与「预兆文字不与其它文字包围盒相交」断言读取；
+##   不并入 6 分区数组（A1 不回退）。
+func get_parry_telegraph_rect() -> Rect2:
+	return _scaled_rect(ANCHOR_PARRY)
 
 
 func get_hud_layout() -> Dictionary:
@@ -1462,8 +1488,10 @@ func _open_execution_window(remaining: Variant, bonus: Variant) -> void:
 	_stagger_execution_consumed = false
 	_stagger_window_bonus = int(bonus) if (bonus != null \
 			and (typeof(bonus) == TYPE_INT or typeof(bonus) == TYPE_FLOAT)) else 0
-	# 真实服务不提供 window_id，留空如实登记；bonus_points 由信号第 2 参给出。
-	_stagger_window_id = ""
+	# A58 [ROUND=R35]：处决窗口统一生成【非空且唯一】的 window_id（exe_<wave>_<seq>），
+	#   随 execution_performed 带出 → Rank-3 编排层 "exe:<window_id>" 去重键不再合并不同窗口。
+	#   生成规则 / 失败降级见文件尾 _r35_make_window_id()。
+	_stagger_window_id = _r35_make_window_id("exe")
 
 
 func _close_execution_window() -> void:
@@ -1701,6 +1729,11 @@ func _process_r32_keys(event: InputEvent) -> bool:
 		return true
 	if pc == KEY_F or kc == KEY_F:
 		_try_execution_input()
+		return true
+	# R35：精准弹反真实 K 输入（与 F / Tab 同走 HUD 单一 _unhandled_input → R32 键路径）。
+	#   生产窗口状态由 A54 唯一 ParryService 决定；窗口外 / 重复 / 冷却由 request_parry 门控拒绝。
+	if pc == KEY_K or kc == KEY_K:
+		_try_parry_input()
 		return true
 	return false
 
@@ -1973,6 +2006,13 @@ func _r34_bootstrap() -> void:
 					bind_boon_draft_service(boon)    # HUD 卡片显示复用同一 BoonDraftService
 			_r34_dedup_connect(wave, "wave_cleared", "_r34_on_wave_cleared")
 			_r34_dedup_connect(wave, "wave_started", "_r34_on_wave_started")
+			# A54 [R35]：ParryService 唯一实例归属 wave_trial_director.gd，
+			#   本层【绝不另建第二个实例】，只经 get_parry_service() 复用并 bind。
+			if wave.has_method("get_parry_service"):
+				var parry: Object = wave.call("get_parry_service") as Object
+				if parry != null and is_instance_valid(parry):
+					bind_parry_service(parry)
+					print("[R35][HUD] A54 唯一 ParryService 已复用 wave.get_parry_service()（不自建第二实例）")
 	_r34_build_visible()
 	set_process(true)
 	_r34_refresh_visible()
@@ -2192,9 +2232,18 @@ func _r34_build_visible() -> void:
 		cl = _r34_make_label("ProdComboLabel")
 		layer.add_child(cl)
 	_r34_combo_label = cl
+	# R35：精准弹反「金色预兆 + 读秒」真实 Label（生产常驻可见层，非 presentation.gd 构造）。
+	#   独立分区锚点定位，字体染色为金色，不与其它任一文字包围盒相交（J 组真跑断言）。
+	var pl: Label = layer.get_node_or_null(NodePath("ProdParryLabel")) as Label
+	if pl == null:
+		pl = _r34_make_label("ProdParryLabel")
+		pl.add_theme_color_override("font_color", Color(1.0, 0.84, 0.30, 1.0))
+		layer.add_child(pl)
+	_r35_parry_label = pl
 	# R34C：连击评级 / 倍率 / 命中数文本按【独立分区锚点】定位，不再用
 	#   R34_RECT_BOTTOM+8/+36 硬编码像素堆叠压在赐福成长标题行上。
 	_r34_apply_combo_rect()
+	_r35_apply_parry_rect()
 	_r34_hide_all()
 	print("[R34][HUD] f 链：生产常驻可见层 %s 入树 is_inside_tree=%s（按状态显示，非 presentation.gd 构造）" % [
 			R34_LAYER_NAME, str(layer.is_inside_tree())])
@@ -2220,7 +2269,7 @@ func ensure_production_visible_layer() -> void:
 
 
 func _r34_hide_all() -> void:
-	for n: Node in [_r34_poise_bar, _r34_stagger_label, _r34_draft_label, _r34_combo_label]:
+	for n: Node in [_r34_poise_bar, _r34_stagger_label, _r34_draft_label, _r34_combo_label, _r35_parry_label]:
 		if n != null and is_instance_valid(n):
 			n.visible = false
 
@@ -2255,6 +2304,15 @@ func _r34_refresh_visible() -> void:
 				slines.append(wt)
 			_r34_stagger_label.text = "\n".join(PackedStringArray(slines))
 			_r34_stagger_label.visible = true
+	# R35：精准弹反金色预兆 / 读秒 / 结果文本按状态显示（独立分区 ProdParryLabel）。
+	#   文本全部读 get_parry_hud_view() 公开快照；窗口外 / 失败超时 → 空文本隐藏，
+	#   失败或超时按既有受击结算（本层不改伤害判定），不伪造窗口。
+	if _r35_parry_label != null and is_instance_valid(_r35_parry_label):
+		var pv: Dictionary = get_parry_hud_view()
+		var ptext: String = String(pv.get("telegraph_text", ""))
+		if not ptext.is_empty():
+			_r35_parry_label.text = ptext
+			_r35_parry_label.visible = true
 	var combo_text: String = _r34_combo_text()
 	if not combo_text.is_empty() and _r34_combo_label != null:
 		_r34_combo_label.text = combo_text
@@ -2285,6 +2343,9 @@ func _r34_combo_text() -> String:
 func _process(delta: float) -> void:
 	if _stagger_window_open:
 		tick_stagger(delta)
+	# R35：可弹反窗口读秒镜像由生产帧驱动（ParryService 真实 tick 亦由导演层帧链转发）。
+	if _r35_parry_window_open or _r35_parry_cooldown > 0.0:
+		tick_parry(delta)
 	_r34_refresh_visible()
 
 
@@ -2309,6 +2370,13 @@ func get_production_status() -> Dictionary:
 		"stagger_hud": get_stagger_hud_view(),
 		"combo_signals_connected": _r34_combo_signals_connected,
 		"combo_hud": get_combo_hud_view(),
+		# ---- R35 追加（既有键名与取值口径逐字不变）----
+		"parry_bound": _r35_parry != null and is_instance_valid(_r35_parry),
+		"parry_hud": get_parry_hud_view(),
+		"parry_window_id": _r35_parry_window_id,
+		"parry_success_count": _r35_parry_success_count,
+		"parry_attempt_count": _r35_parry_attempt_count,
+		"parry_signal_connected": _r35_parry_connected,
 	}
 
 
@@ -2321,6 +2389,7 @@ func get_active_wave_modifier() -> Dictionary:
 
 
 func _r34_release() -> void:
+	_r35_release()                       # R35：ParryService 信号 connect 的释放路径
 	_r34_disconnect_combo_signals()      # R34B：4 个 combo 信号 connect 的释放路径
 	if _r34_wave != null and is_instance_valid(_r34_wave):
 		var cb1: Callable = Callable(self, "_r34_on_wave_cleared")
@@ -2332,3 +2401,358 @@ func _r34_release() -> void:
 	_r34_wave = null
 	_r34_wave_cleared_connected = false
 	_r34_wave_started_connected = false
+
+
+# ==========================================================================
+# 17) R35 [ROUND=R35] · v0.12.0 精准弹反（运行时侧，Rank-1 唯一写入方）
+#   A48①：新信号 parry_performed 的生产运行时订阅者 = EncounterDirector
+#          （_r35_bootstrap() 里 connect，成功时真实削韧 + 保护连击不断），
+#          绝不只是验证脚本订阅。
+#   A54：ParryService 唯一实例归属 wave_trial_director.gd；本层只经
+#        wave.get_parry_service() 复用并 bind_parry_service()，绝不自建第二个。
+#   A57：弹反赐福点数沿用「points_awarded.points = 最终结算值（含连击倍率）」口径，
+#        取 A54 唯一 ComboService 的有效倍率；无有效倍率 → 回落基础值 + 告警。
+#   A58：处决 / 弹反窗口统一生成非空且唯一 window_id（exe_<wave>_<seq> /
+#        parry_<wave>_<seq>），随 execution_performed / parry_performed 带出。
+#   不改既有伤害判定 / 帧数据 / 输出格式：失败或超时 → 既有受击链照常结算，
+#   本层只附加「成功 → 削韧 / 点数 / 连击不断」与「金色预兆 + 读秒」显示。
+#   鸭子类型 + 判空降级：Rank-2 接口未落盘 / 方法名差异均不产生 SCRIPT ERROR、不崩。
+# ==========================================================================
+
+# ---- Rank-2 契约候选（鸭子类型，不静态引用 ParryService class_name）----
+const R35_PARRY_SIGNAL_OPEN: Array[String] = [
+	"parry_window_opened", "window_opened", "parry_window_open"]
+const R35_PARRY_SIGNAL_CLOSE: Array[String] = [
+	"parry_window_closed", "window_closed", "parry_window_close"]
+const R35_PARRY_METHOD_TRY: Array[String] = ["try_parry", "parry", "attempt_parry", "request_parry"]
+const R35_PARRY_METHOD_TICK: Array[String] = ["tick", "advance", "step"]
+const R35_PARRY_METHOD_SNAPSHOT: Array[String] = ["get_snapshot", "get_status", "get_view"]
+const R35_KEY_OPEN: Array[String] = ["window_open", "parry_window_open", "open", "is_open"]
+const R35_KEY_REMAINING: Array[String] = ["window_remaining", "remaining", "window_sec_remaining", "remaining_sec"]
+const R35_KEY_COOLDOWN: Array[String] = ["cooldown_remaining", "cooldown", "cooldown_sec"]
+const R35_KEY_WID: Array[String] = ["window_id", "parry_window_id"]
+const R35_KEY_OK: Array[String] = ["ok", "success", "accepted", "parried"]
+const R35_KEY_REASON: Array[String] = ["reason", "result"]
+const R35_KEY_POINTS: Array[String] = ["points_bonus", "bonus_points", "points"]
+const R35_KEY_POISE: Array[String] = ["poise_bonus", "bonus_poise", "poise"]
+## [PLACEHOLDER] 可弹反窗口读秒降级初值（Rank-2 服务未提供 remaining 时）。
+## rationale：给「金色预兆读秒」一个可见但短促的初值，真实时长以 parry_rules.tres
+## 的 window_sec / 服务快照为准；调参唯一入口 = res://data/combat/parry_rules.tres（只改表不改代码）。
+const R35_PARRY_WINDOW_FALLBACK_SEC: float = 0.8
+
+var _r35_parry: Object = null                  # A54 唯一 ParryService（wave.get_parry_service() 复用）
+var _r35_parry_connected: bool = false
+var _r35_parry_window_open: bool = false       # 窗口状态镜像（服务为权威）
+var _r35_parry_window_remaining: float = 0.0  # 读秒镜像
+var _r35_parry_window_id: String = ""          # A58 唯一窗口 id
+var _r35_parry_consumed: bool = false          # 同窗口重复按键幂等
+var _r35_parry_cooldown: float = 0.0           # 冷却期拒绝
+var _r35_parry_result_text: String = ""        # 成功 / 失败反馈文本
+var _r35_parry_label: Label = null             # 金色预兆真实节点
+var _r35_parry_success_count: int = 0
+var _r35_parry_attempt_count: int = 0
+var _r35_points_count: int = 0                 # 弹反 points_awarded 发出次数
+var _r35_exe_seq: int = 0                      # A58 处决窗口序号
+var _r35_parry_seq: int = 0                    # A58 弹反窗口序号
+var _r35_parry_log: Array[Dictionary] = []     # 逐次尝试（供验证 / 运行日志只读回读）
+
+
+## 供 Rank-4 / 验证取 A54 唯一实例（同一 ParryService，不经场景树）。
+func get_parry_service() -> Object:
+	return _r35_parry
+
+
+## 多候选键读取：Rank-2 快照字段命名差异不改本层代码即可兼容。
+func _r35_pick(d: Dictionary, keys: Array[String], default_value: Variant) -> Variant:
+	for k: String in keys:
+		if d.has(k):
+			return d[k]
+	return default_value
+
+
+func _r35_last_snapshot() -> Dictionary:
+	var svc: Object = _r35_parry
+	if svc == null or not is_instance_valid(svc):
+		return {}
+	for m: String in R35_PARRY_METHOD_SNAPSHOT:
+		if svc.has_method(m):
+			var v: Variant = svc.call(m)
+			if typeof(v) == TYPE_DICTIONARY:
+				return v as Dictionary
+	return {}
+
+
+func _r35_dedup_connect(obj: Object, sig: String, method: String) -> void:
+	if obj == null or not obj.has_signal(sig):
+		return
+	var cb: Callable = Callable(self, method)
+	for conn in obj.get_signal_connection_list(sig):
+		var c: Callable = conn.get("callable", Callable())
+		if c.get_object() == self and String(c.get_method()) == method:
+			return
+	obj.connect(sig, cb)
+
+
+## A54 唯一实例注入口（生产由 _r34_bootstrap 经 wave.get_parry_service() 复用）。
+func bind_parry_service(svc: Object) -> void:
+	_r35_release()
+	_r35_parry = svc
+	if svc == null or not is_instance_valid(svc):
+		return
+	for sig: String in R35_PARRY_SIGNAL_OPEN:
+		if svc.has_signal(sig):
+			_r35_dedup_connect(svc, sig, "_r35_on_parry_window_opened")
+			break
+	for sig2: String in R35_PARRY_SIGNAL_CLOSE:
+		if svc.has_signal(sig2):
+			_r35_dedup_connect(svc, sig2, "_r35_on_parry_window_closed")
+			break
+	_r35_parry_connected = true
+	poll_parry_service()
+
+
+## 从服务公开快照回读窗口态（事件驱动 + 显式推进调用，不每帧轮询服务）。
+func poll_parry_service() -> void:
+	var snap: Dictionary = _r35_last_snapshot()
+	if snap.is_empty():
+		return
+	var wo: bool = bool(_r35_pick(snap, R35_KEY_OPEN, false))
+	if wo:
+		if not _r35_parry_window_open:
+			_r35_open_parry_window(
+					_r35_pick(snap, R35_KEY_REMAINING, R35_PARRY_WINDOW_FALLBACK_SEC),
+					_r35_pick(snap, R35_KEY_WID, ""))
+		else:
+			_r35_parry_window_remaining = maxf(0.0,
+					float(_r35_pick(snap, R35_KEY_REMAINING, _r35_parry_window_remaining)))
+	elif _r35_parry_window_open:
+		_r35_close_parry_window()
+	var cd: float = float(_r35_pick(snap, R35_KEY_COOLDOWN, 0.0))
+	if cd > _r35_parry_cooldown:
+		_r35_parry_cooldown = cd
+
+
+## 开窗信号回调：先按权威快照同步，签名差异 / 无快照时用实参兜底（不崩）。
+func _r35_on_parry_window_opened(a: Variant = null, b: Variant = null, _c: Variant = null) -> void:
+	poll_parry_service()
+	if _r35_parry_window_open:
+		return
+	var sec: Variant = R35_PARRY_WINDOW_FALLBACK_SEC
+	var wid: Variant = ""
+	if a != null and (typeof(a) == TYPE_FLOAT or typeof(a) == TYPE_INT):
+		sec = a
+	elif a != null and typeof(a) == TYPE_STRING:
+		wid = a
+	if b != null and (typeof(b) == TYPE_FLOAT or typeof(b) == TYPE_INT):
+		sec = b
+	elif b != null and typeof(b) == TYPE_STRING:
+		wid = b
+	_r35_open_parry_window(sec, wid)
+
+
+func _r35_on_parry_window_closed(_a: Variant = null, _b: Variant = null, _c: Variant = null) -> void:
+	poll_parry_service()
+	if _r35_parry_window_open:
+		_r35_close_parry_window()
+
+
+func _r35_open_parry_window(remaining: Variant, wid: Variant) -> void:
+	var sec: float = R35_PARRY_WINDOW_FALLBACK_SEC
+	if remaining != null and (typeof(remaining) == TYPE_FLOAT or typeof(remaining) == TYPE_INT):
+		sec = maxf(0.0, float(remaining))
+	_r35_parry_window_open = true
+	_r35_parry_window_remaining = sec
+	_r35_parry_consumed = false
+	_r35_parry_result_text = ""
+	var s: String = str(wid) if wid != null else ""
+	# A58：服务带 id 则采信，为空则本地生成非空唯一 id（失败降级，不静默留空）。
+	_r35_parry_window_id = s if not s.is_empty() else _r35_make_window_id("parry")
+	_r34_refresh_visible()
+	print("[R35][HUD] 可弹反窗口开启 | wid=%s sec=%.2f（金色预兆 + 读秒，真实 K 输入待触发）" % [
+			_r35_parry_window_id, sec])
+
+
+func _r35_close_parry_window() -> void:
+	_r35_parry_window_open = false
+	_r35_parry_window_remaining = 0.0
+	# 超时 / 窗口外：按既有正常受击结算（本层不改伤害判定），只清预兆显示。
+	_r35_parry_result_text = ""
+	_r34_refresh_visible()
+
+
+## 读秒 / 冷却镜像（生产 _process 帧驱动；服务真实 tick 由导演层帧链转发）。
+func tick_parry(delta: float) -> void:
+	var dt: float = maxf(0.0, delta)
+	if _r35_parry_window_open:
+		_r35_parry_window_remaining = maxf(0.0, _r35_parry_window_remaining - dt)
+		if _r35_parry_window_remaining <= 0.0:
+			_r35_close_parry_window()
+	if _r35_parry_cooldown > 0.0:
+		_r35_parry_cooldown = maxf(0.0, _r35_parry_cooldown - dt)
+
+
+func _r35_log(reason: String, ok: bool, wid: String, pts: int, poise: float) -> void:
+	_r35_parry_log.append({"reason": reason, "ok": ok, "window_id": wid,
+			"points": pts, "poise_bonus": poise})
+
+
+func get_parry_attempt_log() -> Array[Dictionary]:
+	return _r35_parry_log.duplicate(true)
+
+
+## A58 window_id 生成规则：
+##   · 格式 "<prefix>_<wave>_<seq>"（prefix = exe / parry）；
+##   · wave 取 _r34_wave.get_snapshot().index（波次导演真实当前波）；
+##   · seq 为前缀各自的单调递增计数，保证同进程内任意两个窗口 id 不相等；
+##   · 失败降级：波次导演不可用 → wave 回落 0 + push_warning（不静默）；
+##     seq 仍单调递增保证唯一；prefix 空 → "win"；生成结果恒为非空字符串。
+func _r35_wave_index() -> int:
+	if _r34_wave != null and is_instance_valid(_r34_wave) and _r34_wave.has_method("get_snapshot"):
+		var s: Variant = _r34_wave.call("get_snapshot")
+		if typeof(s) == TYPE_DICTIONARY:
+			return int((s as Dictionary).get("index", 0))
+	push_warning("[R35][HUD] A58 降级：波次导演不可用 → window_id 波次段回落 0（seq 单调递增仍保证唯一）")
+	return 0
+
+
+func _r35_make_window_id(prefix: String) -> String:
+	var p: String = prefix if not prefix.is_empty() else "win"
+	var wave: int = _r35_wave_index()
+	if p == "exe":
+		_r35_exe_seq += 1
+		return "%s_%d_%d" % [p, wave, _r35_exe_seq]
+	_r35_parry_seq += 1
+	return "%s_%d_%d" % [p, wave, _r35_parry_seq]
+
+
+## A57 倍率后值口径：弹反赐福点数 = 基础 points_bonus × 有效连击倍率（最终结算值）。
+##   取源 = A54 唯一 ComboService 的有效结算倍率（get_last_settlement）或当前倍率；
+##   无有效倍率 / 服务不可用 → 回落基础值 + push_warning（失败降级，不静默吞掉）。
+##   调参唯一入口 = res://data/rpg/combo_rules.tres 的 multiplier（只改表不改代码）。
+func _r35_final_points(base: int) -> int:
+	if base <= 0:
+		return base
+	var combo: Object = get_combo_service()
+	if combo == null or not is_instance_valid(combo):
+		push_warning("[R35][HUD] A57 降级：ComboService 不可用 → 弹反赐福点数回落基础值 base=%d" % base)
+		return base
+	var mult: float = -1.0
+	if combo.has_method("get_last_settlement"):
+		var last: Dictionary = combo.call("get_last_settlement") as Dictionary
+		if bool(last.get("ok", false)) and bool(last.get("settled", false)):
+			mult = float(last.get("multiplier", 1.0))
+	if mult <= 0.0 and combo.has_method("get_multiplier"):
+		mult = float(combo.call("get_multiplier"))
+	if mult <= 0.0 or is_nan(mult) or is_inf(mult):
+		push_warning("[R35][HUD] A57 降级：未取到有效连击倍率 → 弹反赐福点数回落基础值 base=%d" % base)
+		return base
+	return int(roundf(float(base) * mult))
+
+
+## 真实 K 输入落点：窗口内成功 / 窗口外拒绝 / 重复幂等 / 冷却拒绝。
+## 权威判定交 A54 唯一 ParryService.try_parry()；HUD 只做门控 + 显示 + 发信号。
+func request_parry() -> Dictionary:
+	_r35_parry_attempt_count += 1
+	if not _r35_parry_window_open:
+		_r35_log("window_closed", false, _r35_parry_window_id, 0, 0.0)
+		return {"ok": false, "reason": "window_closed", "window_id": _r35_parry_window_id}
+	if _r35_parry_consumed:
+		_r35_log("already_parried", false, _r35_parry_window_id, 0, 0.0)
+		return {"ok": false, "reason": "already_parried", "window_id": _r35_parry_window_id}
+	if _r35_parry_cooldown > 0.0:
+		_r35_log("cooldown", false, _r35_parry_window_id, 0, 0.0)
+		return {"ok": false, "reason": "cooldown", "window_id": _r35_parry_window_id}
+	var result: Dictionary = {}
+	var svc: Object = _r35_parry
+	if svc != null and is_instance_valid(svc):
+		for m: String in R35_PARRY_METHOD_TRY:
+			if svc.has_method(m):
+				var r: Variant = svc.call(m)
+				if typeof(r) == TYPE_DICTIONARY:
+					result = r as Dictionary
+				elif typeof(r) == TYPE_BOOL:
+					result = {"ok": bool(r)}
+				break
+	var ok: bool = bool(_r35_pick(result, R35_KEY_OK, false))
+	if not ok:
+		var reason: String = String(_r35_pick(result, R35_KEY_REASON, "parry_rejected"))
+		# 失败 / 超时 → 既有正常受击结算（本层不改伤害判定 / 帧数据 / 输出格式）。
+		_r35_log(reason, false, _r35_parry_window_id, 0, 0.0)
+		return {"ok": false, "reason": reason, "window_id": _r35_parry_window_id}
+	_r35_parry_consumed = true
+	_r35_parry_success_count += 1
+	var wid: String = _r35_parry_window_id
+	if wid.is_empty():
+		wid = _r35_make_window_id("parry")   # A58 失败降级：服务未带 id → 本地生成非空唯一 id
+	var snap: Dictionary = _r35_last_snapshot()
+	var pts: int = int(_r35_pick(result, R35_KEY_POINTS, _r35_pick(snap, R35_KEY_POINTS, 0)))
+	var poise: float = float(_r35_pick(result, R35_KEY_POISE, _r35_pick(snap, R35_KEY_POISE, 0.0)))
+	var final_pts: int = _r35_final_points(pts)
+	# A48①：生产订阅者（EncounterDirector）收此信号 → 真实削韧 + 连击不断。
+	parry_performed.emit(wid, final_pts, poise)
+	# A55 / A57：赐福点数只发信号（Rank-1 不写盘），携带倍率后最终值。
+	points_awarded.emit("parry", final_pts, "parry_service.try_parry")
+	_r35_points_count += 1
+	_r35_parry_result_text = "弹反成功！ +削韧 / +赐福点数 / 连击不断"
+	_r35_log("ok", true, wid, final_pts, poise)
+	# 同窗口保留至 tick 超时 / 服务 closed 信号；_r35_parry_consumed 阻止重复结算
+	# （窗口内重复按 K → already_parried，重复按键幂等）。
+	_r34_refresh_visible()
+	print("[R35][HUD] 弹反成功 | wid=%s base=%d final=%d poise_bonus=%.1f → parry_performed + points_awarded 已发（A57 倍率后值）" % [
+			wid, pts, final_pts, poise])
+	return {"ok": true, "reason": "ok", "window_id": wid,
+			"bonus_points": final_pts, "poise_bonus": poise}
+
+
+func _try_parry_input() -> void:
+	request_parry()
+
+
+## 精准弹反 HUD 视图（金色预兆 / 读秒 / 唯一窗口 id / 独立分区 rect）。
+func get_parry_hud_view() -> Dictionary:
+	var text: String = ""
+	if not _r35_parry_result_text.is_empty():
+		text = _r35_parry_result_text
+	elif _r35_parry_window_open:
+		text = "精准弹反窗口 %.1fs · 按 K" % _r35_parry_window_remaining
+	return {
+		"window_open": _r35_parry_window_open,
+		"remaining_sec": _r35_parry_window_remaining,
+		"window_id": _r35_parry_window_id,
+		"cooldown_sec": _r35_parry_cooldown,
+		"consumed": _r35_parry_consumed,
+		"success_count": _r35_parry_success_count,
+		"attempt_count": _r35_parry_attempt_count,
+		"service_available": _r35_parry != null and is_instance_valid(_r35_parry),
+		"telegraph_text": text,
+		"rect": get_parry_telegraph_rect(),
+		"points_awarded_count": _r35_points_count,
+	}
+
+
+## 金色预兆真实节点按独立分区锚点定位（视口变化由 set_layout_viewport 联动重算）。
+func _r35_apply_parry_rect() -> void:
+	if _r35_parry_label == null or not is_instance_valid(_r35_parry_label):
+		return
+	var r: Rect2 = get_parry_telegraph_rect()
+	_r35_parry_label.offset_left = r.position.x
+	_r35_parry_label.offset_top = r.position.y
+	_r35_parry_label.offset_right = r.end.x
+	_r35_parry_label.offset_bottom = r.end.y
+
+
+## 信号 connect 的释放路径（_exit_tree → _r34_release → 本函数）。
+func _r35_release() -> void:
+	var svc: Object = _r35_parry
+	if svc != null and is_instance_valid(svc):
+		var all_sigs: Array = R35_PARRY_SIGNAL_OPEN + R35_PARRY_SIGNAL_CLOSE
+		for sig: String in all_sigs:
+			if not svc.has_signal(sig):
+				continue
+			var cb_open: Callable = Callable(self, "_r35_on_parry_window_opened")
+			if svc.is_connected(sig, cb_open):
+				svc.disconnect(sig, cb_open)
+			var cb_close: Callable = Callable(self, "_r35_on_parry_window_closed")
+			if svc.is_connected(sig, cb_close):
+				svc.disconnect(sig, cb_close)
+	_r35_parry_connected = false

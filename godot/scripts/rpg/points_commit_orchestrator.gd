@@ -24,6 +24,15 @@ extends Node
 ##      写清绑定方式 / 重试 / 失败降级；connect 前 get_signal_connection_list() 去重，
 ##      _exit_tree / NOTIFICATION_WM_CLOSE_REQUEST 兜底释放。
 ##
+## R35 / v0.12.0「精准弹反 · 消费闭合」追加（A58 / A59 / A60，见文件尾 R35 段）：
+##   - A59：接管 grace.trial.spent_points 出口。订阅 boon_draft_applied /
+##     production_wave_modifier，把抉择 cost（[PLACEHOLDER] 映射）单调累加进
+##     spent_points，与 unlocked flag 同一次 commit 原子写；余额前置门控 / 重复购买拒绝 /
+##     绝不写 removals / 绝不回退 points；缺失 / 非法值拒绝并告警。
+##   - A58：订阅 parry_performed(window_id, bonus_points, poise_bonus)，
+##     exe: / parry: 去重键改接非空唯一 window_id；不同窗口各自入账、不合并。
+##   - 保留 A55 / A57：points_awarded 唯一权威通道、points 为倍率后最终结算值、原样采信。
+##
 ## 安全降级（硬约束）：_ready() 在无 HUD 的纯 --headless --quit / --import /
 ##   --check-only 场景下不报错、不写盘（只 push_warning 失败降级）。
 ##   落盘目标可经 configure_slot() 注入独立 PID 临时槽（验证用，绝不碰生产 slot_01）。
@@ -45,9 +54,16 @@ const TEN_FIELDS: Array[String] = [
 	"schema_version", "slot", "seq", "baseline", "flags",
 	"quests", "inventory", "spawns", "removals", "meta",
 ]
+## R34C 既有 4 个必需信号（_bound 判定用，保持既有验证脚本 bind_hud 口径兼容）。
+const CORE_SIGNALS: Array[String] = [
+	"points_awarded", "execution_performed",
+	"boon_draft_applied", "production_wave_modifier",
+]
+## R35 / A58：新增 parry_performed 生产订阅者（编排层 = 生产 autoload，非验证脚本）。
 const BOUND_SIGNALS: Array[String] = [
 	"points_awarded", "execution_performed",
 	"boon_draft_applied", "production_wave_modifier",
+	"parry_performed",
 ]
 const MAX_BIND_RETRY: int = 6
 
@@ -56,6 +72,24 @@ const K_SPENT: String = "grace.trial.spent_points"
 const K_PERFORMED: String = "grace.execution.performed"
 const K_SELECTED: String = "grace.boon_draft.selected"
 const K_COST: String = "grace.boon_draft.cost_applied"
+
+## ---- R35 / v0.12.0 新增三段式 flag（契约 §3.3 R35 段登记）----
+const K_UNLOCKED: String = "grace.boon_draft.unlocked"        # A59 抉择解锁（与 spent_points 同一 commit）
+const K_PARRY_COUNT: String = "combat.parry.success_count"    # A60 弹反成功计数（int，单调递增）
+const K_PARRY_WID: String = "combat.parry.window_id"          # A58 最近弹反窗口 id（String）
+
+## ---- [PLACEHOLDER] cost→points 映射（A59）----
+## rationale：Rank-2 boon_draft_service.apply() 的 cost_value 是「下一波敌人难度乘性修正」
+##   （hp_scale / telegraph_scale，> 0 的倍率），并非赐福点数；A59 需要把它换算成点数消耗，
+##   闭合「行动→反馈→目标→消费成长」循环。当前采用线性换算
+##   points_cost = max(MIN, round(cost_value × FACTOR))，是 [PLACEHOLDER] 首版经济占位：
+##   真实经济平衡（点数产出速率 vs 抉择代价）须人工试玩校准，headless 真跑不做手感判断。
+## 调参唯一入口 = 本常量段（集中一处、只改常量不改逻辑）；目录所有权冻结、本轮不新增数据表。
+##   COST_KEY_WHITELIST 与 Rank-2 boon_draft_config.gd::is_cost_key_known 对齐，
+##   未来新增 cost_key 须同步本常量（否则按「非法值」拒绝并告警，不静默吞掉）。
+const COST_TO_POINTS_FACTOR: float = 10.0   # [PLACEHOLDER]
+const COST_TO_POINTS_MIN: int = 1           # [PLACEHOLDER] 最小扣点，防 0 值空转
+const COST_KEY_WHITELIST: Array[String] = ["hp_scale", "telegraph_scale"]
 
 var _slot_dir: String = DEFAULT_SLOT_DIR
 var _delta_path: String = DEFAULT_SLOT_DIR + "/delta.json"
@@ -71,6 +105,14 @@ var _claimed: Dictionary = {}
 var _pending_exe_key: String = ""
 var _pending_wave_key: String = ""
 var _fallback_seq: int = 0
+
+## ---- R35 运行时门控态（不落盘）----
+var _pending_parry_key: String = ""      # A58 parry:<window_id> 配对键（保留不消费，同窗口幂等）
+var _pending_parry_wid: String = ""      # A58 最近非空 window_id（供三段式 flag 写入）
+var _parry_wid_fallback_seq: int = 0     # A58 空 window_id 降级唯一键计数（不误合并）
+var _last_charge_cost_key: String = ""   # A59 production_wave_modifier 对账用
+var _last_charge_cost_value: float = 0.0
+var _charge_reject_count: int = 0        # A59 观测：缺失 / 非法 / 重复 / 余额不足拒绝计数
 
 ## 运行时 flag 镜像（"先落盘后改运行时实例"里的实例；落盘成功后才更新）。
 var _runtime_flags: Dictionary = {}
@@ -88,6 +130,7 @@ func _ready() -> void:
 	_runtime_flags = {
 		K_POINTS: 0, K_SPENT: 0, K_PERFORMED: 0,
 		K_SELECTED: "", K_COST: false,
+		K_UNLOCKED: false, K_PARRY_COUNT: 0, K_PARRY_WID: "",
 	}
 	# autoload 早于主场景入树 → 延迟绑定（绝不在 _ready 里立即连尚未入树的 HUD）。
 	call_deferred("_deferred_bind")
@@ -160,6 +203,8 @@ func _scan_hud(n: Node) -> Node:
 
 ## 显式绑定入口（正常游戏由 _deferred_bind 调；--script 验证进程直接调以保证确定性）。
 ## connect 前用 get_signal_connection_list() 去重，绝不重复连接。
+## R35：parry_performed 为新增【可选】信号——主场景 HUD 必提供（否则 push_warning 降级，
+##   不静默）；_bound 判定只看 4 个 CORE_SIGNALS，保证既有验证脚本 bind_hud 口径兼容。
 func bind_hud(hud: Node) -> bool:
 	if hud == null or not is_instance_valid(hud):
 		return false
@@ -179,7 +224,13 @@ func bind_hud(hud: Node) -> bool:
 		if not exists:
 			hud.connect(sig, cb)
 		connected += 1
-	_bound = connected == BOUND_SIGNALS.size()
+	if not hud.has_signal("parry_performed"):
+		push_warning("[R35][PCO] HUD 未提供 parry_performed → A58 弹反去重键降级（不静默、不写盘）")
+	var core_ok: bool = true
+	for sig: String in CORE_SIGNALS:
+		if not hud.has_signal(sig):
+			core_ok = false
+	_bound = core_ok and connected >= CORE_SIGNALS.size()
 	if _bound:
 		hud_bound.emit(hud)
 		print("[R34C][PCO] 生产订阅者已绑定 HUD | signals=%d slot=%s（A55 唯一权威通道）" % [
@@ -219,39 +270,58 @@ func get_status() -> Dictionary:
 		"last_reason": _last_reason,
 		"last_points": _last_points,
 		"points": int(_runtime_flags.get(K_POINTS, 0)),
+		"spent": int(_runtime_flags.get(K_SPENT, 0)),
+		"unlocked": bool(_runtime_flags.get(K_UNLOCKED, false)),
+		"parry_count": int(_runtime_flags.get(K_PARRY_COUNT, 0)),
+		"parry_window_id": String(_runtime_flags.get(K_PARRY_WID, "")),
 		"performed": int(_runtime_flags.get(K_PERFORMED, 0)),
 		"claimed": _claimed.keys(),
 		"pending_exe_key": _pending_exe_key,
 		"pending_wave_key": _pending_wave_key,
+		"pending_parry_key": _pending_parry_key,
+		"charge_reject_count": _charge_reject_count,
 	}
 
 
 # ---------------------------------------------------------------------------
-# ② 关联信号：取得配对去重键（exe / boon / wave）
+# ② 关联信号：取得配对去重键（exe / boon / wave / parry）
 # ---------------------------------------------------------------------------
 
 ## execution_performed(window_id, bonus_points)：配对键【保留不消费】，
 ## 同一处决被重复领取时仍解析到同一 exe:<window_id> → 去重拒绝（A55）。
+## R35 / A58：window_id 必须非空唯一；上游若给空串，降级生成唯一键（不误合并、不静默）。
 func _on_execution_performed(window_id: String, _bonus_points: int) -> void:
+	if window_id.is_empty():
+		push_warning("[R35][PCO] A58：execution_performed window_id 为空 → 降级唯一键（不误合并）")
+		_fallback_seq += 1
+		_pending_exe_key = "exe:fallback_%d" % _fallback_seq
+		return
 	_pending_exe_key = "exe:" + window_id
 
 
 ## production_wave_modifier(wave_index, ...)：波次开始广播的 wave:<index> 配对键。
+## R35 / A59：本信号与 boon_draft_applied 是【同一抉择的两个阶段】（apply 广播 →
+##   下一波修正广播）。扣费由唯一权威事件 boon_draft_applied 触发恰好一次；本回调
+##   只做 cost 一致性对账 + wave 配对键，★ 绝不二次扣费（spent_points 单调累加恰好一次）。
 func _on_production_wave_modifier(wave_index: int, _effect_key: String,
-		_effect_value: float, _cost_key: String, _cost_value: float) -> void:
+		_effect_value: float, cost_key: String, cost_value: float) -> void:
 	_pending_wave_key = "wave:" + str(wave_index)
-
-
-## boon_draft_applied(index, ...)：boon:<index> 防重复领取；只登记已登记三段式 flag，
-## 绝不动 grace.trial.points / spent_points（保「只增不减 / 余额 >= 0」不变量）。
-func _on_boon_draft_applied(index: int, choice_id: String, _effect_key: String,
-		_effect_value: float, _cost_key: String, _cost_value: float) -> void:
-	var key: String = "boon:" + str(index)
-	if _claimed.has(key):
+	if _last_charge_cost_key.is_empty():
 		return
-	var writes: Dictionary = {K_SELECTED: choice_id, K_COST: true}
-	if _commit("boon_draft_cost_applied", writes, 0, int(_runtime_flags.get(K_POINTS, 0))):
-		_claimed[key] = true
+	if cost_key != _last_charge_cost_key \
+			or not is_equal_approx(cost_value, _last_charge_cost_value):
+		push_warning("[R35][PCO] A59 对账告警：wave_modifier cost 与已入账抉择不一致 | wave=%d key=%s value=%.4f" % [
+			wave_index, cost_key, cost_value])
+
+
+## boon_draft_applied(index, choice_id, ...)：A59 抉择扣费唯一权威事件。
+##   cost → [PLACEHOLDER] points → spent_points 单调累加；与 K_SELECTED / K_COST /
+##   K_UNLOCKED 同一 commit("boon_draft_cost_applied") 原子先落盘。
+##   重复购买 / 余额不足 / 缺失·非法值一律拒绝并告警（不回退 points、不写 removals）。
+func _on_boon_draft_applied(index: int, choice_id: String, _effect_key: String,
+		_effect_value: float, cost_key: String, cost_value: float) -> void:
+	_try_charge_boon_cost("boon:" + str(index), choice_id, cost_key, cost_value,
+		"boon_draft_cost_applied")
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +332,7 @@ func _on_points_awarded(reason: String, points: int, source: String) -> void:
 	if points < 0:
 		push_warning("[R34C][PCO] 负点数拒绝（只增不减、绝不回退 points）：%d" % points)
 		return
-	# 去重键：优先配对信号（exe / wave），缺失时降级为唯一键（不误判重复领取）。
+	# 去重键：优先配对信号（exe / wave / parry），缺失时降级为唯一键（不误判重复领取）。
 	var key: String = _resolve_event_key(reason, points, source)
 	if _claimed.has(key):
 		push_warning("[R34C][PCO] 重复领取拒绝 | event_key=%s reason=%s points=%d source=%s" % [
@@ -276,6 +346,11 @@ func _on_points_awarded(reason: String, points: int, source: String) -> void:
 	var writes: Dictionary = {K_POINTS: new_points}
 	if reason == "execution":
 		writes[K_PERFORMED] = int(_runtime_flags.get(K_PERFORMED, 0)) + 1
+	# R35 / A58 / A60：parry 成功入账时，把弹反三段式 flag 与 points 同一次 commit 原子写。
+	#   points 仍是 A57「倍率后最终结算值」，编排层原样采信、不二次加工、不自行叠倍率。
+	if reason == "parry" and not _pending_parry_wid.is_empty():
+		writes[K_PARRY_COUNT] = int(_runtime_flags.get(K_PARRY_COUNT, 0)) + 1
+		writes[K_PARRY_WID] = _pending_parry_wid
 	# ★ 先落盘；成功才登记去重键 + 更新运行时实例 + emit。
 	if _commit("points_awarded_" + reason, writes, points, new_points):
 		_claimed[key] = true
@@ -284,10 +359,14 @@ func _on_points_awarded(reason: String, points: int, source: String) -> void:
 func _resolve_event_key(reason: String, points: int, source: String) -> String:
 	if reason == "execution" and not _pending_exe_key.is_empty():
 		return _pending_exe_key
+	# R35 / A58：parry 配对键 = parry:<window_id>（非空唯一）。不同窗口 → 不同键 →
+	#   各自入账；同一窗口重放 → 同键 → 去重拒绝（不再被 auto 指纹误合并）。
+	if reason == "parry" and not _pending_parry_key.is_empty():
+		return _pending_parry_key
 	if reason == "wave_cleared" and not _pending_wave_key.is_empty():
 		return _pending_wave_key
 	# 无配对键时以 (reason, points, source) 指纹去重：同一事件重放 → 同键 → 拒绝二次领取；
-	# 配对键存在时优先配对键（exe:<window_id> / wave:<index>），不同事件由配对 id / 指纹区分。
+	# 配对键存在时优先配对键（exe:<window_id> / parry:<window_id> / wave:<index>），不同事件由配对 id / 指纹区分。
 	return "auto:%s:%d:%s" % [reason, points, source]
 
 
@@ -307,6 +386,7 @@ func _commit(reason: String, writes: Dictionary, awarded_points: int, new_total:
 		_runtime_flags = {
 			K_POINTS: 0, K_SPENT: 0, K_PERFORMED: 0,
 			K_SELECTED: "", K_COST: false,
+			K_UNLOCKED: false, K_PARRY_COUNT: 0, K_PARRY_WID: "",
 		}
 	# 磁盘为唯一权威：读现有 delta.json（旧档缺 key 回落基线），不依赖内存实例。
 	var delta: Dictionary = _read_delta()
@@ -433,3 +513,102 @@ func _sync_world_state(delta: Dictionary) -> void:
 		_ws = _find_world_state()
 	if _ws != null and _ws.has_method("_apply_snapshot"):
 		_ws.call("_apply_snapshot", delta)
+
+
+# ===========================================================================
+# R35 / v0.12.0「精准弹反 · 消费闭合」追加段（Rank-3 唯一写入）
+#   A58：parry_performed 订阅 + parry:<window_id> 去重键 + 弹反三段式 flag
+#   A59：spent_points 唯一出口（抉择 cost → [PLACEHOLDER] points → 单调累加）
+#   A60：弹反奖励不得点数通胀（每窗口恰好一次、points 原样采信 A57）
+#   A48①：parry_performed 的生产运行时订阅者 = 本编排层 autoload（非验证脚本）。
+#   A55/A57 口径：points_awarded 仍是点数落盘唯一权威通道，points 为倍率后最终结算值，
+#                 编排层原样采信、绝不二次加工 / 绝不自行叠倍率 / 绝不写 removals / 绝不回退 points。
+# ===========================================================================
+
+## A58：订阅 HUD parry_performed(window_id, bonus_points, poise_bonus)。
+##   Rank-1 已保证 window_id 非空唯一（parry_<wave>_<seq> / exe_<wave>_<seq>）。
+##   配对键【保留不消费】：同一窗口重放仍解析到同一 parry:<window_id> → 去重拒绝；
+##   不同窗口覆盖成新键 → 各自入账（A58「不同窗口不合并」）。
+##   空 window_id 属上游异常 → 降级生成唯一键 + push_warning（不误合并、不静默）。
+func _on_parry_performed(window_id: String, _bonus_points: int, _poise_bonus: float) -> void:
+	var wid: String = window_id
+	if wid.is_empty():
+		push_warning("[R35][PCO] A58：parry_performed window_id 为空 → 降级唯一键（不误合并、不静默）")
+		_parry_wid_fallback_seq += 1
+		wid = "parry_fallback_%d" % _parry_wid_fallback_seq
+	_pending_parry_key = "parry:" + wid
+	_pending_parry_wid = wid
+
+
+## A59 缺失 / 非法值校验：cost_key 命中白名单且非空；cost_value 有限且 > 0。
+##   拒绝时返回 false，由调用方 push_warning 并拒绝落盘（不回退 points、不写 removals）。
+func _validate_cost(cost_key: String, cost_value: float) -> bool:
+	if cost_key.is_empty() or not COST_KEY_WHITELIST.has(cost_key):
+		return false
+	if is_nan(cost_value) or is_inf(cost_value) or cost_value <= 0.0:
+		return false
+	return true
+
+
+## [PLACEHOLDER] cost→points 线性映射（rationale / 调参唯一入口见常量段）。
+##   cost_value 是「下一波难度倍率」而非点数，故乘 FACTOR 折算；夹取 MIN 防 0 值空转。
+func _cost_to_points(_cost_key: String, cost_value: float) -> int:
+	var raw: int = int(roundf(cost_value * COST_TO_POINTS_FACTOR))
+	return maxi(COST_TO_POINTS_MIN, raw)
+
+
+## A59 spent_points 唯一出口：抉择 cost → spent_points 单调累加 + unlocked flag 原子写。
+##   顺序（沿用 R26 §6.4 / R27 §9.9 / R34C 五步，不得颠倒）：
+##     ① 缺失 / 非法值拒绝并告警（不落盘）；
+##     ② 重复购买拒绝（dedup_key 命中去重表）；
+##     ③ ★ 磁盘为唯一权威：读磁盘 points / spent，余额 points - (spent + cost) >= 0 前置门控；
+##     ④ 与 K_SELECTED / K_COST / K_UNLOCKED 同一次 commit(reason) 原子先落盘
+##        （writes 绝不含 K_POINTS → 绝不回退 points；_commit 恒 removals=[] → 绝不写 removals）；
+##     ⑤ 落盘成功才登记去重键 + 更新运行时实例（_commit 内部完成）+ emit；
+##        失败则不改内存、如实告警（已在 _commit / 调用方登记）。
+func _try_charge_boon_cost(dedup_key: String, choice_id: String,
+		cost_key: String, cost_value: float, reason: String) -> bool:
+	# ① 缺失 / 非法值
+	if not _validate_cost(cost_key, cost_value):
+		_charge_reject_count += 1
+		push_warning("[R35][PCO] A59 抉择扣费拒绝（cost 缺失/非法）：key=%s value=%.4f choice=%s" % [
+			cost_key, cost_value, choice_id])
+		return false
+	var cost_points: int = _cost_to_points(cost_key, cost_value)
+	if cost_points <= 0:
+		_charge_reject_count += 1
+		push_warning("[R35][PCO] A59 抉择扣费拒绝（cost→points<=0）：choice=%s" % choice_id)
+		return false
+	# ② 重复购买
+	if _claimed.has(dedup_key):
+		_charge_reject_count += 1
+		push_warning("[R35][PCO] A59 重复购买拒绝 | dedup_key=%s choice=%s（spent_points 不二次累加）" % [
+			dedup_key, choice_id])
+		return false
+	# ③ 磁盘唯一权威 + 余额前置门控
+	var delta: Dictionary = _read_delta()
+	var flags: Dictionary = delta.get("flags", {}) as Dictionary
+	var p: int = int(flags.get(K_POINTS, 0))
+	var s: int = int(flags.get(K_SPENT, 0))
+	var new_spent: int = s + cost_points
+	if new_spent < s or p - new_spent < 0:
+		_charge_reject_count += 1
+		push_warning("[R35][PCO] A59 余额不足拒绝（points - spent_points >= 0 前置门控）：points=%d spent=%d cost=%d choice=%s" % [
+			p, s, cost_points, choice_id])
+		return false
+	# ④ 与 unlocked flag 同一次 commit 原子写（绝不回退 points / 绝不写 removals）
+	var writes: Dictionary = {
+		K_SPENT: new_spent,
+		K_SELECTED: choice_id,
+		K_COST: true,
+		K_UNLOCKED: true,
+	}
+	if not _commit(reason, writes, 0, p):
+		_charge_reject_count += 1
+		push_warning("[R35][PCO] A59 commit 失败 → 不解锁、不扣点（磁盘未改） | choice=%s" % choice_id)
+		return false
+	# ⑤ 落盘成功才登记去重键 + 记录 cost 供 production_wave_modifier 对账
+	_claimed[dedup_key] = true
+	_last_charge_cost_key = cost_key
+	_last_charge_cost_value = cost_value
+	return true

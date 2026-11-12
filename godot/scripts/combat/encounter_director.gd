@@ -205,6 +205,7 @@ func _compute_damage(action: PlayerActionData) -> float:
 func _on_boss_move_landed(_defeat_id: String, _move: Variant, _attacker: Variant) -> void:
 	if _outcome >= 0 or _state == null:
 		return
+	_r35_forward_boss_move(_move)         # R35：Boss 出招 → 转发唯一 ParryService（生产运行时触发链）
 	# v0.2.0：仅当携带 MoveData（BossController 真实落地）时接入数据驱动规则层；
 	# debug_boss_hit() 传 null，完全走 v0.1.0 既有结算，保证 20 条断言不回退。
 	if _move is MoveData and _rules != null:
@@ -217,7 +218,10 @@ func _on_boss_move_landed(_defeat_id: String, _move: Variant, _attacker: Variant
 		return
 	_player_hp = maxf(0.0, _player_hp - incoming_damage)
 	_hits_taken += 1
-	_r34b_combo_on_hit_taken()          # R34B 任务1 c：玩家受击 → ComboService.on_hit_taken()（受击中断连击）
+	# R35「连击不断」：本次出招已被成功弹反 → 跳过 on_hit_taken 回调（不改既有伤害判定 /
+	#   扣血 / 帧数据 / 输出格式，逐字保留既有伤害结算；失败或超时照常中断连击）。
+	if not _r35_consume_parry_guard():
+		_r34b_combo_on_hit_taken()      # R34B 任务1 c：玩家受击 → ComboService.on_hit_taken()（受击中断连击）
 	if _player_hp <= 0.0:
 		_finish(false)
 
@@ -836,6 +840,7 @@ func _r34_bootstrap() -> void:
 	_r34_bootstrapped = true
 	_r34_connect_hit_signal()
 	_r34_push_services_to_hud()
+	_r35_bootstrap()                      # R35：ParryService 唯一实例 + parry_performed 生产订阅者
 
 
 func _r34_connect_hit_signal() -> void:
@@ -893,6 +898,7 @@ func _r34_tick(delta: float) -> void:
 	if _r34_combo != null and is_instance_valid(_r34_combo) \
 			and not _r34_combo_tick_method.is_empty():
 		_r34_combo.call(_r34_combo_tick_method, delta)
+	_r35_tick(delta)                      # R35：生产帧链转发 ParryService.tick(delta)
 
 
 ## 生产链只读快照（验证脚本 / 运行日志读回，不含数值口径、不写盘）。
@@ -919,6 +925,12 @@ func get_production_snapshot() -> Dictionary:
 		"stagger_available": _r34_stagger != null,
 		"combo_available": _r34_combo != null,
 		"hit_signal_connected": _r34_hit_signal_connected,
+		# ---- R35 追加（既有键名与取值口径逐字不变）----
+		"parry_available": _r35_parry != null and is_instance_valid(_r35_parry),
+		"parry_signal_connected": _r35_parry_connected,
+		"parry_events": _r35_parry_events.duplicate(true),
+		"parry_poise_applied_count": _r35_parry_poise_applied_count,
+		"parry_guard": _r35_parry_guard,
 	}
 
 
@@ -927,6 +939,7 @@ func _r34_release() -> void:
 	if _r34_hit_signal_connected and is_connected("player_hit_landed", cb):
 		disconnect("player_hit_landed", cb)
 	_r34_hit_signal_connected = false
+	_r35_release()                       # R35：HUD.parry_performed 订阅的释放路径
 
 
 # ===========================================================================
@@ -1080,3 +1093,154 @@ func apply_wave_enemy_params(wave_index: int, effect_key: String, effect_value: 
 ## 只读快照（验证 / 运行日志 / 后续敌人实例生成消费；不写盘）。
 func get_enemy_runtime_params() -> Dictionary:
 	return _r34b_enemy_params.duplicate()
+
+
+# ===========================================================================
+# R35 [ROUND=R35] · 精准弹反运行时侧接线（Rank-1 唯一写入方）
+#   A48①：HUD 新信号 parry_performed 的【生产运行时订阅者】就是本导演层
+#          （_r35_bootstrap() connect），成功时真实削韧 + 连击不断，
+#          绝不只是验证脚本订阅。
+#   A54：ParryService 唯一实例从 wave_trial_director.get_parry_service() 复用，
+#        本层绝不 new 第二个实例（鸭子类型 + has_method 判空降级）。
+#   A48③：真实 K 输入 → HUD.request_parry → parry_performed → 本层 _resolve_poise()
+#        （生产削韧链）+ HUD.points_awarded → Rank-3 编排层 → 磁盘，真实可达。
+#   不改既有伤害判定 / 帧数据 / 输出格式：失败或超时按既有受击结算；成功仅门控
+#   on_hit_taken 回调（连击不断）+ 追加削韧，扣血与既有分支逐字不动。
+# ===========================================================================
+
+const R35_PARRY_BOSS_MOVE_METHODS: Array[String] = [
+	"on_boss_move_landed", "on_boss_move", "notify_boss_move"]
+const R35_PARRY_TICK_METHODS: Array[String] = ["tick", "advance", "step"]
+
+var _r35_parry: Object = null              # A54 唯一 ParryService（wave 复用，不自建）
+var _r35_parry_connected: bool = false    # HUD.parry_performed 生产订阅已建立
+var _r35_parry_bootstrapped: bool = false
+var _r35_parry_guard: bool = false        # 成功弹反 → 本次出招连击不断
+var _r35_parry_events: Array[Dictionary] = []
+var _r35_parry_poise_applied_count: int = 0
+var _r35_tick_count: int = 0
+
+
+func _r35_find_hud(root_node: Node) -> Node:
+	var scr: Script = root_node.get_script() as Script
+	if scr != null and scr.resource_path == "res://scripts/hud.gd":
+		return root_node
+	if root_node.has_signal("parry_performed") and root_node.has_signal("points_awarded"):
+		return root_node
+	for c: Node in root_node.get_children():
+		var found: Node = _r35_find_hud(c)
+		if found != null:
+			return found
+	return null
+
+
+## 生产装配（_r34_bootstrap 末尾调用 / --script 验证显式调用同一入口）：
+##   ① 从 wave_trial_director 复用 A54 唯一 ParryService；
+##   ② connect HUD.parry_performed → _on_parry_performed（A48① 生产订阅者，去重）。
+func _r35_bootstrap() -> void:
+	if _r35_parry_bootstrapped:
+		return
+	_r35_parry_bootstrapped = true
+	var ml: MainLoop = Engine.get_main_loop()
+	var courtyard: Node = null
+	if ml is SceneTree:
+		courtyard = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+	if courtyard == null:
+		courtyard = get_parent()
+	if courtyard != null:
+		var wave: Node = courtyard.get_node_or_null(NodePath("WaveTrialDirector"))
+		if wave != null and wave.has_method("get_parry_service"):
+			_r35_parry = wave.call("get_parry_service") as Object
+		var hud: Node = courtyard.get_node_or_null(NodePath(R34_HUD_REL_PATH))
+		if hud == null:
+			hud = _r35_find_hud(courtyard)
+		if hud != null and is_instance_valid(hud) and hud.has_signal("parry_performed"):
+			var cb: Callable = Callable(self, "_on_parry_performed")
+			var exists: bool = false
+			for conn in hud.get_signal_connection_list("parry_performed"):
+				var c: Callable = conn.get("callable", Callable())
+				if c.get_object() == self and String(c.get_method()) == "_on_parry_performed":
+					exists = true
+					break
+			if not exists and not hud.is_connected("parry_performed", cb):
+				hud.connect("parry_performed", cb)
+			_r35_parry_connected = true
+	print("[R35][ENC] 生产装配 | parry_unique_instance=%s parry_performed_subscribed=%s（A48① 生产运行时订阅者，A54 不自建第二实例）" % [
+			str(_r35_parry != null and is_instance_valid(_r35_parry)), str(_r35_parry_connected)])
+
+
+## A48① 生产订阅者回调：弹反成功 → 真实削韧（既有 _resolve_poise 生产链）+ 连击不断门控。
+func _on_parry_performed(window_id: String, bonus_points: int, poise_bonus: float) -> void:
+	_r35_parry_guard = true
+	_r35_parry_events.append({
+		"window_id": window_id, "bonus_points": bonus_points, "poise_bonus": poise_bonus})
+	if poise_bonus > 0.0:
+		var before: float = _boss_poise
+		_resolve_poise(poise_bonus)          # 既有生产削韧链（数据表 PoiseConfig，非演示固定值）
+		if _boss_poise != before or _last_poise_after_hit != before:
+			_r35_parry_poise_applied_count += 1
+	print("[R35][ENC] parry_performed 生产订阅生效 | wid=%s bonus=%d poise_bonus=%.1f boss_poise=%.1f applied=%d（连击 guard 已置位）" % [
+			window_id, bonus_points, poise_bonus, _boss_poise, _r35_parry_poise_applied_count])
+
+
+## 生产帧链转发 ParryService.tick(delta)（与 a/b 链同一固定逻辑拍，不另起计时器）。
+func _r35_tick(delta: float) -> void:
+	_r35_tick_count += 1
+	var svc: Object = _r35_parry
+	if svc == null or not is_instance_valid(svc):
+		return
+	for m: String in R35_PARRY_TICK_METHODS:
+		if svc.has_method(m):
+			svc.call(m, delta)
+			break
+
+
+## Boss 出招 → 转发唯一 ParryService（生产运行时触发链，判空降级不崩、不改既有判定）。
+func _r35_forward_boss_move(_move: Variant) -> void:
+	var svc: Object = _r35_parry
+	if svc == null or not is_instance_valid(svc):
+		return
+	for m: String in R35_PARRY_BOSS_MOVE_METHODS:
+		if svc.has_method(m):
+			svc.call(m)
+			break
+
+
+## 消费「本次出招已被弹反」门控：true = 跳过 on_hit_taken（连击不断）。
+func _r35_consume_parry_guard() -> bool:
+	if not _r35_parry_guard:
+		return false
+	_r35_parry_guard = false
+	return true
+
+
+func get_parry_service() -> Object:
+	return _r35_parry
+
+
+func get_parry_production_snapshot() -> Dictionary:
+	return {
+		"parry_available": _r35_parry != null and is_instance_valid(_r35_parry),
+		"parry_signal_connected": _r35_parry_connected,
+		"parry_events": _r35_parry_events.duplicate(true),
+		"parry_poise_applied_count": _r35_parry_poise_applied_count,
+		"parry_tick_count": _r35_tick_count,
+		"parry_guard": _r35_parry_guard,
+	}
+
+
+## 信号 connect 的释放路径（_exit_tree → _r34_release → 本函数）。
+func _r35_release() -> void:
+	var ml: MainLoop = Engine.get_main_loop()
+	var courtyard: Node = null
+	if ml is SceneTree:
+		courtyard = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+	if courtyard == null:
+		courtyard = get_parent()
+	if courtyard != null:
+		var hud: Node = courtyard.get_node_or_null(NodePath(R34_HUD_REL_PATH))
+		if hud != null and is_instance_valid(hud) and hud.has_signal("parry_performed"):
+			var cb: Callable = Callable(self, "_on_parry_performed")
+			if hud.is_connected("parry_performed", cb):
+				hud.disconnect("parry_performed", cb)
+	_r35_parry_connected = false

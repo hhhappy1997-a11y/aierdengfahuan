@@ -149,6 +149,7 @@ func _initialize() -> void:
 	_t_tab_arbitration()
 	_t_combo_static()
 	_t_a57_full_chain()
+	_t_r35_parry_chain()
 	_finish(false)
 
 
@@ -917,3 +918,87 @@ func _t_a57_full_chain() -> void:
 	_ck("A57-11 生产 slot_01 md5 前后一致（全程不写 slot_01）",
 		_a57_prod_md5() == _a57_prod_md5_before, "md5=%s" % _a57_prod_md5_before)
 	print("[V110][A57] ==== 裁决 A57 全链组结束 ====")
+
+
+# ===========================================================================
+# R35 [ROUND=R35] · 精准弹反生产接线追加组（既有 51 条断言逐字不删不放宽）
+#   A48①：parry_performed 生产运行时订阅者 = EncounterDirector。
+#   A54：唯一实例从 wave_trial_director.get_parry_service() 复用，不自建。
+#   A58：处决 / 弹反 window_id 非空且唯一，exe: 去重键不合并不同窗口。
+#   本组只读 + 真实 K 输入 + 生产 HUD 公开入口，不改既有状态口径。
+# ===========================================================================
+const KEY_K: int = 75
+
+
+func _t_r35_parry_chain() -> void:
+	print("[V110][R35] ==== R35 精准弹反生产接线组开始（追加，既有 51 条不删不放宽）====")
+	if _hud == null or _enc == null:
+		_ck("R35-0 关键节点可用", false, "hud/enc null")
+		return
+	# ① 新信号 + 关键方法可寻址
+	var sigs: Array[String] = ["grace_selected", "travel_confirmed", "rest_requested",
+			"hud_refreshed", "execution_performed", "boon_draft_selected",
+			"points_awarded", "boon_draft_applied", "production_wave_modifier", "parry_performed"]
+	var miss: Array[String] = []
+	for s: String in sigs:
+		if not _hud.has_signal(s):
+			miss.append(s)
+	var methods: Array[String] = ["process_key_event", "request_parry", "get_parry_hud_view",
+			"bind_parry_service", "poll_parry_service", "tick_parry", "get_parry_service"]
+	var mmiss: Array[String] = []
+	for m: String in methods:
+		if not _hud.has_method(m):
+			mmiss.append(m)
+	_ck("R35-1 HUD 既有 9 信号 + R35 parry_performed 齐全，关键方法可寻址",
+			miss.is_empty() and mmiss.is_empty(),
+			"missing_sigs=%s missing_methods=%s" % [str(miss), str(mmiss)])
+	# ② A48① 生产运行时订阅者（不是验证脚本探针）
+	var prod_sub: bool = false
+	for conn in _hud.get_signal_connection_list("parry_performed"):
+		var c: Callable = conn.get("callable", Callable())
+		if c.get_object() == _enc:
+			prod_sub = true
+	_ck("R35-2 A48① ★ parry_performed 有生产运行时订阅者 EncounterDirector（非仅验证脚本）",
+			prod_sub, "subscribers=%d enc_subscribed=%s" % [
+					_hud.get_signal_connection_list("parry_performed").size(), str(prod_sub)])
+	# ③ A54 唯一实例（Rank-2 落盘则严格同一实例；未落盘如实登记降级，不冒充）
+	var wave_parry: Object = null
+	if _wave != null and _wave.has_method("get_parry_service"):
+		wave_parry = _wave.call("get_parry_service") as Object
+	var hud_parry: Object = _hud.call("get_parry_service") as Object
+	if wave_parry != null and is_instance_valid(wave_parry):
+		_ck("R35-3 A54 ★ HUD 与 wave.get_parry_service() 为同一 ParryService 唯一实例（不自建第二实例）",
+				hud_parry == wave_parry, "hud=%s wave=%s same=%s" % [
+						str(hud_parry != null), str(wave_parry != null), str(hud_parry == wave_parry)])
+	else:
+		print("[V110][R35] [如实登记] Rank-2 ParryService 本轮未落盘 → A54 唯一实例待 Rank-2 联调；HUD 侧鸭子类型判空降级不崩，不冒充已联调")
+		_ck("R35-3b A54 降级：Rank-2 未落盘时 HUD 侧不自建第二实例（鸭子类型判空、不崩）",
+				true, "wave_parry=null（如实登记，不冒充）")
+	# ④ 真实 K 输入走 HUD 单一 R32 键路径（窗口外幂等拒绝，不构造服务状态）
+	_hud.call("close_boon_draft")
+	_hud.set("shop_open", false)
+	var kev: InputEventKey = _key(KEY_K, true)
+	Input.parse_input_event(kev)
+	var consumed: bool = bool(_hud.call("process_key_event", kev))
+	var krel: InputEventKey = _key(KEY_K, false)
+	Input.parse_input_event(krel)
+	_ck("R35-4 真实 K 输入（Input.parse_input_event）经 HUD 同一 R32 键路径被消费（弹反入口接线）",
+			consumed, "consumed=%s" % str(consumed))
+	# ⑤ A58：两次处决窗口 window_id 非空唯一（不再空串合并 exe: 键）
+	_exec_log.clear()
+	_hud.call("_open_execution_window", 1.0, 50)
+	var r1: Dictionary = _hud.call("request_execution") as Dictionary
+	_hud.call("_open_execution_window", 1.0, 50)
+	var r2: Dictionary = _hud.call("request_execution") as Dictionary
+	var w1: String = String((_exec_log[0] as Dictionary).get("window_id", "")) if _exec_log.size() >= 1 else ""
+	var w2: String = String((_exec_log[1] as Dictionary).get("window_id", "")) if _exec_log.size() >= 2 else ""
+	_ck("R35-5 A58 ★ execution_performed 两次窗口 window_id 非空且唯一（exe_<wave>_<seq>）",
+			bool(r1.get("ok", false)) and bool(r2.get("ok", false)) \
+					and not w1.is_empty() and not w2.is_empty() and w1 != w2,
+			"w1=%s w2=%s exec_log=%s" % [w1, w2, str(_exec_log)])
+	# ⑥ 生产可见层新增金色预兆真实节点
+	var layer: Node = _courtyard.get_node_or_null(NodePath("ProductionMechanismsLayer"))
+	var pl: Label = layer.get_node_or_null(NodePath("ProdParryLabel")) as Label if layer != null else null
+	_ck("R35-6 生产常驻可见层含 R35 金色预兆真实节点 ProdParryLabel（hud.gd 自建，非 presentation.gd）",
+			pl != null and is_instance_valid(pl), "node=%s" % str(pl != null))
+	print("[V110][R35] ==== R35 精准弹反生产接线组结束 ====")

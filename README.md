@@ -336,3 +336,63 @@
 - 总指挥亲自重跑 `capture/v110_final.mp4`：450 帧 / 15.000s / 1,489,765 B；目视 5 帧确认文字重叠消除、Tab 互斥生效、处决窗口在真实链路下自然出现、暖金收束未过曝。
 - 双产物重导：exe 109,178,880 B / pck 1,827,048 B / apk 30,372,475 B / idsig 243,122 B；apksigner v2/v3 true、icon_error=0。
 - **HD-2D 全绿仍未达成**（A41/A52）；连击在录屏里仍停在 D 档，高评级由验证脚本实证、演示未覆盖；`[PLACEHOLDER]` 数值待人工试玩校准；定稿录屏禁止加 `--headless`（A47）。
+
+## 六、R35 / v0.12.0 状态表（追加段，历史行一律保留未动）
+
+> 本段为 **R35 / cmd-20261112-125821-143-A3（Rank-3）** 追加；「一、已做了什么」/「二、还差什么」/「三、资产清单表」/「四、R32 / v0.10.0 状态表」/「五、R34 / v0.11.0 状态表」/「R34 系列 … 总指挥定稿」的所有历史行按「只追加、不改历史条款」保留未动，v0.12.0 增量以本段 + `teamwork/迭代-v0.12.0-精准弹反与消费闭合.md` + `teamwork/Rank-3/DONE-R35.md` 为准。零付费、零外部依赖、不启 GPU job。
+
+### 6.1 v0.12.0 状态表
+
+| 域 | 状态 | 说明 |
+|---|---|---|
+| A59 `grace.trial.spent_points` 唯一出口 | ✅ 已落地（生产链路） | `PointsCommitOrchestrator` autoload 订阅 `boon_draft_applied` / `production_wave_modifier`，抉择 cost → `[PLACEHOLDER]` points 映射 → `spent_points` 单调累加，与 `grace.boon_draft.unlocked` / `.selected` / `.cost_applied` 同一次 `commit("boon_draft_cost_applied")` 原子写；余额 `points − spent_points ≥ 0` 前置门控 / 重复购买拒绝 / 缺失·非法值拒绝并告警 / 绝不写 `removals` / 绝不回退 `points`。cost→points 映射 `[PLACEHOLDER]` + rationale + 调参唯一入口（编排层常量段，只改常量不改逻辑） |
+| A58 window_id 去重键 + `parry_performed` 订阅 | ✅ 已落地 | 编排层 `BOUND_SIGNALS` 由 4 扩为 **5**（新增订阅 HUD `parry_performed`，A48① 生产运行时订阅者，非验证脚本）；`exe:<window_id>` / `parry:<window_id>` 接非空唯一 window_id，不同窗口不合并、同一窗口重放幂等拒绝、空 id 降级唯一 fallback 键 + 告警；第二次弹反不再被 `auto:` 指纹误拒。保留 A55/A57（`points_awarded` 唯一权威通道、倍率后最终值原样采信） |
+| A60 弹反奖励 `[PLACEHOLDER]` 防点数通胀 | ✅ 已落地 | 只经 `points_awarded("parry", …)` 一次原样采信，不落盘倍率 / 不二次加工 / 不叠乘；每窗口恰好一次；broken 判据（5 类）登记进契约 §3.3 R35 段，机器判定见新验证脚本 H 组 / R13~R18 |
+| 3 个新三段式 flag | ✅ 已登记 | `combat.parry.success_count`（int / 单调递增）、`combat.parry.window_id`（String / 最近窗口覆盖）、`grace.boon_draft.unlocked`（bool / false→true 单向）；只作 `flags` 字典新 key、十字段冻结、`schema_version=3`、不写 `removals`、不回退 `points`；契约 §3.3 R35 段登记 A58/A59/A60/A61 |
+| `verify_v120_save_commit.gd` | ✅ 通过 | 新写三进程三态存档验证件：`all` **70 PASS / 0 FAIL**，三进程 `write 17 + load 6 + assert 49 = 72 PASS / 0 FAIL`（pid `22792 / 23020 / 492` 互不相同）、生产 `slot_01` md5 前后一致、`RESULT=ALL_MATCH` |
+| `verify_spent_points_production_v120.gd` | ✅ 通过（A48③ 真实可达） | 新写：不加载 `presentation.gd`、不在验证脚本内模拟编排；实例化主场景 → 生产 HUD 真实运行时信号 → 生产编排层 autoload 订阅 → 读磁盘断言「抉择扣费 → spent_points 增加 → 余额非负 → 重启读回一致 → 同一抉择重复购买被拒 → 两个不同 parry 窗口各自入账」；**39 PASS / 0 FAIL / RESULT=ALL_MATCH** |
+| 契约 §3.3 + 迭代收口文档 | ✅ 已落地 | 契约 §3.3 **只追加** R35 说明段（历史条款 / I-1~I-6 / §3.1 §3.2 缺号未动）；`teamwork/迭代-v0.12.0-精准弹反与消费闭合.md`：拆解表 / P0~P2 / GDD 六项 / 三栏 / 节点信号链 / 真跑数字 / 验收三态 / 风险回滚 / 零付费 backlog |
+| 三段门禁 `grep SCRIPT ERROR=0` | ✅ 通过 | G1 `--import` / 3× G2a `--check-only --script` / 12× G2b `--headless --script`（含三进程三态）/ G3 `--headless --quit` 全 `EXIT=0`；17 份 `R35-*.log` 统计 `SCRIPT_ERROR_COUNT=0 / PARSE_ERROR_COUNT=0 / ERROR_PREFIX_COUNT=0`；G3 回读 `node_count=41`、生产基线 `grace.trial.points=450` 未变 |
+| 既有回归（7 份只读复跑） | ✅ 全绿 | `64 + 28 + 27 + 57 + 36 + 58 + 80 = 350 PASS / 0 FAIL`，逐字不删不放宽；Rank-1 `verify_parry_runtime_v120.gd` C2 由修复前 `disk=50 commit_count=1` 变为 `disk=100 commit_count=2`（两次弹反各自入账），C5b claimed 实证两 parry 键 + 两 exe 键 |
+| `cost→points` / 弹反 / 抉择 `[PLACEHOLDER]` 校准（A45 / A17） | ⚠️ 需用户确认 | 用户侧人工试玩，Rank-3 不代做；调参唯一入口见迭代文档 §1.1 |
+| 15~20 秒实机录屏目视（A42）/ 演示 D→A / S 级 | ⚠️ 需用户确认 | headless 无帧缓冲，总指挥亲自重跑回看；Rank-3 不代做手感 / 审美判断 |
+| HD-2D 全绿（A61 按 A41/A52 三判据） | ❌ 未达 | 光效仍 2D `_draw()` / screen-reading shader 近似、地面 2D tile 贴 3D 平面、角色 billboard 像素精灵；不得据单路自评宣称全绿，A30 不切后端 |
+| `128bit` 歧义（A53 继续保留） | ⚠️ 保留待用户确认 | A15 / A43 保留口径、不消歧、不编码进任何期望值 |
+
+### 6.2 资产表增量（R35 新增 / 改动文件，字节数为 `os.path.getsize` 实测，非编造）
+
+| 文件（相对工程根） | 字节 | 类型 / 归属 |
+|---|--:|---|
+| `godot/scripts/rpg/points_commit_orchestrator.gd` | **29,507** | 修改（A56 生产编排层 autoload，Rank-3 唯一写入）：A59 spent_points 出口 + A58 parry_performed 订阅 / 去重键 + 3 个新 flag；既有 A55/A57 逻辑未改 |
+| `godot/scripts/rpg/verify_v120_save_commit.gd` | **39,853** | 新写三进程三态存档验证件（只读口径 + 磁盘一致性，70 PASS / 72 PASS） |
+| `godot/scripts/rpg/verify_spent_points_production_v120.gd` | **26,371** | 新写 A48③ 真实可达回归（不加载 `presentation.gd`、不模拟编排，39 PASS） |
+| `teamwork/迭代-v0.12.0-精准弹反与消费闭合.md` | **34,837** | 新写迭代收口文档（§9 backlog 零付费零外部依赖增量） |
+| `teamwork/00-协作契约.md`（§3.3 追加 R35 段） | **84,307** | 只追加、历史条款 / I-1~I-6 / §3.1 §3.2 缺号未动 |
+| `teamwork/Rank-3/R35-*.log`（17 份真跑 stdout：G1 / G2a×3 / G2b×12 / G3） | **157,498** | 真跑日志留档；逐份 `SCRIPT ERROR=0 / Parse Error=0 / ERROR 前缀=0` |
+| `README.md` / `teamwork/Rank-3/DONE-R35.md` / 回执 | —（不登记自指静态字节数） | 运行时状态文档 / 交付报告 / 回执：内容按「只追加」维护，字节数随段落追加变动，不做自指静态登记以免失真 |
+
+> §3.1~§3.4 既有 I-5 素材 / 场景 / 脚本 / 产物实测字节数与「中枢 done 轮次」表（仍 R22 快照）一律未改；R35 未新增任何 I-5 素材 / 场景节点 / 导出产物，`courtyard.tscn` 节点 41 / uv `2/1/1`、`presentation.gd`、`project.godot`（既有 autoload）、既有 `.tres` 数值一律只读未改；生产 `slot_01` md5 `219cbf043d3ae14a97f66c44f0e9591e` 前后一致。
+
+### 6.3 「一、已做了什么」v0.12.0 增量（追加）
+
+| 域 | 已落地 |
+|---|---|
+| **v0.12.0 精准弹反 · 消费闭合**（R35 派单 · Rank-3 点数消费出口 / 去重键 / 迭代收口） | ① `points_commit_orchestrator.gd` 接管 A59 `spent_points` 唯一出口（抉择扣费 → 单调累加 → 与 unlocked flag 同一次 commit 原子写、余额门控 / 重复拒绝 / 缺失非法拒绝告警 / 绝不写 removals / 绝不回退 points）+ A58 订阅 `parry_performed` 把 `exe:` / `parry:` 去重键接非空唯一 window_id（第二次弹反真实入账）；② 新写 `verify_v120_save_commit.gd`（三进程三态 70/72 PASS）与 `verify_spent_points_production_v120.gd`（A48③ 真实可达 39 PASS：抉择扣费 → spent 增加 → 余额非负 → 重启读回一致 → 重复购买被拒 → 两个不同 parry 窗口各自入账）；③ 契约 §3.3 只追加 R35 段（3 新三段式 flag + 裁决 A58/A59/A60/A61），本迭代文档 + README §六 状态段；④ 真跑三段门禁全 `EXIT=0`、`SCRIPT ERROR=0 / Parse Error=0 / ERROR 前缀=0`（17 份日志）、既有 7 份回归 350 PASS 全绿、A38 节点 41 / uv `2/1/1`、生产 `slot_01` 零改动；⑤ `DONE-R35.md` + 回执。**所有新数值标 `[PLACEHOLDER]` + rationale + 调参唯一入口（只改常量不改逻辑），Rank-3 未写任何其它 `godot/` 业务代码、未改其它 Rank 产出、未自行 git（总指挥收尾）** |
+| **R35 回归真跑**（Rank-3） | 两份新脚本 `70 + 39 = 109 PASS / 0 FAIL`；三进程三态 `write 17 + load 6 + assert 49 = 72 PASS / 0 FAIL`、三 pid `22792 / 23020 / 492` 互不相同；既有 7 份 `64/28/27/57/36/58/80 = 350 PASS / 0 FAIL`；生产实证 `spent 0→15`、points `600→600`（不回退）、余额 `585`、两次 parry `600→650→700`、`claimed` 含 `parry:parry_0_1` / `parry:parry_0_2`、`success_count=2 / window_id=parry_0_2`、`commit_count=5`、重启读回一致、生产 `slot_01` md5 前后一致 `219cbf043d3ae14a97f66c44f0e9591e`；G3 回读 `node_count=41`。既有 3 条退出 WARNING 如实保留、非 ERROR |
+
+### 6.4 「二、还差什么」v0.12.0 增量（追加）
+
+| # | 项 | 状态 | 说明 |
+|---|---|---|---|
+| 20 | **v0.12.0：`cost→points` `[PLACEHOLDER]` 系数人工试玩校准、15~20 秒录屏目视（A42）未代判、HD-2D 全绿仍未达（A61 按 A41/A52）、`128bit` 歧义（A53）继续保留、`boon:<index>` 跨波次去重口径 / 弹反免伤 / `combo_keep` 与 `fail_penalty` 生效等待裁决、演示 D→A / S 级未覆盖、既有 WARNING 清理** | **未达 · 待用户侧试玩 + 其它 Rank 裁决 / 运行时接线 + 总指挥目视** | `COST_TO_POINTS_FACTOR=10.0` / `MIN=1` 与弹反 `parry_rules.tres` 六项全部 `[PLACEHOLDER]`、rationale 与调参唯一入口见迭代文档 §1.1（A45）；headless 无帧缓冲、Rank-3 不代做手感 / 审美判断（A42）；A61 以 `HD2D-STYLE-ANCHOR-v2.md` 三判据为准、如实记「未达全绿」，A30 不切后端；`128bit` 歧义（A53）继续保留待用户确认、不消歧；`boon:<index>` 跨波次同序号抉择、弹反成功是否免伤、`combo_keep` / `fail_penalty` 是否真正生效、`production_wave_modifier` 是否独立扣费归总指挥裁决（迭代文档 §4 / §7 / §8）；`团队/Rank-3/存档与flag规范.md` §3.3 全局登记表同步、Rank-1 验证脚本内过时「如实登记」打印文本同步不在本轮授权范围、未越界写 |
+
+> **v0.12.0（R35）复核「还差什么」**：第 **10 项**（人工试玩，A17）/ **11 项**（`128bit` 歧义，A53 保留）/ **12 项**（HD-2D 全绿未达，A61 按 A41/A52 三判据）/ **2 项**（真 HDR bloom / 3D 体积光 / SSR）在 v0.12.0 **仍未达**；第 **13~19 项**（各版 `[PLACEHOLDER]` 校准 / 并发表落地校对 / 运行时接线 / 录屏目视）仍未达且本版第 20 项新增同类缺口；Rank-3 均未代做、未宣称完成。
+
+### R35 系列 / v0.12.0 精准弹反 · 消费闭合（2026-11-12 总指挥定稿）
+
+- 新增机制：**精准弹反 Parry**（Boss 出招前开窗 → 玩家按 K → 成功加削韧 / 赐福点数 / 连击不断；窗口外 / 冷却 / 重复按键拒绝），数据表 `parry_rules.tres` + 纯逻辑 `parry_service.gd` + HUD 预兆文字 + 程序化 `_draw()` 反馈。
+- 完善功能：A58 非空唯一 `window_id` 与 `parry:<id>` 去重键（两次弹反各自入账）、A59 `spent_points` 扣费出口原子写、A63 mobile 档轻量绘制与断言同步、A64 闪光底板收敛（面积 −83.71%）、地面改规整错缝石板。
+- 总指挥真跑：14 个验证脚本 37/97/110/58/80/47/36/57/39/27/28/70/39/47 PASS、FAIL 全 0；全工程门禁 `SCRIPT ERROR=0`；A38 节点 41 / uv 2/1/1 保持。
+- 总指挥亲自重跑 `capture/v120_final.mp4`：450 帧 / 15.000s / 1,475,275 B；目视 7 帧确认半透明大矩形消除、弹反 HUD 文字清晰、HUD 无重叠、连击 D→C 递进可见、340 帧余额 106 证扣费生效、尾帧胜利·已落盘。
+- 双产物重导：exe 109,178,880 B / pck 1,958,864 B / apk 30,505,105 B / idsig 247,218 B；apksigner v2/v3 true、icon_error=0。
+- **HD-2D 全绿仍未达成**；程序化光环 / 闪光实机不易辨识，连击 D→A / S 级未覆盖；`[PLACEHOLDER]` 待人工试玩校准；定稿录屏禁止加 `--headless`（A47）。

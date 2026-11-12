@@ -112,6 +112,23 @@ extends SceneTree
 ##   生产 HUD 常驻可见层）。本脚本只注入真实 Input.parse_input_event 按键，并提高
 ##   按键密度让真实链路在 450 帧内可被触发；15 秒内未自然触发的机制在 DONE-R34.md
 ##   如实登记「真实链路已接线但演示未覆盖」，绝不回退到演示驱动冒充可玩。
+##
+## R35 [ROUND=R35] · 【演示覆盖 · 只追加真实按键注入节奏】：
+##   任务③ 要求「只改 Input.parse_input_event 注入节奏、绝不改 [PLACEHOLDER] 数值、
+##   绝不回退演示驱动」。本轮：
+##    ① 既有 R28 的 J/Space 交替、R30/R33/R34 的 Tab / E / 1 / F / 2 / 教学 / 波次
+##       注入节奏与全部 [PLACEHOLDER] 常量逐字保留、数值不动；
+##    ② 仅【追加】两段真实 Input.parse_input_event 按键注入：高密度 J(light_attack)
+##       给「连击 D→A→S 递进」（combo_rules.tres 阈值 A=14 / S=22 [PLACEHOLDER] 不动）
+##       更多真实命中机会；周期 K 给「一次成功弹反」在 450 帧内更多命中生产窗口的机会；
+##    ③ 窗口仍由生产 Rank-2 ParryService 在 Boss 出招前开、HUD 真实 _unhandled_input
+##       消费 K；窗口外 / 冷却 / 重复按 K 由 HUD.request_parry() 幂等拒绝，
+##       不调服务方法、不构造窗口状态、不写 Label.text、不回退演示驱动、不冒充覆盖。
+##   如实登记：若录屏回看仍未自然出现 D→A 递进 / S 级爆发 / 成功弹反，
+##   按任务单登记「链路已接线但演示未覆盖」，不伪造产物。
+## [PLACEHOLDER] R35_* 为演示节奏（非战斗数值，待试玩校准，调参只改本节常量）；
+##   rationale：450 帧 / 4 = 约 100 次额外真实 J 注入、/5 = 约 83 次额外真实 K 注入，
+##   在既有注入之上提高真实链路自然触发概率，不改任何战斗数值表。
 
 const TOTAL_FRAMES: int = 450
 
@@ -157,6 +174,16 @@ const R34_EXEC_KEY_INTERVAL: int = 8
 const R34_BOON_SCAN_FROM: int = 150
 const R34_BOON_SCAN_TO: int = 445
 const R34_BOON_KEY_INTERVAL: int = 8
+
+# ---- R35 [ROUND=R35] · 演示真实按键密度增强（只新增，既有常量数值逐字不动）----
+const KEY_K_CODE: int = 75             # KEY_K（精准弹反；HUD._unhandled_input → request_parry）
+# [PLACEHOLDER] R35 演示节奏，待试玩校准；rationale 见头部 R35 注释（只改本节常量）。
+const R35_COMBO_SCAN_FROM: int = 30
+const R35_COMBO_SCAN_TO: int = 440
+const R35_COMBO_KEY_INTERVAL: int = 4
+const R35_PARRY_SCAN_FROM: int = 30
+const R35_PARRY_SCAN_TO: int = 445
+const R35_PARRY_KEY_INTERVAL: int = 5
 
 # R28 既有输入路由节点路径（只读引用）
 const HUD_PATH: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
@@ -703,6 +730,20 @@ func _drive_real_input(f: int) -> void:
 		if boon_open:
 			_inject_key(KEY_2_CODE)
 			print("[R34][INPUT] frame=%d 真实按键 2(KEY_2=%d) -> HUD._unhandled_input → _select_boon_draft(1)（卡片由真实 wave_cleared 打开）" % [f, KEY_2_CODE])
+	# ⑨ R35：连击密度增强 —— 只追加真实 Input.parse_input_event 的 J(light_attack) 注入。
+	#   既有 R28 的 J/Space 交替逐字保留；本段不调服务方法、不构造连击状态、不改任何
+	#   [PLACEHOLDER] 战斗数值，仅提高真实命中机会让 D→A→S 递进在 450 帧内自然出现。
+	if f >= R35_COMBO_SCAN_FROM and f <= R35_COMBO_SCAN_TO \
+			and (f - R35_COMBO_SCAN_FROM) % R35_COMBO_KEY_INTERVAL == 0:
+		_inject_key(KEY_J)
+		print("[R35][INPUT] frame=%d 真实按键 light_attack(J) 密度增强 -> Input.parse_input_event(InputEventKey)（连击 D→A→S 递进机会）" % f)
+	# ⑩ R35：弹反按键密度 —— 只追加真实 Input.parse_input_event 的 K 注入。
+	#   窗口由生产 Rank-2 ParryService 在 Boss 出招前开；窗口内按 K 才弹反成功，
+	#   窗口外 / 冷却 / 重复由 HUD.request_parry() 幂等拒绝（不改既有伤害判定 / 帧数据）。
+	if f >= R35_PARRY_SCAN_FROM and f <= R35_PARRY_SCAN_TO \
+			and (f - R35_PARRY_SCAN_FROM) % R35_PARRY_KEY_INTERVAL == 0:
+		_inject_key(KEY_K_CODE)
+		print("[R35][INPUT] frame=%d 真实按键 K(KEY_K=%d) -> Input.parse_input_event(InputEventKey) → HUD._unhandled_input → request_parry()（窗口由生产链路决定）" % [f, KEY_K_CODE])
 
 
 ## 教学闭环监测：读 tutorial_director 既有只读快照 + is_tutorial_active()；

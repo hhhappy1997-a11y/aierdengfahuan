@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-151135-267-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "R35C 按 A63 同步 godot/scripts/verify_fx_mobile.gd 两条过期断言期望值（[FXBloom][mobile] visible false→true 轻量可见、⑦ desktop_vs_mobile_diff_all_4 汇总项 mobile visible 期望按节点参数化），不删断言/不放宽判定/不改判定逻辑，逐条核对 47 条无其它过期断言；真跑 47 PASS / 0 FAIL / RESULT=PASS，三段门禁通过、全工程 G3 grep SCRIPT ERROR=0，A38 courtyard.tscn 节点 41 / uv 2/1/1 不变；如实登记沿用总指挥目视纠正口径（弹反 HUD 文字清晰可见/无重叠/连击 D→C 递进/余额 106 证 A59 扣费/HD-2D 全绿未达），不沿用 R35 旧自评。详见 teamwork/Rank-4/DONE-R35C.md。"
+}
