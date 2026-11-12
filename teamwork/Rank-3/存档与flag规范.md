@@ -190,6 +190,17 @@ key   := <模块> "." <对象> "." <状态>
 | `combat.focus.restore_count` | int | `0` | 每次 `focus_restored` +1，与回满同一 `commit` 原子写 | 赐福休息回满累计，**单调递增、只增不减**；见 R36 说明段（A66） |
 | `combat.focus.policy` | String | `""` | 与回满同一 `commit("focus_restored_<policy>")` 原子写（`rest_refill` / `rest_regen`） | **非单调·最近策略覆盖**：赐福休息演出对账 / 回放断言读；见 R36 说明段（A66） |
 | `combat.focus.last_reject` | String | `""` | `focus_rejected` 只写本 key，`commit("focus_rejected_<reason>")` 原子写 | **非单调·最近拒绝覆盖**：失败反馈对账读；绝不动 `current` / `spend_count` / 赐福点数（重复释放不二次扣费）；见 R36 说明段（A66） |
+| `combat.flask.remaining` | int | `flask_max` 回落 | 编排层订阅 `flask_used` / `flask_restored`，与每次瓶 commit 同一原子写（先落盘） | 当前剩余瓶数，**非单调·只减不增除休息·重生**：上限封顶 `remaining <= max`、重启不丢；见 `00-协作契约.md` §3.3 R37 说明段（A70） |
+| `combat.flask.max` | int | `0` | 经 A54 唯一 FlaskService `get_flask_max()` 鸭子读，与瓶 commit 同批原子写 | 瓶数上限（常量）；`remaining <= max` 硬约束、上限不被突破；见 R37 说明段（A70） |
+| `combat.flask.use_count` | int | `0` | 每次合法 `flask_used` +1，同一 `commit("flask_used")` 原子写 | 成功使用累计，**单调递增、只增不减**：`flask_rejected` 拒绝事件不写盘、不增；见 R37 说明段（A70） |
+| `combat.flask.restore_count` | int | `0` | 每次 `flask_restored` +1，与回满同一 `commit("flask_restored_<policy>")` 原子写 | 赐福休息 / 重生回满累计，**单调递增、只增不减**；见 R37 说明段（A70） |
+| `combat.flask.policy` | String | `""` | 与回满同一 `commit` 原子写（`rest_refill` / `rest_keep`） | **非单调·最近策略覆盖**：赐福休息演出对账 / 回放断言读；见 R37 说明段（A70） |
+| `grace.death.dropped` | int | `0` | 编排层订阅 `death_occurred`，与 `grace.death.grace_snapshot` / `count` 同一 `commit("death_occurred")` 原子先落盘 | **★ 独立单向·只读记录，非 points 扣减**：掉落点数只读写入，**绝不回退 `grace.trial.points`、绝不写 `removals`**（A71）；见 R37 说明段（A71） |
+| `grace.death.reclaimed` | bool | `false` | 编排层订阅 `points_reclaimed` 置 `true`，同一 `commit("points_reclaimed")` 原子写 | **只增不减（false→true 单向）**：一次性回收标记，重复回收被拒不回写 `false`；见 R37 说明段（A71） |
+| `grace.death.count` | int | `0` | 每次 `death_occurred` +1，同一 `commit` 原子写 | 死亡累计，**单调递增、只增不减**：不回退、重启不丢；见 R37 说明段（A71） |
+| `grace.death.grace_snapshot` | int | `0` | 死亡时 `grace.trial.points` 只读快照，与 `dropped` 同一 `commit` 原子写 | **非单调·最近快照覆盖**：只读记录、不扣 points；见 R37 说明段（A71） |
+| `grace.death.respawn_count` | int | `0` | 编排层订阅 `respawn_performed` +1，同一 `commit("respawn_performed")` 原子写 | 重生累计，**单调递增、只增不减**；重生重置范围归 Rank-2 / Rank-1，编排层只记数；见 R37 说明段（A71） |
+| `grace.death.reclaim_count` | int | `0` | 每次合法 `points_reclaimed` +1，同一 `commit` 原子写 | 成功回收累计，**单调递增·一次性**：重复回收被拒不增（恒 1）；见 R37 说明段（A71） |
 
 > 新增 flag 必须在本文登记表追加一行后再使用；禁止在代码里临时拼接未登记 key。
 > R26 / v0.4.0：上表 3 个新 key 定义见 `teamwork/Rank-3/WAVE-TRIAL-GDD.md` §6.1 与 `00-协作契约.md` §3.3 登记表；只进 `flags` 字典、不新增顶层字段、`schema_version=3` 不变；`commit(reason)` 强制落盘点与「先落盘再改运行时实例」顺序见 `WAVE-TRIAL-GDD.md` §6.3 / §6.4。
@@ -205,6 +216,8 @@ key   := <模块> "." <对象> "." <状态>
 > R35 / v0.12.0（**R36 补登 · R35 遗留 P0**）：上表 3 个 key（`combat.parry.success_count` int 单调递增 / `combat.parry.window_id` String 最近窗口覆盖 / `grace.boon_draft.unlocked` bool false→true 单向）定义见 `00-协作契约.md` §3.3 R35 说明段（裁决 A58 / A59 / A60）；R35 契约段已登记但本全局登记表当时漏登，本轮按「补上 A58~A63 之后新增的 flag 行」**补齐 3 行、不改动任何历史行**。只进 `flags` 字典、不新增顶层字段、`schema_version=3` 不变、旧存档缺 key 回落基线 `0 / "" / false` 不迁移；**绝不写 `removals`、绝不回退 `points`**。
 
 > R36 / v0.13.0：上表 7 个新 key（全为 `combat.focus.*` 前缀：`current` int 只减不增除休息 / `max` int 上限常量 / `art_id` String 最近战技 / `spend_count` int 单调 / `restore_count` int 单调 / `policy` String 最近策略 / `last_reject` String 最近拒绝）定义见 `teamwork/迭代-v0.13.0-专注值与战技.md` 与 `00-协作契约.md` §3.3 R36 说明段（裁决 **A66**）；严格匹配三段式正则 `^(world|quest|combat|grace|dungeon)\.[a-z0-9_]+\.[a-z0-9_]+$`，只进 `flags` 字典、不新增顶层字段、`schema_version=3` 不变、旧档缺 key 回落基线不迁移；**绝不写 `removals`、绝不回退 `points`、绝不混用 `grace.trial.points` / `grace.trial.spent_points`**（FP 与赐福点数分离，7 key 全为 `combat.focus.*`）。FP 落盘唯一写入方 = Rank-3 编排层 autoload（订阅 Rank-2 A54 唯一 FocusService 三信号，A48① 生产订阅者，非验证脚本）；`commit(reason)` 原子写 + 「先落盘再改运行时实例」五步顺序、重复释放不二次扣费、FP 上限不被突破见 R36 说明段；三进程三态 + 真实可达回归机器判定见 `godot/scripts/rpg/verify_v130_save_commit.gd` / `godot/scripts/rpg/verify_focus_production_v130.gd`；总指挥裁决 **A65~A68** 见 `00-协作契约.md` §3.3 R36 说明段。
+
+> R37 / v0.14.0：上表 11 个新 key（5 个 `combat.flask.*` + 6 个 `grace.death.*`）定义见 `teamwork/迭代-v0.14.0-元素瓶与死亡轮回.md` 与 `00-协作契约.md` §3.3 R37 说明段（裁决 **A70 / A71**）；严格匹配三段式正则，只进 `flags` 字典、不新增顶层字段、`schema_version=3` 不变、旧档缺 key 回落基线（`0 / "" / false`）不迁移；**绝不写 `removals`、绝不回退 `grace.trial.points`、绝不二次入账回收点数**（A71：回收点数由 Rank-2 经 `points_awarded` 一次入账，编排层订阅 `points_reclaimed` 只写单向 flag）。元素瓶 / 死亡轮回**落盘唯一写入方 = Rank-3 编排层 autoload**（A48① 生产运行时订阅者 = `bind_life_services()` connect 7 信号于生产脚本内，非验证脚本）；`_commit_life()` 显式隔离（`life_writes` 不含 `grace.trial.points` / `spent_points`、只作 `flags` 新 key），`commit(reason)` 原子写 + 「先落盘再改运行时实例」五步顺序、拒绝事件（`flask_rejected` / `action_rejected`）不写盘只走 HUD 反馈、见 R37 说明段策略裁决。三进程三态 + 真实可达回归机器判定见 `godot/scripts/rpg/verify_v140_save_commit.gd`（83 PASS / 0 FAIL）/ `godot/scripts/rpg/verify_life_production_v140.gd`（A48③，不加载 `presentation.gd` / 不在验证脚本内模拟编排，58 PASS / 0 FAIL）；总指挥裁决 **A69 补登 / A70~A73** 见 `00-协作契约.md` §3.3 R37 说明段。`focus_rejected` 既有 R36 写盘口径与「拒绝事件不写盘」建议冲突，已列入待裁决项（本轮不擅改）。
 
 ---
 

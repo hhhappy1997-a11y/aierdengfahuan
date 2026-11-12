@@ -163,6 +163,7 @@ func _initialize() -> void:
 	_test_r35_parry_rects()
 	_test_r36_focus_rects()          # R36：「专注值 FP」条真实节点 rect 避让（既有 24 条不删不放宽）
 	_test_r36b_art_rects()           # R36B：「当前战技」名真实节点 rect 避让（既有 40 条不删不放宽）
+	_test_r37_flask_rects()          # R37：「元素瓶 N/M」真实节点 rect 避让（既有 44 条不删不放宽）
 	_finish()
 
 
@@ -779,6 +780,71 @@ func _test_r36b_art_rects() -> void:
 	_ck("L4 战技名真实节点 rect 与独立分区锚点 get_current_art_rect() 一致（按锚点定位）",
 			al_ok and ar2.is_equal_approx(anchor),
 			"node_rect=%s anchor_rect=%s" % [str(ar2), str(anchor)])
+
+
+# ---------------------------------------------------------------------------
+# M) R37 · 「元素瓶 N/M」文字【真实节点 rect】避让断言（既有 44 条不删不放宽）
+#   ProdFlaskLabel 按独立归一化锚点 ANCHOR_FLASK 定位；断言与 6 分区 / 赐福成长标题行 /
+#   连击评级条 / 弹反预兆带 / 专注值 FP 条 / 当前战技名 等所有其它文字包围盒不相交，
+#   四档降级不出界 / 不遮中央角色 / 不与任一文字块相交，且节点 rect 与 get_flask_rect()
+#   一致。不并入 get_layout_rects() 的 6 分区（保护既有 A1「size()==6」断言）。
+# ---------------------------------------------------------------------------
+func _m_blocks(hud: Node, layer: Node) -> Array:
+	var blocks: Array = _l_blocks(hud, layer)   # 6 分区 + shop_title + combo + 3 Prod Label + parry 锚点/节点 + focus 锚点/节点
+	blocks.append(hud.call("get_current_art_rect") as Rect2)   # 当前战技名独立分区锚点
+	if layer != null and is_instance_valid(layer):
+		var al: Label = layer.get_node_or_null(NodePath("ProdArtLabel")) as Label
+		if al != null and is_instance_valid(al):
+			blocks.append(al.get_global_rect())                  # 当前战技名真实节点
+	return blocks                                       # 不含 ProdFlaskLabel 自身（避免自交）
+
+
+func _test_r37_flask_rects() -> void:
+	var hud: Node = _hud
+	print("[V100HUD] ==== M 组 R37 元素瓶文字真实节点 rect 避让断言 ====")
+	hud.call("set_layout_viewport", Vector2(1280.0, 720.0))
+	var layer: Node = hud.get_node_or_null(NodePath("ProductionMechanismsLayer"))
+	var kl: Label = layer.get_node_or_null(NodePath("ProdFlaskLabel")) as Label if layer != null else null
+	var kl_ok: bool = kl != null and is_instance_valid(kl)
+	if hud.has_method("_r34_refresh_visible"):
+		hud.call("_r34_refresh_visible")
+	_ck("M1 生产常驻可见层含 R37「元素瓶 N/M」真实节点 ProdFlaskLabel（hud.gd 自建，非演示构造）",
+			kl_ok and kl.visible and kl.text.contains("元素瓶"),
+			"node=%s text=[%s]" % [str(kl_ok), kl.text if kl_ok else ""])
+	# M2 基准：元素瓶 vs 所有其它文字块（含 FP 条 / 当前战技名 / 连击评价带）两两不相交
+	var fr: Rect2 = kl.get_global_rect() if kl_ok else Rect2()
+	var blocks: Array = _m_blocks(hud, layer)
+	var worst: float = _j_worst(fr, blocks)
+	_ck("M2 ★ HUD 元素瓶文字包围盒不与 FP 条 / 当前战技名 / 连击评价带 / 弹反预兆带 / 其它文字相交",
+			kl_ok and fr.get_area() > 0.0 and worst == 0.0,
+			"flask_rect=%s blocks=%d worst_overlap=%.4f px²" % [str(fr), blocks.size(), worst])
+	# M3 四档降级：不出界 / 不遮中央角色 / 不与任一文字块相交
+	var all_ok: bool = true
+	var details: Array[String] = []
+	for vp: Vector2 in VIEWPORTS:
+		hud.call("set_layout_viewport", vp)
+		var r2: Rect2 = kl.get_global_rect() if kl_ok else Rect2()
+		var chr: Rect2 = hud.call("get_center_char_rect") as Rect2
+		var blocks2: Array = _m_blocks(hud, layer)
+		var bounded: bool = r2.position.x >= -0.001 and r2.position.y >= -0.001 \
+				and r2.end.x <= vp.x + 0.001 and r2.end.y <= vp.y + 0.001 \
+				and r2.get_area() > 0.0
+		var ov: float = _j_worst(r2, blocks2)
+		var ok: bool = bounded and r2.intersection(chr).get_area() == 0.0 and ov == 0.0
+		if not ok:
+			all_ok = false
+		details.append("%dx%d:rect=%s bounded=%s char_ov=%.2f text_ov=%.2f" % [
+				int(vp.x), int(vp.y), str(r2), str(bounded),
+				r2.intersection(chr).get_area(), ov])
+	_ck("M3 1280x720 + 三档降级：元素瓶节点不出界 / 不遮中央角色 / 不与任一文字包围盒相交",
+			all_ok, str(details))
+	hud.call("set_layout_viewport", Vector2(1280.0, 720.0))
+	# M4 按独立分区锚点定位（非硬编码像素堆叠）
+	var anchor: Rect2 = hud.call("get_flask_rect") as Rect2
+	var fr2: Rect2 = kl.get_global_rect() if kl_ok else Rect2()
+	_ck("M4 元素瓶真实节点 rect 与独立分区锚点 get_flask_rect() 一致（按锚点定位）",
+			kl_ok and fr2.is_equal_approx(anchor),
+			"node_rect=%s anchor_rect=%s" % [str(fr2), str(anchor)])
 
 
 func _finish() -> void:

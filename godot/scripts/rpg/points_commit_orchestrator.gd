@@ -91,6 +91,26 @@ const K_FOCUS_LAST_REJECT: String = "combat.focus.last_reject"     # String 最�
 ## R36 / A48①：3 个 FocusService 信号的生产运行时订阅者 = 本编排层 autoload（非验证脚本）。
 const FOCUS_SIGNALS: Array[String] = ["focus_spent", "focus_restored", "focus_rejected"]
 
+## ---- R37 / v0.14.0 新增三段式 flag（契约 §3.3 R37 段登记 / 裁决 A70 / A71）----
+## ★ 严格匹配三段式正则 FLAG_KEY_REGEX（对象段全小写 snake_case、不含点号）。
+## 元素瓶（combat.flask.*）：A70 唯一实例 FlaskService 的落盘镜像，与赐福点数 / FP 分离（A66）。
+const K_FLASK_REMAINING: String = "combat.flask.remaining"          # int 当前剩余瓶数（flask_used 扣减 / flask_restored 回满）
+const K_FLASK_MAX: String = "combat.flask.max"                       # int 瓶数上限（唯一实例 get_flask_max() 鸭子读）
+const K_FLASK_USE_COUNT: String = "combat.flask.use_count"           # int 成功使用累计（单调递增、只增不减）
+const K_FLASK_RESTORE_COUNT: String = "combat.flask.restore_count"   # int 补满累计（单调递增、只增不减）
+const K_FLASK_POLICY: String = "combat.flask.policy"                 # String 最近补瓶策略（rest_refill / rest_keep）
+## 死亡轮回（grace.death.*）：A71 ★ 独立单向 flag 表达掉落与回收，绝不回退 grace.trial.points、绝不写 removals。
+const K_DEATH_DROPPED: String = "grace.death.dropped"                # int 本轮掉落点数（只读记录，非扣减）
+const K_DEATH_RECLAIMED: String = "grace.death.reclaimed"            # bool 是否已一次性回收（false→true 单向）
+const K_DEATH_COUNT: String = "grace.death.count"                    # int 死亡累计（单调递增、只增不减）
+const K_DEATH_GRACE_SNAPSHOT: String = "grace.death.grace_snapshot"   # int 死亡时 grace.trial.points 只读快照
+const K_DEATH_RESPAWN_COUNT: String = "grace.death.respawn_count"    # int 重生累计（单调递增、只增不减）
+const K_DEATH_RECLAIM_COUNT: String = "grace.death.reclaim_count"    # int 成功回收累计（单调递增、一次性）
+## R37 / A48①：7 个信号的生产运行时订阅者 = 本编排层 autoload（非验证脚本）。
+##   flask_rejected / action_rejected 按「拒绝事件不写盘」策略只做运行时观测（不落盘）。
+const FLASK_SIGNALS: Array[String] = ["flask_used", "flask_rejected", "flask_restored"]
+const DEATH_SIGNALS: Array[String] = ["death_occurred", "respawn_performed", "points_reclaimed", "action_rejected"]
+
 ## ---- [PLACEHOLDER] cost→points 映射（A59）----
 ## rationale：Rank-2 boon_draft_service.apply() 的 cost_value 是「下一波敌人难度乘性修正」
 ##   （hp_scale / telegraph_scale，> 0 的倍率），并非赐福点数；A59 需要把它换算成点数消耗，
@@ -142,6 +162,14 @@ var _focus_reject_observed: int = 0     # focus_rejected 观测计数（A48① �
 var _focus_bind_retry: int = 0
 var _focus_bound: bool = false
 
+## ---- R37 / v0.14.0 运行时态（不落盘）：A54 唯一实例引用 / 上限缓存 / 拒绝观测 ----
+var _flask_service: Object = null       # A54：经 wave.get_flask_service() 复用，绝不 new 第二个
+var _death_service: Object = null       # A54：经 wave.get_death_service() 复用，绝不 new 第二个
+var _flask_max_cache: int = 0           # 从唯一实例 get_flask_max() 鸭子读到的上限
+var _life_bound: bool = false
+var _life_bind_retry: int = 0
+var _life_reject_observed: int = 0      # flask_rejected / action_rejected 观测（拒绝事件不写盘证据）
+
 
 func _ready() -> void:
 	_re = RegEx.new()
@@ -156,6 +184,8 @@ func _ready() -> void:
 	call_deferred("_deferred_bind")
 	# R36 / A66：延迟绑定 A54 唯一 FocusService（生产订阅者；无主场景时安全降级、不写盘）。
 	call_deferred("_deferred_bind_focus")
+	# R37 / A70 / A71：延迟绑定 A54 唯一 FlaskService / DeathService（生产订阅者；无主场景时安全降级、不写盘）。
+	call_deferred("_deferred_bind_life")
 
 
 ## 相对 root 查找 WorldState 单例（不用 /root/... 绝对路径字符串）。
@@ -265,6 +295,7 @@ func bind_hud(hud: Node) -> bool:
 
 func _release() -> void:
 	_release_focus()
+	_release_life()
 	if _hud != null and is_instance_valid(_hud):
 		for sig: String in BOUND_SIGNALS:
 			var cb: Callable = Callable(self, "_on_" + sig)
@@ -314,6 +345,19 @@ func get_status() -> Dictionary:
 		"focus_restore_count": int(_runtime_flags.get(K_FOCUS_RESTORE_COUNT, 0)),
 		"focus_policy": String(_runtime_flags.get(K_FOCUS_POLICY, "")),
 		"focus_last_reject": String(_runtime_flags.get(K_FOCUS_LAST_REJECT, "")),
+		"life_bound": _life_bound,
+		"flask_service": _flask_service != null,
+		"death_service": _death_service != null,
+		"flask_max_cache": _flask_max_cache,
+		"life_reject_observed": _life_reject_observed,
+		"flask_remaining": int(_runtime_flags.get(K_FLASK_REMAINING, 0)),
+		"flask_use_count": int(_runtime_flags.get(K_FLASK_USE_COUNT, 0)),
+		"flask_restore_count": int(_runtime_flags.get(K_FLASK_RESTORE_COUNT, 0)),
+		"death_dropped": int(_runtime_flags.get(K_DEATH_DROPPED, 0)),
+		"death_reclaimed": bool(_runtime_flags.get(K_DEATH_RECLAIMED, false)),
+		"death_count": int(_runtime_flags.get(K_DEATH_COUNT, 0)),
+		"death_respawn_count": int(_runtime_flags.get(K_DEATH_RESPAWN_COUNT, 0)),
+		"death_reclaim_count": int(_runtime_flags.get(K_DEATH_RECLAIM_COUNT, 0)),
 	}
 
 
@@ -857,3 +901,259 @@ func _on_focus_rejected(_art_id: String, reason: String) -> void:
 	var writes: Dictionary = {K_FOCUS_LAST_REJECT: String(reason)}
 	if not _commit_focus("focus_rejected_" + String(reason), writes, delta):
 		push_warning("[R36][PCO] A66 focus_rejected commit 失败 → 磁盘未改")
+
+
+# ===========================================================================
+# R37 / v0.14.0「元素瓶与死亡轮回 · 画面补齐」追加段（Rank-3 唯一写入）
+#   A70：元素瓶唯一实例（A54 经 wave.get_flask_service() 复用、绝不 new 第二个）
+#         + 落盘归属编排层 + G 键（Rank-1 输入层）+ 赐福休息补满。
+#   A71：死亡轮回 —— ★ 绝不回退 grace.trial.points、绝不写 removals；
+#         掉落 / 回收用独立单向 flag 表达；重生重置范围（Rank-2 导演层复位
+#         FP / 瓶 / 连击 / 窗口，本编排层只记 respawn_count）；回收一次性。
+#   A48①：7 个信号的生产运行时订阅者 = 本编排层 autoload（非验证脚本）。
+#   订阅信号签名逐字来自 Rank-2 DONE-R37.md §3.1 / §3.6：
+#     flask_used(flask_before: int, flask_after: int, hp_before: float, hp_after: float, healed: float)
+#     flask_rejected(reason: String, flask_remaining: int)
+#     flask_restored(flask_before: int, flask_after: int, policy: String)
+#     death_occurred(dropped_points: int, grace_points_snapshot: int)
+#     respawn_performed(pending_dropped_points: int)
+#     points_reclaimed(points: int, grace_points_snapshot: int)
+#     action_rejected(reason: String, action_id: String)
+#   口径：十字段冻结 / schema_version=3 / 不写 removals / commit(reason) 原子写 /
+#     ★ 先落盘再改运行时实例 / 重启读回一致 / FP 与赐福点数分离（A66）。
+#   ★ 拒绝事件不写盘（flask_rejected / action_rejected）：只做运行时观测 +
+#     HUD 反馈（Rank-1 / Rank-4），避免无效 commit 膨胀（裁决登记见契约 §3.3 R37 段）。
+#   安全降级：无 WaveTrialDirector 的纯 --headless --quit / --import /
+#     --check-only 场景重试耗尽仅 push_warning，不写盘、不报错、不 null 解引用。
+# ===========================================================================
+
+## 延迟绑定 A54 唯一 FlaskService / DeathService（autoload 早于主场景入树）。
+func _deferred_bind_life() -> void:
+	if _life_bound:
+		return
+	var pair: Array = _find_life_services()
+	if pair.size() == 2 and pair[0] != null and pair[1] != null:
+		bind_life_services(pair[0] as Object, pair[1] as Object)
+		return
+	_life_bind_retry += 1
+	if _life_bind_retry <= MAX_BIND_RETRY:
+		call_deferred("_deferred_bind_life")
+	else:
+		push_warning("[R37][PCO] A70/A71：FlaskService / DeathService 未就绪（重试 %d 次）→ 绑定降级：不订阅、不写盘" % MAX_BIND_RETRY)
+
+
+## 相对 root 查找 WaveTrialDirector → 调两个 getter 取 A54 唯一实例。
+##   不静态引用 class_name、不用 /root/... 绝对路径、不自建第二个服务。
+func _find_life_services() -> Array:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return []
+	var wave: Node = _scan_life_node(tree.root)
+	if wave == null:
+		return []
+	var flask: Object = null
+	var death: Object = null
+	if wave.has_method("get_flask_service"):
+		flask = wave.call("get_flask_service") as Object
+	if wave.has_method("get_death_service"):
+		death = wave.call("get_death_service") as Object
+	return [flask, death]
+
+
+func _scan_life_node(n: Node) -> Node:
+	if n.name == "WaveTrialDirector" \
+			and n.has_method("get_flask_service") and n.has_method("get_death_service"):
+		return n
+	for c: Node in n.get_children():
+		var found: Node = _scan_life_node(c)
+		if found != null:
+			return found
+	return null
+
+
+## 显式绑定入口（正常游戏由 _deferred_bind_life 调；--script 验证进程直接调以保证确定性）。
+##   connect 前 is_connected 去重，绝不重复连接；A54 唯一实例由参数传入、不 new。
+func bind_life_services(flask: Object, death: Object) -> bool:
+	if flask == null or not is_instance_valid(flask) \
+			or death == null or not is_instance_valid(death):
+		return false
+	_flask_service = flask
+	_death_service = death
+	var connected: int = 0
+	for sig: String in FLASK_SIGNALS:
+		if not flask.has_signal(sig):
+			continue
+		var cb: Callable = Callable(self, "_on_" + sig)
+		if not flask.is_connected(sig, cb):
+			flask.connect(sig, cb)
+		connected += 1
+	for sig: String in DEATH_SIGNALS:
+		if not death.has_signal(sig):
+			continue
+		var cb: Callable = Callable(self, "_on_" + sig)
+		if not death.is_connected(sig, cb):
+			death.connect(sig, cb)
+		connected += 1
+	_flask_max_cache = _flask_read_max(flask)
+	_life_bound = connected == (FLASK_SIGNALS.size() + DEATH_SIGNALS.size())
+	if _life_bound:
+		print("[R37][PCO] A70/A71 生产订阅者已绑定 FlaskService + DeathService 唯一实例 | signals=%d slot=%s（元素瓶 / 死亡轮回单向 flag 落盘，绝不回退 points）" % [
+			connected, _slot_dir])
+	else:
+		push_warning("[R37][PCO] A70/A71 生命轮回信号不全，绑定降级（connected=%d/%d）" % [
+			connected, FLASK_SIGNALS.size() + DEATH_SIGNALS.size()])
+	return _life_bound
+
+
+## 从 A54 唯一实例鸭子读瓶数上限（Rank-2 接口命名差异不产生 SCRIPT ERROR）。
+func _flask_read_max(flask: Object) -> int:
+	if flask != null and is_instance_valid(flask) and flask.has_method("get_flask_max"):
+		var m: int = int(flask.call("get_flask_max"))
+		if m > 0:
+			return m
+	return _flask_max_cache
+
+
+## 释放 7 个信号连接（有释放路径，不留悬空 Callable）。
+func _release_life() -> void:
+	if _flask_service != null and is_instance_valid(_flask_service):
+		for sig: String in FLASK_SIGNALS:
+			var cb: Callable = Callable(self, "_on_" + sig)
+			if _flask_service.has_signal(sig) and _flask_service.is_connected(sig, cb):
+				_flask_service.disconnect(sig, cb)
+	if _death_service != null and is_instance_valid(_death_service):
+		for sig: String in DEATH_SIGNALS:
+			var cb: Callable = Callable(self, "_on_" + sig)
+			if _death_service.has_signal(sig) and _death_service.is_connected(sig, cb):
+				_death_service.disconnect(sig, cb)
+	_flask_service = null
+	_death_service = null
+	_life_bound = false
+
+
+## 磁盘 flags（旧值读取专用；commit 仍以 _read_delta() 的磁盘真值为唯一权威）。
+func _life_disk_flags() -> Dictionary:
+	return (_read_delta().get("flags", {}) as Dictionary)
+
+
+## A70/A71 专用 commit 封装：★ 显式隔离，life_writes 绝不含 K_POINTS / K_SPENT
+##   （绝不回退 / 改写 grace.trial.points、绝不二次入账）、所有 key 必须以
+##   "combat.flask." 或 "grace.death." 开头且通过三段式正则；复用既有 _commit
+##   （十字段冻结 / schema_version=3 / 不写 removals / 原子写 / 先落盘再改实例）。
+##   awarded_points=0 / new_total=磁盘 points 原值 → points_committed 不误导。
+func _commit_life(reason: String, life_writes: Dictionary) -> bool:
+	if _re == null:
+		_re = RegEx.new()
+		_re.compile(FLAG_KEY_REGEX)
+	for k: Variant in life_writes.keys():
+		var key: String = String(k)
+		if not (key.begins_with("combat.flask.") or key.begins_with("grace.death.")) \
+				or key == K_POINTS or key == K_SPENT:
+			push_warning("[R37][PCO] A70/A71 非法生命轮回 flag key（越界或混用赐福点数），本次不落盘：%s" % key)
+			return false
+		if _re.search(key) == null:
+			push_warning("[R37][PCO] A70/A71 非法三段式 flag key，本次不落盘：%s" % key)
+			return false
+		if not _is_scalar(life_writes[k]):
+			push_warning("[R37][PCO] A70/A71 非标量 flag value，本次不落盘：%s" % key)
+			return false
+	var delta: Dictionary = _read_delta()
+	var disk_points: int = int((delta.get("flags", {}) as Dictionary).get(K_POINTS, 0))
+	return _commit(reason, life_writes, 0, disk_points)
+
+
+## A70 生产回调 ①：flask_used → 落盘（瓶数只减不增除休息）。
+func _on_flask_used(_flask_before: int, flask_after: int, _hp_before: float,
+		_hp_after: float, _healed: float) -> void:
+	if flask_after < 0:
+		push_warning("[R37][PCO] A70 flask_used 负瓶数 → 拒绝、不落盘")
+		return
+	var flags: Dictionary = _life_disk_flags()
+	var maxv: int = _flask_read_max(_flask_service)
+	if maxv > 0 and flask_after > maxv:
+		push_warning("[R37][PCO] A70 flask_used 越过瓶数上限 → 拒绝、不落盘 | after=%d max=%d" % [flask_after, maxv])
+		return
+	var writes: Dictionary = {
+		K_FLASK_REMAINING: flask_after,
+		K_FLASK_MAX: maxv,
+		K_FLASK_USE_COUNT: int(flags.get(K_FLASK_USE_COUNT, 0)) + 1,
+	}
+	if not _commit_life("flask_used", writes):
+		push_warning("[R37][PCO] A70 flask_used commit 失败 → 磁盘未改、运行时实例保持旧值")
+
+
+## A70 生产回调 ②：flask_rejected → ★ 拒绝事件不写盘，只做运行时观测
+##   （只走 HUD 反馈，避免无效 commit 膨胀；裁决登记见契约 §3.3 R37 段）。
+func _on_flask_rejected(_reason: String, _flask_remaining: int) -> void:
+	_life_reject_observed += 1
+
+
+## A70 生产回调 ③：flask_restored → 落盘（赐福休息 / 重生补满，唯一允许瓶数增加的出口）。
+func _on_flask_restored(_flask_before: int, flask_after: int, policy: String) -> void:
+	var flags: Dictionary = _life_disk_flags()
+	var maxv: int = _flask_read_max(_flask_service)
+	var new_cur: int = flask_after
+	if maxv > 0 and new_cur > maxv:
+		push_warning("[R37][PCO] A70 瓶数上限保护：补满值 %d > max %d → 封顶（不突破上限）" % [new_cur, maxv])
+		new_cur = maxv
+	if new_cur < 0:
+		new_cur = 0
+	var writes: Dictionary = {
+		K_FLASK_REMAINING: new_cur,
+		K_FLASK_MAX: maxv,
+		K_FLASK_RESTORE_COUNT: int(flags.get(K_FLASK_RESTORE_COUNT, 0)) + 1,
+		K_FLASK_POLICY: String(policy),
+	}
+	if not _commit_life("flask_restored_" + String(policy), writes):
+		push_warning("[R37][PCO] A70 flask_restored commit 失败 → 磁盘未改")
+
+
+## A71 生产回调 ④：death_occurred → 落盘【独立单向 flag 表达掉落】。
+##   ★ 只读记录：绝不回退 grace.trial.points、绝不写 removals（A59 / A71）。
+##   dropped_points 是 DeathService 按 drop_ratio / drop_cap 算出的只读记录值，
+##   不是从 points 扣除；磁盘 points 全程不变。
+func _on_death_occurred(dropped_points: int, grace_points_snapshot: int) -> void:
+	var flags: Dictionary = _life_disk_flags()
+	var writes: Dictionary = {
+		K_DEATH_DROPPED: maxi(0, dropped_points),
+		K_DEATH_RECLAIMED: false,
+		K_DEATH_COUNT: int(flags.get(K_DEATH_COUNT, 0)) + 1,
+		K_DEATH_GRACE_SNAPSHOT: maxi(0, grace_points_snapshot),
+	}
+	if not _commit_life("death_occurred", writes):
+		push_warning("[R37][PCO] A71 death_occurred commit 失败 → 磁盘未改")
+
+
+## A71 生产回调 ⑤：respawn_performed → 落盘重生累计（单向计数）。
+##   ★ 重生重置范围归 Rank-2 导演层 _on_respawn_performed()（回满 FP / 瓶 /
+##     重置连击与窗口），其调 _flask.on_grace_rest() 触发 flask_restored 信号
+##     → 本编排层 _on_flask_restored 落盘「重生回满瓶」；HP 回满归 Rank-1（A71）。
+##     本编排层不重复复位、不二次写瓶数。
+func _on_respawn_performed(_pending_dropped_points: int) -> void:
+	var flags: Dictionary = _life_disk_flags()
+	var writes: Dictionary = {
+		K_DEATH_RESPAWN_COUNT: int(flags.get(K_DEATH_RESPAWN_COUNT, 0)) + 1,
+	}
+	if not _commit_life("respawn_performed", writes):
+		push_warning("[R37][PCO] A71 respawn_performed commit 失败 → 磁盘未改")
+
+
+## A71 生产回调 ⑥：points_reclaimed → 落盘【独立单向 flag 表达一次性回收】。
+##   ★★ 绝不回退 / 改写 grace.trial.points、绝不写 removals、绝不二次入账：
+##   回收点数已由 Rank-2 导演层 _on_points_reclaimed() 累计到 _death_reclaim_acc，
+##   经 _clear_wave() → combo.settle() → HUD points_awarded 一次入账（A55/A57）。
+##   本编排层只登记「已回收」这一单向事实，points 参数原样不采信、不加进磁盘 points。
+func _on_points_reclaimed(_points: int, _grace_points_snapshot: int) -> void:
+	var flags: Dictionary = _life_disk_flags()
+	var writes: Dictionary = {
+		K_DEATH_RECLAIMED: true,
+		K_DEATH_RECLAIM_COUNT: int(flags.get(K_DEATH_RECLAIM_COUNT, 0)) + 1,
+	}
+	if not _commit_life("points_reclaimed", writes):
+		push_warning("[R37][PCO] A71 points_reclaimed commit 失败 → 磁盘未改")
+
+
+## A71 生产回调 ⑦：action_rejected → ★ 拒绝事件不写盘，只做运行时观测
+##   （重复回收被拒 / 死亡期间行动被拒 / 异常输入只走 HUD 反馈，避免无效 commit 膨胀）。
+func _on_action_rejected(_reason: String, _action_id: String) -> void:
+	_life_reject_observed += 1

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="DeathConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/death_config.gd" id="1_death"]
+
+[resource]
+script = ExtResource("1_death")
+drop_ratio = 0.5
+drop_cap = 500
+invalid_input_policy = "reject"

@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-184157-061-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "R37/v0.14.0 四块任务全部真跑完成，实际结论见 teamwork/Rank-1/DONE-R37.md：① hud.gd/encounter_director.gd 接真实 _unhandled_input(G)，HUD 新增 ProdFlaskLabel「元素瓶 N/M」与 ProdDeathLabel「你死了/掉落赐福点数」独立分区真实节点（包围盒避让），A54 唯一 FlaskService 判定成功扣瓶回 HP（A57 原样写回 _player_hp）、失败「瓶数不足/生命已满」不扣瓶；② HP 归零→死亡态→赐福重生回满 HP/FP/瓶、重置连击与窗口、回当前波，死亡/重生由 Rank-2 DeathService 判定，Rank-1 只做状态表现与信号转发、不新增第二套胜负判定，死亡期间拒绝 G/Q/K/F、重复死亡不二次掉落；③ presentation.gd 只追加真实 Input.parse_input_event 注入节奏、绝不改 [PLACEHOLDER] 数值/不回退演示驱动，450 帧逻辑真跑元素瓶成功 1 次，连击 D→A→S/S 级爆发与一次死亡重生在 450 帧内未自然出现，如实登记「链路已接线但演示未覆盖」，不冒充；④ 新写 verify_life_runtime_v140.gd（不加载 presentation.gd、不在验证脚本内模拟编排）26/26，扩展 V110 66→75、V100HUD 44→48，V130 39/39、V120P 31/31，共 219 PASS/0 FAIL 五份 RESULT=ALL_MATCH，既有断言不删不放宽；三段门禁 G1/G2a(8)/G2b(5)/G3 全 EXIT=0、全工程 19 段日志 SCRIPT ERROR=0/PARSE_ERROR=0；A38 节点 41/uv 2/1/1 不变，10 份既有 .tres md5 与 DONE-R36B 逐字一致。V140 走 Rank-2 真实服务（flask_source/death_source=rank2_production_unique_instance，非契约替身），A48 四项逐条达标。未完成/待裁决：定稿录屏目视、死亡重生演示覆盖、掉落点数来源、reclaim_dropped() 触发点、HD-2D 全绿，详见 DONE-R37.md §8。"
+}

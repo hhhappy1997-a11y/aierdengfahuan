@@ -151,6 +151,7 @@ func _initialize() -> void:
 	_t_a57_full_chain()
 	_t_r35_parry_chain()
 	_t_r36_focus_chain()             # R36：专注值 FP / 战技 Q 生产链追加组（既有断言不删不放宽）
+	_t_r37_life_chain()              # R37：元素瓶 G / 死亡轮回生产链接线组（既有断言不删不放宽）
 	_finish(false)
 
 
@@ -1107,3 +1108,127 @@ func _t_r36_focus_chain() -> void:
 	_ck("R36-5 A38 courtyard.tscn 节点数 == 41（R36 运行时建层、不写场景）",
 			count == NODE_COUNT_EXPECTED, "count=%d expected=%d" % [count, NODE_COUNT_EXPECTED])
 	print("[V110][R36] ==== R36 专注值 FP / 战技 Q 生产链接线组结束 ====")
+
+
+# ---------------------------------------------------------------------------
+# R37 [ROUND=R37] · 元素瓶 G / 死亡轮回生产链接线组（追加，既有断言不删不放宽）
+#   A48① 生产订阅者 = EncounterDirector；A54 唯一实例三方同一 Object；
+#   A48③ 真实 G/E 输入 → 生产链路 → ENC 生产消费 / HUD 真实节点画面。
+#   Rank-2 服务已落盘优先复用 wave.get_*_service() 真实实例，不自建第二个。
+# ---------------------------------------------------------------------------
+const KEY_G_R37: int = 71             # KEY_G（元素瓶；HUD/ENC._unhandled_input → request_flask_use）
+const KEY_E_R37: int = 69             # KEY_E（赐福休息 / 重生；ENC._grace_rest → grace_rested）
+
+
+func _t_r37_life_chain() -> void:
+	print("[V110][R37] ==== R37 元素瓶 G / 死亡轮回生产链接线组开始（追加，既有断言不删不放宽）====")
+	if _hud == null or _enc == null or _wave == null:
+		_ck("R37-0 关键节点可用", false, "hud/enc/wave null")
+		return
+	# ① 4 个新信号
+	var sigs: Array[String] = ["flask_used", "flask_rejected", "player_died", "player_respawned"]
+	var miss: Array[String] = []
+	for s: String in sigs:
+		if not _hud.has_signal(s):
+			miss.append(s)
+	_ck("R37-1 HUD 新增 flask_used / flask_rejected / player_died / player_respawned 4 信号齐全",
+			miss.is_empty(), "missing=%s" % str(miss))
+	# ② A48① 生产运行时订阅者 = EncounterDirector
+	var enc_sub: int = 0
+	for s2: String in sigs:
+		if not _hud.has_signal(s2):
+			continue
+		for conn in _hud.get_signal_connection_list(s2):
+			var c: Callable = conn.get("callable", Callable())
+			if c.get_object() == _enc:
+				enc_sub += 1
+				break
+	_ck("R37-2 A48① ★ 4 个新信号各有生产运行时订阅者 EncounterDirector（_r37_bootstrap connect）",
+			enc_sub == 4, "signals_with_enc_subscriber=%d/4" % enc_sub)
+	# ③ A54 唯一实例：HUD / ENC / wave 三方同一真实 Object
+	var hf: Object = _hud.call("get_flask_service") as Object if _hud.has_method("get_flask_service") else null
+	var ef: Object = _enc.call("get_flask_service") as Object if _enc.has_method("get_flask_service") else null
+	var wf: Object = _wave.call("get_flask_service") as Object if _wave.has_method("get_flask_service") else null
+	_ck("R37-3 A54 ★ HUD / ENC / wave.get_flask_service() 三方同一真实 Object（绝不自建第二实例）",
+			hf != null and hf == ef and ef == wf and hf.has_method("use_flask"),
+			"same=%s use_flask=%s" % [str(hf != null and hf == ef and ef == wf),
+					str(hf != null and hf.has_method("use_flask"))])
+	var hd: Object = _hud.call("get_death_service") as Object if _hud.has_method("get_death_service") else null
+	var ed: Object = _enc.call("get_death_service") as Object if _enc.has_method("get_death_service") else null
+	var wd: Object = _wave.call("get_death_service") as Object if _wave.has_method("get_death_service") else null
+	_ck("R37-3b A54 ★ HUD / ENC / wave.get_death_service() 三方同一真实 Object（on_death 接口）",
+			hd != null and hd == ed and ed == wd and hd.has_method("on_death"),
+			"same=%s on_death=%s" % [str(hd != null and hd == ed and ed == wd),
+					str(hd != null and hd.has_method("on_death"))])
+	# ④ 真实节点（hud.gd 自建，非演示构造）
+	var layer: Node = _courtyard.get_node_or_null(NodePath("ProductionMechanismsLayer"))
+	if layer == null:
+		layer = _hud.get_node_or_null(NodePath("ProductionMechanismsLayer"))
+	var kl: Label = layer.get_node_or_null(NodePath("ProdFlaskLabel")) as Label if layer != null else null
+	var xl: Label = layer.get_node_or_null(NodePath("ProdDeathLabel")) as Label if layer != null else null
+	_ck("R37-4 生产常驻可见层含「元素瓶 N/M」ProdFlaskLabel +「你死了」ProdDeathLabel 真实节点（hud.gd 自建）",
+			kl != null and is_instance_valid(kl) and xl != null and is_instance_valid(xl),
+			"flask_node=%s death_node=%s text=[%s]" % [
+					str(kl != null), str(xl != null), kl.text if kl != null else ""])
+	# ⑤ A48③ 真实 G 输入 → 瓶扣减 + ENC 生产消费 + HP 写回
+	if hf != null and hf.has_method("reset"):
+		hf.call("reset")
+	if _hud.has_method("bind_flask_service"):
+		_hud.call("bind_flask_service", hf)
+	if _hud.has_method("close_boon_draft"):
+		_hud.call("close_boon_draft")
+	_hud.set("shop_open", false)
+	_enc.set("_player_hp", 40.0)
+	var f0: int = int(hf.call("get_flasks")) if hf != null and hf.has_method("get_flasks") else -1
+	var prod0: Dictionary = _enc.call("get_life_production_snapshot") as Dictionary if _enc.has_method("get_life_production_snapshot") else {}
+	var ev0: int = (prod0.get("flask_events", []) as Array).size()
+	var g: InputEventKey = _key(KEY_G_R37, true)
+	Input.parse_input_event(g)
+	_hud.call("process_key_event", g)
+	_enc.call("_unhandled_input", g)      # 双接同一 event 实例，HUD 幂等去重不重复扣瓶
+	Input.parse_input_event(_key(KEY_G_R37, false))
+	var f1: int = int(hf.call("get_flasks")) if hf != null and hf.has_method("get_flasks") else -1
+	var prod1: Dictionary = _enc.call("get_life_production_snapshot") as Dictionary if _enc.has_method("get_life_production_snapshot") else {}
+	var ev1: int = (prod1.get("flask_events", []) as Array).size()
+	_ck("R37-5 ★ A48③ 真实 G 输入 → 生产链路：瓶扣减（%d→%d）+ ENC 生产订阅者真实消费（flask_events %d→%d）+ hp 写回" % [f0, f1, ev0, ev1],
+			f1 == f0 - 1 and ev1 == ev0 + 1 and int(prod1.get("hp_writeback_count", 0)) >= 1,
+			"flask %d->%d flask_events %d->%d writeback=%d" % [
+					f0, f1, ev0, ev1, int(prod1.get("hp_writeback_count", 0))])
+	# ⑥ 元素瓶文字包围盒不与 FP 条 / 当前战技名 / 连击评价带 / 6 分区相交
+	_hud.call("set_layout_viewport", Vector2(1280.0, 720.0))
+	if _hud.has_method("_r34_refresh_visible"):
+		_hud.call("_r34_refresh_visible")
+	var fr: Rect2 = kl.get_global_rect() if kl != null and is_instance_valid(kl) else Rect2()
+	var blocks: Array = []
+	for e in _hud.call("get_layout_rects") as Array:
+		blocks.append((e as Dictionary).get("rect", Rect2()) as Rect2)
+	blocks.append(_hud.call("get_shop_title_rect") as Rect2)
+	blocks.append(_hud.call("get_production_mechanism_rect") as Rect2)
+	blocks.append(_hud.call("get_parry_telegraph_rect") as Rect2)
+	blocks.append(_hud.call("get_focus_rect") as Rect2)
+	blocks.append(_hud.call("get_current_art_rect") as Rect2)
+	var worst: float = 0.0
+	for b in blocks:
+		worst = maxf(worst, fr.intersection(b as Rect2).get_area())
+	_ck("R37-6 ★ 元素瓶文字包围盒不与 FP 条 / 当前战技名 / 连击评价带 / 弹反预兆带 / 6 分区 / 赐福成长标题相交",
+			kl != null and fr.get_area() > 0.0 and worst == 0.0,
+			"flask_rect=%s blocks=%d worst_overlap=%.4f px²" % [str(fr), blocks.size(), worst])
+	# ⑦ 赐福休息补满瓶（真实 E → ENC 既有 _grace_rest → grace_rested 生产订阅）
+	var e_press: InputEventKey = _key(KEY_E_R37, true)
+	Input.parse_input_event(e_press)
+	_enc.call("_unhandled_input", e_press)
+	Input.parse_input_event(_key(KEY_E_R37, false))
+	var f2: int = int(hf.call("get_flasks")) if hf != null and hf.has_method("get_flasks") else -1
+	var fmax: int = int(hf.call("get_flask_max")) if hf != null and hf.has_method("get_flask_max") else -1
+	_ck("R37-7 赐福休息（真实 E）→ grace_rested 生产订阅 → 元素瓶补满不超上限",
+			hf != null and f2 == fmax and fmax > 0,
+			"flask=%d max=%d" % [f2, fmax])
+	# ⑧ A38 节点 41 保持（只读核对，不改场景）
+	var text: String = FileAccess.get_file_as_string(COURTYARD_PATH)
+	var count: int = 0
+	for line: String in text.split("\n"):
+		if line.begins_with("[node "):
+			count += 1
+	_ck("R37-8 A38 courtyard.tscn 节点数 == 41（R37 运行时建层、不写场景）",
+			count == NODE_COUNT_EXPECTED, "count=%d expected=%d" % [count, NODE_COUNT_EXPECTED])
+	print("[V110][R37] ==== R37 元素瓶 G / 死亡轮回生产链接线组结束 ====")

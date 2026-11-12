@@ -132,6 +132,15 @@ func _exit_tree() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# R37 [ROUND=R37] · 死亡态门禁（任务②「死亡期间拒绝 G/Q/K/F」）：HUD 权威死亡态期间
+	#   对新增 G/Q/R 分支消费但不转发（HUD 侧 _process_r32_keys 门禁覆盖 K/F 与自身 Q/R/G）；
+	#   既有 roll/light/heavy/interact 判定逐字不动、不改既有普通攻击判定 / 帧数据 / 胜负结算分支。
+	if event is InputEventKey and _r37_hud_is_dead():
+		var dk: InputEventKey = event as InputEventKey
+		if dk.pressed and not dk.echo and (dk.physical_keycode == KEY_G or dk.keycode == KEY_G \
+				or dk.physical_keycode == KEY_Q or dk.keycode == KEY_Q \
+				or dk.physical_keycode == KEY_R or dk.keycode == KEY_R):
+			return
 	if event.is_action_pressed("roll"):
 		_request_action("roll")
 	elif event.is_action_pressed("light_attack"):
@@ -150,6 +159,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	#   HUD 侧靠同一 event 实例幂等去重，绝不重复切换 / 不重置 FP 与冷却 / 不误触其它键。
 	elif event is InputEventKey and _r36_is_r(event as InputEventKey):
 		_r36_request_art_switch(event as InputEventKey)
+	# R37 [ROUND=R37] · 元素瓶 G 真实输入（既有 roll/light/heavy/interact/Q/R 判定逐字不动）：
+	#   权威判定在 HUD.request_flask_use()（复用 A54 唯一 flask_service 判定瓶数 / HP）；
+	#   本导演层同接 G 并转发，靠同一 event 实例幂等去重，绝不重复扣瓶 / 不重复回 HP。
+	elif event is InputEventKey and _r37_is_g(event as InputEventKey):
+		_r37_request_flask_use(event as InputEventKey)
 
 
 func _physics_process(delta: float) -> void:
@@ -248,6 +262,10 @@ func _on_boss_move_landed(_defeat_id: String, _move: Variant, _attacker: Variant
 	_r34b_combo_on_hit_taken()
 	if _player_hp <= 0.0:
 		_finish(false)
+	# R37 [ROUND=R37] · HP 变化转发（既有判定 / 帧数据 / 输出格式 / 胜负结算分支逐字不动）：
+	#   把最终 HP 交给 HUD → A54 唯一 death_service 权威判定死亡态 / 掉落；本层只转发，
+	#   不新增第二套胜负判定、不订阅 / 不改 _finish / encounter_finished。
+	_r37_forward_hp_changed()
 
 
 func _finish(won: bool) -> void:
@@ -866,6 +884,7 @@ func _r34_bootstrap() -> void:
 	_r34_push_services_to_hud()
 	_r35_bootstrap()                      # R35：ParryService 唯一实例 + parry_performed 生产订阅者
 	_r36_bootstrap()                      # R36：focus_service 唯一实例 + focus_skill_performed / rejected 生产订阅者
+	_r37_bootstrap()                      # R37：flask/death 唯一实例 + HUD.flask_used/rejected/player_died/respawned 生产订阅者
 
 
 func _r34_connect_hit_signal() -> void:
@@ -966,6 +985,7 @@ func _r34_release() -> void:
 	_r34_hit_signal_connected = false
 	_r35_release()                       # R35：HUD.parry_performed 订阅的释放路径
 	_r36_release()                       # R36：HUD.focus_skill_* 订阅的释放路径
+	_r37_release()                       # R37：HUD.flask_used/rejected/player_died/respawned 订阅的释放路径
 
 
 # ===========================================================================
@@ -1499,3 +1519,207 @@ func _r36_release() -> void:
 					if hud.is_connected(sig, cb):
 						hud.disconnect(sig, cb)
 	_r36_focus_connected = false
+
+
+# ==========================================================================
+# R37 [ROUND=R37 / v0.14.0] · 元素瓶 G / 死亡轮回（ENC 生产运行时侧，Rank-1 唯一写入方）
+#   A48①：HUD 4 个新信号（flask_used / flask_rejected / player_died / player_respawned）
+#          的【生产运行时订阅者 = 本导演层】（_r37_bootstrap connect，去重 + _r37_release 释放）。
+#          flask_used 回调把服务【最终结算值 hp_after】原样写回真实 _player_hp（A57），
+#          不二次计算；死亡 / 重生只做生产消费记录，不新增第二套胜负判定。
+#   A54：flask_service / death_service 唯一实例从 wave_trial_director.get_*_service()
+#        复用，绝不自建第二个；并发未落盘时判空降级、不崩、SCRIPT ERROR=0。
+#   不改既有普通攻击判定 / 帧数据 / 输出格式 / 既有胜负结算分支：只新增 _unhandled_input(G)
+#     分支 + HP 变化转发 + 生产订阅回调 + 只读 getter。
+# ==========================================================================
+const R37_HUD_REL_PATH: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
+const R37_WAVE_REL_PATH: String = "WaveTrialDirector"
+
+var _r37_flask: Object = null                # A54 唯一 flask_service（wave 复用，不自建）
+var _r37_death: Object = null                # A54 唯一 death_service（wave 复用，不自建）
+var _r37_hud_ref: Node = null                # 缓存 HUD 引用（转发 / 门禁用）
+var _r37_bootstrapped: bool = false
+var _r37_signal_connected: bool = false
+var _r37_flask_events: Array[Dictionary] = []       # flask_used 生产消费记录
+var _r37_reject_events: Array[Dictionary] = []      # flask_rejected 生产消费记录
+var _r37_death_events: Array[Dictionary] = []       # player_died 生产消费记录
+var _r37_respawn_events: Array[Dictionary] = []     # player_respawned 生产消费记录
+var _r37_hp_writeback_count: int = 0                 # A57 原样写回真实 _player_hp 次数
+var _r37_hp_forward_count: int = 0                   # HP 变化转发次数
+
+
+func _r37_find_courtyard() -> Node:
+	var ml: MainLoop = Engine.get_main_loop()
+	var c: Node = null
+	if ml is SceneTree:
+		c = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+	if c == null:
+		c = get_parent()
+	return c
+
+
+func _r37_find_hud() -> Node:
+	if _r37_hud_ref != null and is_instance_valid(_r37_hud_ref):
+		return _r37_hud_ref
+	var c: Node = _r37_find_courtyard()
+	if c == null:
+		return null
+	var h: Node = c.get_node_or_null(NodePath(R37_HUD_REL_PATH))
+	if h == null:
+		h = _r36_find_hud(c)          # 复用既有 HUD 递归查找（只读）
+	if h != null and is_instance_valid(h):
+		_r37_hud_ref = h
+	return h
+
+
+## 只读 HP 视图（HUD 元素瓶判定 current_hp / max_hp 的真实来源，不改既有判定）。
+func get_life_hp_view() -> Dictionary:
+	return {"hp": _player_hp, "max_hp": player_max_hp, "outcome": _outcome}
+
+
+## A54 唯一实例注入口（验证进程注入契约替身 / 集成层预注入；生产仍以 wave 复用为准）。
+func bind_flask_service(svc: Object) -> void:
+	_r37_flask = svc
+
+
+func get_flask_service() -> Object:
+	return _r37_flask
+
+
+func bind_death_service(svc: Object) -> void:
+	_r37_death = svc
+
+
+func get_death_service() -> Object:
+	return _r37_death
+
+
+## 只读生产消费快照（验证 / 运行日志读回，不写盘、不含数值口径）。
+func get_life_production_snapshot() -> Dictionary:
+	return {
+		"flask_available": _r37_flask != null and is_instance_valid(_r37_flask),
+		"death_available": _r37_death != null and is_instance_valid(_r37_death),
+		"signal_connected": _r37_signal_connected,
+		"flask_events": _r37_flask_events.duplicate(true),
+		"reject_events": _r37_reject_events.duplicate(true),
+		"death_events": _r37_death_events.duplicate(true),
+		"respawn_events": _r37_respawn_events.duplicate(true),
+		"hp_writeback_count": _r37_hp_writeback_count,
+		"hp_forward_count": _r37_hp_forward_count,
+		"player_hp": _player_hp,
+	}
+
+
+func _r37_is_g(k: InputEventKey) -> bool:
+	# 只认 press（过滤 release / echo），与 R36B _r36_is_r 同口径；KEY_G=71 不与既有键冲突。
+	return k.pressed and not k.echo \
+			and (k.physical_keycode == KEY_G or k.keycode == KEY_G)
+
+
+## HUD 权威死亡态只读（ENC 侧新增输入门禁；HUD 缺席 / 未落盘 → false 降级不崩）。
+func _r37_hud_is_dead() -> bool:
+	var h: Node = _r37_find_hud()
+	if h != null and is_instance_valid(h) and h.has_method("is_player_dead"):
+		return bool(h.call("is_player_dead"))
+	return false
+
+
+## 真实 G 输入：本导演层同接 G，转发到 HUD 唯一权威入口 request_flask_use()
+## （与 Q / R 的转发同口径）。HUD 侧 _r37_last_g_event_id 对同一 event 实例幂等去重。
+func _r37_request_flask_use(event: InputEventKey) -> Dictionary:
+	var h: Node = _r37_find_hud()
+	if h != null and is_instance_valid(h) and h.has_method("request_flask_use"):
+		return h.call("request_flask_use", event) as Dictionary
+	return {"ok": false, "reason": "hud_unavailable"}
+
+
+## HP 变化转发（_on_boss_move_landed 扣血后调用）：交给 HUD → death_service 权威判定。
+## 只转发、不判定、不改既有胜负结算分支。
+func _r37_forward_hp_changed() -> void:
+	_r37_hp_forward_count += 1
+	var h: Node = _r37_find_hud()
+	if h != null and is_instance_valid(h) and h.has_method("on_player_hp_changed"):
+		h.call("on_player_hp_changed", _player_hp, player_max_hp)
+
+
+# ---- A48① 生产运行时订阅者回调（HUD 4 个新信号）----
+func _on_flask_used(flask_before: int, flask_after: int, hp_before: int, hp_after: int) -> void:
+	_r37_flask_events.append({"flask_before": flask_before, "flask_after": flask_after,
+			"hp_before": hp_before, "hp_after": hp_after})
+	# A57：服务最终结算值 hp_after 原样写回真实 _player_hp，本层不二次计算 / 不二次结算。
+	_player_hp = clampf(float(hp_after), 0.0, player_max_hp)
+	_r37_hp_writeback_count += 1
+	print("[R37][ENC] 元素瓶生产消费 | 瓶 %d->%d HP %d->%d → _player_hp=%.1f（A57 原样采信服务最终值，A48① 生产订阅者）" % [
+			flask_before, flask_after, hp_before, hp_after, _player_hp])
+
+
+func _on_flask_rejected(reason: String, flask: int) -> void:
+	_r37_reject_events.append({"reason": reason, "flask": flask})
+	print("[R37][ENC] 元素瓶拒绝生产记录 | reason=%s flask=%d（不扣瓶、不发效果）" % [reason, flask])
+
+
+func _on_player_died(dropped_points: int) -> void:
+	_r37_death_events.append({"dropped_points": dropped_points})
+	print("[R37][ENC] 死亡态生产消费 | 掉落赐福点数=%d（death_service 权威判定；不新增第二套胜负判定、不改 _finish）" % dropped_points)
+
+
+func _on_player_respawned(hp: int, fp: int, flask: int) -> void:
+	_r37_respawn_events.append({"hp": hp, "fp": fp, "flask": flask})
+	print("[R37][ENC] 重生生产消费 | hp=%d fp=%d flask=%d（HP 回满由既有 _grace_rest、连击/窗口重置由既有 _state.reset + Rank-2 wave）" % [
+			hp, fp, flask])
+
+
+func _r37_subscribe(obj: Object, sig: String, method: String) -> void:
+	if obj == null or not obj.has_signal(sig):
+		return
+	var cb: Callable = Callable(self, method)
+	for conn in obj.get_signal_connection_list(sig):
+		var c: Callable = conn.get("callable", Callable())
+		if c.get_object() == self and String(c.get_method()) == method:
+			return
+	if not obj.is_connected(sig, cb):
+		obj.connect(sig, cb)
+
+
+## 生产装配（_r34_bootstrap 末尾调用 / --script 验证显式调用同一入口）：
+##   ① A54 唯一 flask_service / death_service 从 wave.get_*_service() 复用（绝不自建）；
+##   ② A48① 本导演层成为 HUD 4 个新信号的生产运行时订阅者。
+func _r37_bootstrap() -> void:
+	if _r37_bootstrapped:
+		return
+	_r37_bootstrapped = true
+	var c: Node = _r37_find_courtyard()
+	if c != null:
+		if _r37_flask == null or not is_instance_valid(_r37_flask):
+			var wave: Node = c.get_node_or_null(NodePath(R37_WAVE_REL_PATH))
+			if wave != null and wave.has_method("get_flask_service"):
+				_r37_flask = wave.call("get_flask_service") as Object
+		if _r37_death == null or not is_instance_valid(_r37_death):
+			var wave2: Node = c.get_node_or_null(NodePath(R37_WAVE_REL_PATH))
+			if wave2 != null and wave2.has_method("get_death_service"):
+				_r37_death = wave2.call("get_death_service") as Object
+		var h: Node = _r37_find_hud()
+		if h != null and is_instance_valid(h):
+			_r37_subscribe(h, "flask_used", "_on_flask_used")
+			_r37_subscribe(h, "flask_rejected", "_on_flask_rejected")
+			_r37_subscribe(h, "player_died", "_on_player_died")
+			_r37_subscribe(h, "player_respawned", "_on_player_respawned")
+			_r37_signal_connected = true
+	print("[R37][ENC] 生产装配 | flask_unique=%s death_unique=%s flask_signal_subscribed=%s（A48① 生产运行时订阅者，A54 不自建第二实例）" % [
+			str(_r37_flask != null and is_instance_valid(_r37_flask)),
+			str(_r37_death != null and is_instance_valid(_r37_death)), str(_r37_signal_connected)])
+
+
+## 信号 connect 的释放路径（_exit_tree → _r34_release → 本函数）。
+func _r37_release() -> void:
+	var h: Node = _r37_find_hud()
+	if h != null and is_instance_valid(h):
+		var pairs: Dictionary = {
+			"flask_used": "_on_flask_used", "flask_rejected": "_on_flask_rejected",
+			"player_died": "_on_player_died", "player_respawned": "_on_player_respawned"}
+		for sig: String in pairs.keys():
+			if h.has_signal(sig):
+				var cb: Callable = Callable(self, String(pairs[sig]))
+				if h.is_connected(sig, cb):
+					h.disconnect(sig, cb)
+	_r37_signal_connected = false

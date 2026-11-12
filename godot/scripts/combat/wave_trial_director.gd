@@ -44,6 +44,9 @@ const BOON_DRAFT_PATH: String = "res://data/rpg/boon_draft.tres"       # 既有�
 const PARRY_RULES_PATH: String = "res://data/combat/parry_rules.tres"   # 新增表（R35），只读
 # ---- R36 / v0.13.0 最小接线 · 专注值 FP 与战技（Rank-2 唯一写入）----
 const FOCUS_RULES_PATH: String = "res://data/combat/focus_rules.tres"   # 新增表（R36），只读
+# ---- R37 / v0.14.0 最小接线 · 元素瓶与死亡轮回（Rank-2 唯一写入）----
+const FLASK_RULES_PATH: String = "res://data/rpg/flask_rules.tres"      # 新增表（R37），只读
+const DEATH_RULES_PATH: String = "res://data/rpg/death_rules.tres"      # 新增表（R37），只读
 const REQUIRED_WAVE_FIELDS: PackedStringArray = [
 	"telegraph_sec", "time_limit_sec", "reward_points"
 ]
@@ -163,6 +166,25 @@ var _focus_restore_count: int = 0        # 本局赐福休息回满累计（只�
 var _focus_cooldown_ready_count: int = 0 # 本局冷却就绪信号累计（A48① 生产订阅者实证）
 var _focus_last_art_id: String = ""
 var _focus_last_reject_reason: String = ""
+
+# ---- R37 / v0.14.0 最小接线 · 元素瓶与死亡轮回（Rank-2 唯一写入）----
+# A54 唯一实例：FlaskService / DeathService 由本导演装配，Rank-1 / Rank-4 经
+#   get_flask_service() / get_death_service() 复用，绝不另建第二个。
+var _flask: FlaskService = null
+var _death: DeathService = null
+# 元素瓶生产订阅者只读计数（A48① 实证）
+var _flask_use_count: int = 0
+var _flask_reject_count: int = 0
+var _flask_restore_count: int = 0
+# 死亡轮回生产订阅者只读记录（A48① 实证）
+var _death_dropped_points: int = 0       # 最近一次死亡掉落点数（只读记录，绝不回退 points）
+var _death_grace_snapshot: int = 0       # 死亡时 grace.trial.points 只读快照
+var _death_count: int = 0                # 死亡发生累计
+var _respawn_count: int = 0              # 赐福重生累计
+var _reclaim_count: int = 0              # 一次性回收累计
+var _death_reject_count: int = 0         # 死亡期间/异常拒绝累计
+var _death_reclaim_acc: int = 0          # 待并入清波结算的回收点数（并入后清零，不二次入账）
+var _life_last_reject_reason: String = ""
 
 
 func _ready() -> void:
@@ -643,6 +665,12 @@ func _clear_wave() -> void:
 	#      沿用 A57：base_for_combo 经 combo.settle() 得到唯一最终结算值，
 	#      HUD 经 get_last_settlement() 取该值发 points_awarded 一次入账，绝不二次入账。
 	base_for_combo = maxi(0, base_for_combo + _focus_points_acc)
+	# ---- R37 最小接线 ③：一次性回收掉落点数并入清波点数结算基数 ----
+	#      沿用 A55/A57：base_for_combo 经 combo.settle() 得唯一最终结算值，
+	#      HUD 经 get_last_settlement() 取该值发 points_awarded 一次入账；
+	#      并入后立即清零 _death_reclaim_acc（回收只生效一次、绝不二次入账）。
+	base_for_combo = maxi(0, base_for_combo + _death_reclaim_acc)
+	_death_reclaim_acc = 0
 	# ---- R35：最后一波（Boss 波）死亡 → ParryService 不再开窗 ----
 	if _index + 1 >= _total and _parry != null:
 		_parry.on_boss_defeated()
@@ -694,6 +722,9 @@ func _request_grace_rest() -> void:
 	# R36 最小接线：赐福休息回满专注值（生产链路，非验证脚本模拟）。
 	if _focus != null:
 		_focus.on_grace_rest()
+	# R37 最小接线：赐福休息补满元素瓶（生产链路，非验证脚本模拟）。
+	if _flask != null:
+		_flask.on_grace_rest()
 	if _encounter == null:
 		push_warning("[WaveTrial] EncounterDirector 不可用：赐福休息仅登记、未实际复位（降级，不崩）")
 		return
@@ -826,6 +857,21 @@ func _init_combat_services() -> void:
 		_bind_focus_signals()
 	else:
 		push_warning("[WaveTrial] FocusService 规则表不可用：专注值/战技降级为不可施放（不崩）")
+	# ---- R37 / v0.14.0：装配 FlaskService / DeathService 唯一实例 + 生产运行时订阅者 ----
+	var flask_cfg: FlaskConfig = ResourceLoader.load(
+			FLASK_RULES_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as FlaskConfig
+	if flask_cfg != null:
+		_flask = FlaskService.new(flask_cfg)
+		_bind_flask_signals()
+	else:
+		push_warning("[WaveTrial] FlaskService 规则表不可用：元素瓶降级为不可使用（不崩）")
+	var death_cfg: DeathConfig = ResourceLoader.load(
+			DEATH_RULES_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as DeathConfig
+	if death_cfg != null:
+		_death = DeathService.new(death_cfg)
+		_bind_death_signals()
+	else:
+		push_warning("[WaveTrial] DeathService 规则表不可用：死亡轮回降级为不记录（不崩）")
 	if _combo != null:
 		_combo.reset()
 
@@ -866,6 +912,22 @@ func _reset_r34_records() -> void:
 		_focus.reset()
 	if _boon != null:
 		_boon.reset()
+	# ---- R37：新一局清空元素瓶 / 死亡轮回记录，并复位两个唯一实例 ----
+	_flask_use_count = 0
+	_flask_reject_count = 0
+	_flask_restore_count = 0
+	_death_dropped_points = 0
+	_death_grace_snapshot = 0
+	_death_count = 0
+	_respawn_count = 0
+	_reclaim_count = 0
+	_death_reject_count = 0
+	_death_reclaim_acc = 0
+	_life_last_reject_reason = ""
+	if _flask != null:
+		_flask.reset()
+	if _death != null:
+		_death.reset()
 
 
 ## 波次开始：把上一波清波挂起的「代价 / 效果」作用到本波运行时（消费 cost_key /
@@ -1110,6 +1172,12 @@ func get_settlement_snapshot() -> Dictionary:
 		"focus_poise_applied": _focus_poise_applied,
 		"focus_spend_count": _focus_spend_count,
 		"focus_last_art_id": _focus_last_art_id,
+		# ---- R37 新增只读 key（既有 key 逐字不动）----
+		"life_reclaim_bonus": _death_reclaim_acc,
+		"life_reclaim_count": _reclaim_count,
+		"flask_use_count": _flask_use_count,
+		"life_death_count": _death_count,
+		"life_respawn_count": _respawn_count,
 	}
 
 
@@ -1174,4 +1242,178 @@ func get_snapshot() -> Dictionary:
 		"focus_cooldown_ready_count": _focus_cooldown_ready_count,
 		"focus_last_art_id": _focus_last_art_id,
 		"focus_last_reject_reason": _focus_last_reject_reason,
+		# ---- R37 新增只读 key（既有 27 + R34 8 + R35 8 + R36 11 个 key 逐字不动）----
+		"flask_remaining": _flask.get_flasks() if _flask != null else 0,
+		"flask_max": _flask.get_flask_max() if _flask != null else 0,
+		"flask_use_count": _flask_use_count,
+		"flask_reject_count": _flask_reject_count,
+		"flask_restore_count": _flask_restore_count,
+		"life_is_dead": _death.is_dead() if _death != null else false,
+		"life_dropped_points": _death_dropped_points,
+		"life_grace_snapshot": _death_grace_snapshot,
+		"life_death_count": _death_count,
+		"life_respawn_count": _respawn_count,
+		"life_reclaim_count": _reclaim_count,
+		"life_reclaim_acc": _death_reclaim_acc,
+		"life_reject_count": _death_reject_count,
+		"life_last_reject_reason": _life_last_reject_reason,
 	}
+
+
+# ===========================================================================
+# R37 / v0.14.0 最小接线 · 元素瓶与死亡轮回（Rank-2 唯一写入）
+#   - A48①：本导演（挂 courtyard.tscn 的生产节点）在装配时 connect 全部 3+4 信号，
+#     生产运行时订阅者真实存在，绝不在验证脚本里才订阅；
+#   - A54：唯一实例 _flask / _death 由本导演装配，经 get_flask_service() /
+#     get_death_service() 供 Rank-1 / Rank-4 复用，绝不另建第二个；
+#   - 不改既有判定分支 / 帧数据 / 输出格式 / 既有 .tres 数值；
+#   - 死亡只做只读记录（不回退 grace.trial.points / 绝不写 removals），
+#     回收点数并入既有清波结算基数，沿用 A55/A57 经 points_awarded 一次入账、
+#     不二次入账；赐福休息补满瓶、重生复位 FP / 瓶 / 连击 / 窗口；
+#     Rank-2 不写存档、不碰渲染。
+# ===========================================================================
+
+## 取本导演装配的 FlaskService / DeathService 唯一实例（A54：供 Rank-1 / Rank-4 复用）。
+func get_flask_service() -> FlaskService:
+	return _flask
+
+
+func get_death_service() -> DeathService:
+	return _death
+
+
+## A48① 生产订阅者：3 个元素瓶信号在装配时即 connect 到本导演（非验证脚本）。
+func _bind_flask_signals() -> void:
+	if _flask == null:
+		return
+	var pairs: Array = [
+		["flask_used", "_on_flask_used"],
+		["flask_rejected", "_on_flask_rejected"],
+		["flask_restored", "_on_flask_restored"],
+	]
+	for p: Array in pairs:
+		var sig: String = str(p[0])
+		var method: String = str(p[1])
+		if not _flask.has_signal(sig):
+			continue
+		var cb: Callable = Callable(self, method)
+		if not _flask.is_connected(sig, cb):
+			_flask.connect(sig, cb)
+	print("[R37][WaveTrial] 元素瓶生产订阅者已装配：FlaskService 唯一实例 + 3 信号 connect（A48①/A54）")
+
+
+## A48① 生产订阅者：4 个死亡轮回信号在装配时即 connect 到本导演（非验证脚本）。
+func _bind_death_signals() -> void:
+	if _death == null:
+		return
+	var pairs: Array = [
+		["death_occurred", "_on_death_occurred"],
+		["respawn_performed", "_on_respawn_performed"],
+		["points_reclaimed", "_on_points_reclaimed"],
+		["action_rejected", "_on_life_action_rejected"],
+	]
+	for p: Array in pairs:
+		var sig: String = str(p[0])
+		var method: String = str(p[1])
+		if not _death.has_signal(sig):
+			continue
+		var cb: Callable = Callable(self, method)
+		if not _death.is_connected(sig, cb):
+			_death.connect(sig, cb)
+	print("[R37][WaveTrial] 死亡轮回生产订阅者已装配：DeathService 唯一实例 + 4 信号 connect（A48①/A54）")
+
+
+func _on_flask_used(_flask_before: int, _flask_after: int, _hp_before: float,
+		_hp_after: float, _healed: float) -> void:
+	_flask_use_count += 1
+
+
+func _on_flask_rejected(reason: String, _flask_remaining: int) -> void:
+	_flask_reject_count += 1
+	_life_last_reject_reason = reason
+
+
+func _on_flask_restored(_flask_before: int, _flask_after: int, _policy: String) -> void:
+	_flask_restore_count += 1
+
+
+## 死亡发生：★ 只做只读记录，绝不回退 grace.trial.points、绝不写 removals（A59）。
+func _on_death_occurred(dropped_points: int, grace_snapshot: int) -> void:
+	_death_dropped_points = maxi(0, dropped_points)
+	_death_grace_snapshot = maxi(0, grace_snapshot)
+	_death_count += 1
+
+
+## 赐福重生：★ 生产链路复位运行时状态（回满 FP / 瓶、重置连击与窗口）。
+## HP 回满由 Rank-1 EncounterDirector 既有赐福休息链路作用到真实 HP 实例
+## （Rank-2 不持有 HP、不碰渲染、不写存档）；has_method 相对探活降级不崩。
+func _on_respawn_performed(_pending_dropped_points: int) -> void:
+	_respawn_count += 1
+	if _flask != null:
+		_flask.on_grace_rest()          # 回满瓶
+	if _focus != null:
+		_focus.on_grace_rest()          # 回满 FP / 清冷却
+	if _combo != null:
+		_combo.reset()                  # 重置连击
+	if _parry != null:
+		_parry.reset()                  # 重置弹反窗口
+	# 清本波累计（不把死亡前的各类加成带进重生后清波结算，不二次入账）
+	_focus_points_acc = 0
+	_focus_poise_acc = 0.0
+	_focus_poise_applied = 0.0
+	_parry_points_acc = 0
+	_parry_poise_acc = 0.0
+	_parry_last_poise_applied = 0.0
+	if _encounter != null and is_instance_valid(_encounter) \
+			and _encounter.has_method("trial_grace_rest"):
+		_encounter.call("trial_grace_rest")
+	print("[R37][WaveTrial] 赐福重生复位：FP / 瓶回满、连击与窗口重置（生产链路，非验证脚本模拟）")
+
+
+## 一次性回收：★ 累计到待结算 acc；由 _clear_wave() 并入 base_for_combo ->
+##   combo.settle() -> HUD points_awarded 一次入账（A55/A57），绝不二次入账。
+func _on_points_reclaimed(points: int, _grace_snapshot: int) -> void:
+	_death_reclaim_acc = maxi(0, _death_reclaim_acc + maxi(0, points))
+	_reclaim_count += 1
+
+
+func _on_life_action_rejected(reason: String, _action_id: String) -> void:
+	_death_reject_count += 1
+	_life_last_reject_reason = reason
+
+
+## ---- R37 真实输入驱动口（供 Rank-1 输入层 / 验证调用；转调 A54 唯一实例）----
+func use_flask(current_hp: Variant, max_hp: Variant) -> Dictionary:
+	if _flask == null:
+		return {"ok": false, "reason": "no_flask_service"}
+	return _flask.use_flask(current_hp, max_hp)
+
+
+func flask_grace_rest() -> Dictionary:
+	if _flask == null:
+		return {"ok": false, "reason": "no_flask_service"}
+	return _flask.on_grace_rest()
+
+
+func on_player_death(grace_points: Variant) -> Dictionary:
+	if _death == null:
+		return {"ok": false, "reason": "no_death_service"}
+	return _death.on_death(grace_points)
+
+
+func on_grace_respawn() -> Dictionary:
+	if _death == null:
+		return {"ok": false, "reason": "no_death_service"}
+	return _death.on_grace_respawn()
+
+
+func reclaim_dropped_points() -> Dictionary:
+	if _death == null:
+		return {"ok": false, "reason": "no_death_service"}
+	return _death.reclaim_dropped()
+
+
+func guard_life_action(action_id: Variant) -> Dictionary:
+	if _death == null:
+		return {"ok": false, "reason": "no_death_service"}
+	return _death.request_action(action_id)

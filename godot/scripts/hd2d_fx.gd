@@ -121,6 +121,49 @@ extends Node2D
 ##      真实输入 Q → HUD.request_focus_skill → focus_service.spend_fp →
 ##      focus_spent → 本层绘制到画面，非验证脚本、非演示驱动。
 ##      完整 [PLACEHOLDER] 数值表 / rationale 见下方「R36 / A67」块。
+##
+## R37 / v0.14.0 追加（派单 cmd-20261112-184157-094-A4 · Rank-4）：
+##   ⑬ A72 狮子斩暖金斩击弧可辨识度：R36B 后 R+Q 战技切换与 HUD 文字已可见、
+##      日志实证狮子斩生产消费 3 次，但总指挥精准抽取第 61 / 301 帧【未见大范围
+##      暖金斩击弧】—— 改前 R36 弧半径仅 52 逻辑px（104 屏幕px）、线宽 4.0
+##      （8px）、峰值 FOCUS_FX_ALPHA=0.90 且无暗衬、可见仅 FOCUS_FX_SEC=0.42
+##      （~13 帧），暖金增量淹没在既有暖金地面 / 体积光里（改前 f61 弧区暖金
+##      13576 vs 非弧对照帧 f30 的 15346，见 DONE-R37 §A72 像素证据）。本轮按
+##      A67 同法【既有 FOCUS_* / A67_* / PARRY_* 等常量数值与语义逐字不动】，
+##      新增一层 `_draw_lion_slash_a72()` 叠加在 `_draw_focus_fx()` 之上，全部
+##      由【新增独立 [PLACEHOLDER] 常量表】控制（调参唯一入口，只改表不改算法）：
+##        · 大范围：弧半径 52 → 88 逻辑px（176 屏幕px，覆盖画面中央大片区域），
+##          扇形张角 -150°→-20° 扩为 -160°→-10°；
+##        · 局部亮度对比：弧正下方垫冷夜雾 #16233F 宽暗衬（3x 线宽）把暖金
+##          从亮石板上「托」出来；
+##        · 对比度 / 线宽：主弧 4.0 → 10.0 逻辑px（20 屏幕px）、峰值 alpha 0.95，
+##          暖金三层（#FFD27A 主 / #F0A94C 内层 / #FFF0C2 外发光细环）+ 弧末端
+##          亮核 / 径向火花（与冷蓝弹头小圆点形态区分）；
+##        · 延长可见帧数：主段 FOCUS_FX_SEC=0.42 逐字保留，主段结束后接
+##          A72_ARC_AFTERGLOW_SEC=0.78（~23 帧）pow(1-q, DECAY) 余辉衰减环，
+##          总可辨识 ~13 → ~36 帧（衰减指数 [PLACEHOLDER] + rationale）；
+##        · 与冷蓝「辉石魔砾」弹道形态（大扇形弧 vs 细直线）+ 色相（暖金 vs
+##          冷蓝）双重区分；切换战技立即收干净暖金余辉、不混色；
+##        · 避让：时间避让（弧激活帧把 R32 impact_fx 循环帧按既有 A67 系数
+##          降权、把 R36 A67 弹反开窗增强环按 A72_PARRY_RING_DODGE_ALPHA
+##          降权）、形态避让（扇形弧 + 火花 vs 全圆静止读秒刻度环 / R32 循环
+##          同心环）、空间避让（弧中心与弹反环锚点 / R32 屏幕区错开）。
+##      【A48①】本 FXBloom 节点即生产运行时订阅者，真实 Q → focus_spent → 画面，
+##      非验证脚本 / 非演示驱动。零新增节点、零 GPU job、零付费。
+##   ⑭ 生命轮回视觉反馈：订阅 Rank-2 FlaskService 3 信号 + DeathService 4 信号
+##      （签名真源 teamwork/Rank-2/DONE-R37.md §3.1 / §3.6），【A54】经
+##      wave_trial_director.gd 的 get_flask_service() / get_death_service() 复用
+##      唯一实例、不自建、不读私有实现；程序化 _draw() 加：
+##        a) 元素瓶使用成功的短促翠绿 / 暖金回复光晕（翠绿内核 + 暖金外环）；
+##        b) 死亡瞬间冷夜雾收束 + 画面压暗（峰值 alpha ≤0.26 不过黑、HUD
+##           文字仍可读，忠实「冷夜雾 × 暖金」对冲）；
+##        c) 赐福重生的暖金扩散环；拒绝 / 补满 / 回收 / 行动拒绝各有更短轻反馈。
+##      保留降级层开关（a72_fx_enabled / life_fx_enabled）、移动端轻量绘制
+##      （A63）、单帧 ≤16 色受控与项目级 ≥256 色色库不变（palette_256.json
+##      零改动）：翠绿 #6FBF8E 是项目 256 色色库 colors[31]【既有色号】的
+##      运行时内联引用，非零新增色库颜色、不改受控 16 色板 PALETTE_HEX，
+##      色数口径详见 DONE-R37 §色数。
+##      完整 [PLACEHOLDER] 数值表 / rationale 见下方「R37 / A72」两块。
 
 # ---------------------------------------------------------------------------
 # 冻结口径常量（引用 hd2d_placeholder.gd / HD2D-FX-PLAN.md §3 / ART-SPEC-FINAL.md §2.2）
@@ -581,6 +624,138 @@ var _focus_restore_left: float = 0.0
 var _focus_ready_left: float = 0.0
 
 
+# ---------------------------------------------------------------------------
+# R37 / v0.14.0 · ⑬ A72 狮子斩暖金斩击弧可见性增强层
+#   （独立 [PLACEHOLDER] 常量表 = 调参唯一入口，只改表不改算法；
+#    既有 FOCUS_* / A67_* / PARRY_* 常量数值与语义逐字不动）
+# ---------------------------------------------------------------------------
+# ---- ① 大范围 / 形态（把 R36 的 52px 小弧扩成 176 屏幕px 大扇形）----
+# [PLACEHOLDER] A72_ARC_CENTER=(360,206) / A72_ARC_R=88.0 / FROM=-160° / TO=-10° /
+#   A72_ARC_SWEEP_GAIN=1.5 · rationale：中心沿用既有 FOCUS_ARC_CENTER（内外双弧
+#   同心嵌套），半径 52→88 逻辑px（2x 后 104→176 屏幕px，覆盖画面中央大片区域），
+#   张角由 130° 扩到 150° → 「大范围」暖金斩击弧在 1280×720 实机可辨识；
+#   扇形（有开口）与冷蓝细直线弹道、R36 A67 全圆读秒环、R32 循环同心环形态度区分。
+const A72_ARC_CENTER: Vector2 = Vector2(360.0, 206.0)
+const A72_ARC_R: float = 88.0
+const A72_ARC_FROM_DEG: float = -160.0
+const A72_ARC_TO_DEG: float = -10.0
+const A72_ARC_SWEEP_GAIN: float = 1.5
+# ---- ② 局部亮度对比 / 线宽 / 峰值（A67 同法）----
+# [PLACEHOLDER] A72_ARC_UNDERLAY_W=16.0 / A72_ARC_UNDERLAY_ALPHA=0.70 ·
+#   rationale：暖金弧正下方垫一圈冷夜雾 #16233F 暗衬（宽约主线 1.6x），把暖金
+#   从亮石板 / 体积光暖金底上「托」出来 —— 这是「暖金亮度与暗衬对比」主来源
+#   （改前无暗衬，弧区暖金增量淹没在背景暖金里：f61 13576 vs 对照 f30 15346）。
+const A72_ARC_UNDERLAY_W: float = 16.0
+const A72_ARC_UNDERLAY_ALPHA: float = 0.70
+# [PLACEHOLDER] A72_ARC_W=10.0 / A72_ARC_ALPHA=0.95 / A72_ARC_INNER_W=3.0 /
+#   A72_ARC_INNER_ALPHA=0.80 / A72_ARC_HALO_W=2.0 / A72_ARC_HALO_ALPHA=0.55 ·
+#   rationale：主弧线宽 4.0→10.0 逻辑px（2x 后 8→20px）、峰值 alpha 0.90→0.95
+#   （仍非纯白、不叠乘 FXBloom 的 #FFF0C2 a=.85 核心，防过曝 A41）；三层暖金
+#   #FFD27A 主 / #F0A94C 内 / #FFF0C2 外发光细环拉大与背景亮度差。
+const A72_ARC_W: float = 10.0
+const A72_ARC_ALPHA: float = 0.95
+const A72_ARC_INNER_W: float = 3.0
+const A72_ARC_INNER_ALPHA: float = 0.80
+const A72_ARC_HALO_W: float = 2.0
+const A72_ARC_HALO_ALPHA: float = 0.55
+# [PLACEHOLDER] A72_ARC_SPARK_LEN=16.0 / A72_ARC_SPARK_W=3.0 / A72_ARC_HEAD_R=6.0 ·
+#   rationale：弧末端亮核 + 径向短火花线，与冷蓝「辉石魔砾」弹头小圆点形成
+#   形态二次区分（暖金大弧带火花 vs 冷蓝细直线带小亮点）。
+const A72_ARC_SPARK_LEN: float = 16.0
+const A72_ARC_SPARK_W: float = 3.0
+const A72_ARC_HEAD_R: float = 6.0
+# ---- ③ 延长可见帧数（衰减 [PLACEHOLDER] + rationale，任务硬要求）----
+# [PLACEHOLDER] A72_ARC_AFTERGLOW_SEC=0.78 / A72_ARC_DECAY=1.8 /
+#   A72_ARC_AFTERGLOW_ALPHA=0.55 / A72_ARC_AFTERGLOW_W=3.0 /
+#   A72_ARC_AFTERGLOW_GROW=16.0 · rationale：既有主段 FOCUS_FX_SEC=0.42（~13 帧）
+#   一闪即逝，主段逐字保留并叠本层峰值；主段结束后接 0.78s（~23 帧）余辉衰减
+#   环，alpha 按 pow(1-q, DECAY) 衰减（指数 1.8 = 前段保持可辨、后段快速收干净，
+#   避免拖尾糊画面 / 过曝），半径随 q 外扩 16px 表达斩击余势；总可辨识帧数
+#   ~13 → ~36 帧。余辉只用低 alpha 暖金细环、无纯白核心、不叠乘 bloom。
+#   【调参唯一入口】= 本节 A72_* 常量表（只改表不改 _draw_lion_slash_a72 算法）。
+const A72_ARC_AFTERGLOW_SEC: float = 0.78
+const A72_ARC_DECAY: float = 1.8
+const A72_ARC_AFTERGLOW_ALPHA: float = 0.55
+const A72_ARC_AFTERGLOW_W: float = 3.0
+const A72_ARC_AFTERGLOW_GROW: float = 16.0
+# ---- ④ 避让 R32 impact_fx 循环帧 + 弹反金色环 ----
+# [PLACEHOLDER] A72_PARRY_RING_DODGE_ALPHA=0.28 ·
+#   rationale：狮子斩大弧激活帧与 R36 A67 弹反开窗金色环同为暖金圆环，同时出现
+#   会误认 / 抢画面；此系数只在该帧把 A67 开窗增强环 alpha 降权（既有 A67_*
+#   常量数值逐字不动，仅绘制时乘系数，与 A67 对 impact_fx 的时间避让同构）。
+#   R32 impact_fx 循环帧则由既有 _a67_fx_active()（本轮纳入 A72 余辉计时）
+#   按既有 A67_IMPACT_DODGE_ALPHA=0.18 降权，开关 / 加载 / 循环逻辑不改。
+const A72_PARRY_RING_DODGE_ALPHA: float = 0.28
+@export var a72_fx_enabled: bool = true
+
+
+# ---------------------------------------------------------------------------
+# R37 / v0.14.0 · ⑭ 生命轮回视觉反馈层（FlaskService 3 + DeathService 4 信号）
+#   （独立 [PLACEHOLDER] 常量表 = 调参唯一入口，只改表不改算法）
+# ---------------------------------------------------------------------------
+# [PLACEHOLDER] 各反馈时长 LIFE_HEAL_SEC=0.60 / LIFE_DEATH_SEC=1.10 /
+#   LIFE_RESPAWN_SEC=0.90 / LIFE_MINOR_SEC=0.30（秒）· rationale：回复光晕短促
+#   （~18 帧）不抢画面；死亡压暗稍长（~33 帧）让「冷夜雾收束」可读；重生扩散
+#   环中等（~27 帧）；拒绝 / 补满 / 回收 / 行动拒绝更短（~9 帧）仅一次轻提示。
+const LIFE_HEAL_SEC: float = 0.60
+const LIFE_DEATH_SEC: float = 1.10
+const LIFE_RESPAWN_SEC: float = 0.90
+const LIFE_MINOR_SEC: float = 0.30
+# [PLACEHOLDER] 峰值 alpha LIFE_HEAL_ALPHA=0.85 / LIFE_HEAL_JADE_ALPHA=0.80 /
+#   LIFE_DEATH_DIM_ALPHA=0.26 / LIFE_HUD_DIM_RATIO=0.35 / LIFE_FOG_ALPHA=0.55 ·
+#   rationale：回复 / 重生环峰值 ≤0.85 且无纯白大核心、不叠乘 bloom（防过曝 A41）；
+#   ★ 死亡「画面压暗不过黑」峰值仅 0.26（深色 #16233F，方向是压暗而非 R35B 的
+#   浅暖金提亮大三角），HUD 矩形区再按 0.35 系数降为 ~0.09 的极淡压暗 →
+#   「HUD 文字仍可读」由绘制几何 + 目视双重保证；冷夜雾收束环 alpha 0.55。
+const LIFE_HEAL_ALPHA: float = 0.85
+const LIFE_HEAL_JADE_ALPHA: float = 0.80
+const LIFE_DEATH_DIM_ALPHA: float = 0.26
+const LIFE_HUD_DIM_RATIO: float = 0.35
+const LIFE_FOG_ALPHA: float = 0.55
+# [PLACEHOLDER] 几何 LIFE_RING_W=4.0 / LIFE_HEAL_R0=16 / LIFE_HEAL_R1=64 /
+#   LIFE_RING_R0=20 / LIFE_RING_R1=92 / LIFE_FOG_R0=150 / LIFE_FOG_R1=60 /
+#   LIFE_HUD_W=365 / LIFE_HUD_H=110 · rationale：回复外环 16→64 逻辑px 扩散、
+#   重生环 20→92 扩散、冷夜雾 150→60 由外向内「收束」；HUD 矩形 = 既有避让
+#   屏幕矩形 730×220 ÷ logical_to_screen=2（与 _is_hud_avoid 同源），用于把死亡
+#   压暗分块避让 HUD 文字区。全部为局部 / 环形量级，不改既有四项光效。
+const LIFE_RING_W: float = 4.0
+const LIFE_HEAL_R0: float = 16.0
+const LIFE_HEAL_R1: float = 64.0
+const LIFE_RING_R0: float = 20.0
+const LIFE_RING_R1: float = 92.0
+const LIFE_FOG_R0: float = 150.0
+const LIFE_FOG_R1: float = 60.0
+const LIFE_HUD_W: float = 365.0
+const LIFE_HUD_H: float = 110.0
+const LIFE_BIND_MAX_ATTEMPTS: int = 90
+# 生命轮回层色号（零改动项目 256 色色库 palette_256.json）：
+#   LIFE_JADE_HEX="#6FBF8E" = 项目 256 色色库 colors[31]【既有翠绿色号】的运行时
+#   内联引用（非零新增色库颜色、不加入受控 16 色板 PALETTE_HEX）；其余 6 色
+#   #16233F / #2B3A5C / #FFD27A / #FFF0C2 / #F0A94C 全部逐字复用既有 _draw 已用
+#   hex。单帧 ≤16 色受控 + 项目级 ≥256 色色库不变（口径详见 DONE-R37 §色数）。
+const LIFE_DIM_HEX: String = "#16233F"
+const LIFE_FOG_HEX: String = "#2B3A5C"
+const LIFE_JADE_HEX: String = "#6FBF8E"
+const LIFE_GOLD_HEX: String = "#FFD27A"
+const LIFE_BRIGHT_HEX: String = "#FFF0C2"
+const LIFE_WARM_HEX: String = "#F0A94C"
+@export var life_fx_enabled: bool = true
+
+
+# R37 运行期状态（仅 FXBloom 分派节点订阅 / 绘制；服务引用只读）
+var _flask_service: Object = null
+var _death_service: Object = null
+var _flask_bind_attempts: int = 0
+var _death_bind_attempts: int = 0
+var _a72_arc_afterglow_left: float = 0.0
+var _life_heal_left: float = 0.0
+var _life_reject_left: float = 0.0
+var _life_restore_left: float = 0.0
+var _life_death_left: float = 0.0
+var _life_respawn_left: float = 0.0
+var _life_reclaim_left: float = 0.0
+
+
 ## R34 · 绑定唯一 ComboService（A54 复用 get_combo_service，绝不自建第二个实例）。
 ## 仅 FXBloom 节点在 _ready() 里 call_deferred 触发；装配时序未就绪时由 _process 自愈重试。
 func _try_bind_combo() -> void:
@@ -953,6 +1128,12 @@ func _on_focus_spent(art_id: String, _fp_cost: float, _damage: float,
 		_poise_damage: float, _fp_remaining: float) -> void:
 	_focus_fx_art = art_id
 	_focus_fx_left = FOCUS_FX_SEC
+	# R37 / A72：狮子斩主段结束后接余辉衰减环（延长可见帧数）；切换回冷蓝
+	# 「辉石魔砾」时立即收干净暖金余辉，保证两战技形态 + 颜色双重区分、不混色。
+	if art_id == "lion_slash":
+		_a72_arc_afterglow_left = A72_ARC_AFTERGLOW_SEC
+	else:
+		_a72_arc_afterglow_left = 0.0
 
 
 func _on_focus_rejected(_art_id: String, reason: String) -> void:
@@ -985,7 +1166,8 @@ func _a67_fx_active() -> bool:
 	return _parry_window_open or _parry_flash_left > 0.0 \
 		or _a67_flash_afterglow_left > 0.0 or _focus_fx_left > 0.0 \
 		or _focus_reject_left > 0.0 or _focus_restore_left > 0.0 \
-		or _focus_ready_left > 0.0
+		or _focus_ready_left > 0.0 or _a72_arc_afterglow_left > 0.0 \
+		or _life_fx_active()
 
 
 ## R36 / A67 · 光环可见性增强层（在 _draw_parry_fx 之上叠加；未绑定 ParryService → 静默 return）。
@@ -997,19 +1179,22 @@ func _draw_parry_a67(_t: float) -> void:
 	var center := PARRY_RING_ANCHOR_PLAYER
 	var boss_center := PARRY_RING_ANCHOR_BOSS
 	var lite: bool = not _all_on
+	# R37 / A72 ④ 时间避让：狮子斩大弧激活帧把开窗增强环 alpha 降权，避免两个
+	#   暖金圆环同时出现被误认 / 抢画面；既有 A67_* 常量数值逐字不动，仅运行时乘系数。
+	var dodge: float = A72_PARRY_RING_DODGE_ALPHA if _a72_arc_active() else 1.0
 	# ① 开窗预兆环增强（围绕角色）：暗衬底 → 加粗亮金环 → 外发光 / 冷蓝内芯 → 静止读秒刻度
 	if _parry_window_open and _parry_window_left > 0.0:
 		var wr: float = clampf(_parry_window_left / _parry_window_total, 0.0, 1.0)
 		var ring_r: float = PARRY_RING_MIN_R + (PARRY_RING_BASE_R - PARRY_RING_MIN_R) * wr
 		draw_arc(center, ring_r, 0.0, TAU, 48,
-				_c("#16233F", A67_RING_UNDERLAY_ALPHA), A67_RING_UNDERLAY_W)
+				_c("#16233F", A67_RING_UNDERLAY_ALPHA * dodge), A67_RING_UNDERLAY_W)
 		draw_arc(center, ring_r, 0.0, TAU, 48,
-				_c("#F0A94C", A67_RING_ALPHA), A67_RING_W)
+				_c("#F0A94C", A67_RING_ALPHA * dodge), A67_RING_W)
 		if not lite:
 			draw_arc(center, ring_r + 5.0, 0.0, TAU, 48,
-					_c("#FFF0C2", A67_RING_HALO_ALPHA), A67_RING_HALO_W)
+					_c("#FFF0C2", A67_RING_HALO_ALPHA * dodge), A67_RING_HALO_W)
 			draw_arc(center, ring_r - 5.0, 0.0, TAU, 48,
-					_c("#BFD0EA", A67_RING_COLD_INNER_ALPHA), A67_RING_COLD_INNER_W)
+					_c("#BFD0EA", A67_RING_COLD_INNER_ALPHA * dodge), A67_RING_COLD_INNER_W)
 		# 静止 12 格读秒刻度（径向短刻线）：与 R32 12fps 循环帧形态区分，避免误认
 		var lit: int = mini(PARRY_RING_TICKS, int(float(PARRY_RING_TICKS) * wr) + 1)
 		var tick_step: int = 2 if lite else 1
@@ -1019,7 +1204,7 @@ func _draw_parry_a67(_t: float) -> void:
 			var dir := Vector2(cos(ang), sin(ang))
 			var p0: Vector2 = center + dir * (ring_r + 3.0)
 			var p1: Vector2 = center + dir * (ring_r + 3.0 + A67_RING_TICK_LEN)
-			draw_line(p0, p1, _c("#FFF0C2", A67_RING_ALPHA * 0.9), A67_RING_TICK_W)
+			draw_line(p0, p1, _c("#FFF0C2", A67_RING_ALPHA * 0.9 * dodge), A67_RING_TICK_W)
 			k += tick_step
 	# ② 成功闪光主段加粗（围绕 Boss）：主 0.36s 逐字保留，叠加更亮更粗的扩散环
 	if _parry_flash_left > 0.0:
@@ -1099,6 +1284,245 @@ func _draw_focus_fx(_t: float) -> void:
 				_c("#BFD0EA", FOCUS_MINOR_ALPHA * df), 2.0)
 
 
+# ---------------------------------------------------------------------------
+# R37 / ⑭ · A54 唯一实例绑定：FlaskService / DeathService
+#   （与 R34/R35/R36 同款 _find_node_with_method 遍历 + deferred 自愈；
+#    绝不 new() 第二个、不读私有实现、不依赖 /root 绝对路径 / group；
+#    信号任一缺失（Rank-2 并发半成品）→ 不绑定、静默降级、不产生 ERROR）
+# ---------------------------------------------------------------------------
+func _try_bind_flask() -> void:
+	if _flask_service != null:
+		return
+	if _flask_bind_attempts >= LIFE_BIND_MAX_ATTEMPTS:
+		return
+	_flask_bind_attempts += 1
+	var tree := get_tree()
+	if tree == null:
+		return
+	var director := _find_node_with_method(tree.root, "get_flask_service")
+	if director == null:
+		return
+	var svc: Object = director.call("get_flask_service")
+	if svc == null:
+		return
+	var sigs := ["flask_used", "flask_rejected", "flask_restored"]
+	var cbs := ["_on_flask_used", "_on_flask_rejected", "_on_flask_restored"]
+	for s in sigs:
+		if not svc.has_signal(s):
+			return
+	_flask_service = svc
+	for i in range(sigs.size()):
+		if not svc.is_connected(sigs[i], Callable(self, cbs[i])):
+			svc.connect(sigs[i], Callable(self, cbs[i]))
+	print("[R37][LifeFX] 绑定唯一 FlaskService 成功 fx_node=%s getter_owner=%s signals=%d（A54 复用 get_flask_service，不自建）" % [
+			str(name), str(director.name), sigs.size()])
+
+
+func _try_bind_death() -> void:
+	if _death_service != null:
+		return
+	if _death_bind_attempts >= LIFE_BIND_MAX_ATTEMPTS:
+		return
+	_death_bind_attempts += 1
+	var tree := get_tree()
+	if tree == null:
+		return
+	var director := _find_node_with_method(tree.root, "get_death_service")
+	if director == null:
+		return
+	var svc: Object = director.call("get_death_service")
+	if svc == null:
+		return
+	var sigs := ["death_occurred", "respawn_performed", "points_reclaimed", "action_rejected"]
+	var cbs := ["_on_death_occurred", "_on_respawn_performed", "_on_points_reclaimed", "_on_life_action_rejected"]
+	for s in sigs:
+		if not svc.has_signal(s):
+			return
+	_death_service = svc
+	for i in range(sigs.size()):
+		if not svc.is_connected(sigs[i], Callable(self, cbs[i])):
+			svc.connect(sigs[i], Callable(self, cbs[i]))
+	print("[R37][LifeFX] 绑定唯一 DeathService 成功 fx_node=%s getter_owner=%s signals=%d（A54 复用 get_death_service，不自建）" % [
+			str(name), str(director.name), sigs.size()])
+
+
+# ---- R37 · 7 个公开信号回调（签名真源 teamwork/Rank-2/DONE-R37.md §3.1 / §3.6）----
+func _on_flask_used(_flask_before: int, _flask_after: int, _hp_before: float,
+		_hp_after: float, _healed: float) -> void:
+	_life_heal_left = LIFE_HEAL_SEC
+
+
+func _on_flask_rejected(_reason: String, _flask_remaining: int) -> void:
+	_life_reject_left = LIFE_MINOR_SEC
+
+
+func _on_flask_restored(_flask_before: int, _flask_after: int, _policy: String) -> void:
+	_life_restore_left = LIFE_MINOR_SEC
+
+
+func _on_death_occurred(_dropped_points: int, _grace_points_snapshot: int) -> void:
+	_life_death_left = LIFE_DEATH_SEC
+
+
+func _on_respawn_performed(_pending_dropped_points: int) -> void:
+	_life_death_left = 0.0
+	_life_respawn_left = LIFE_RESPAWN_SEC
+
+
+func _on_points_reclaimed(_points: int, _grace_points_snapshot: int) -> void:
+	_life_reclaim_left = LIFE_MINOR_SEC
+
+
+func _on_life_action_rejected(_reason: String, _action_id: String) -> void:
+	_life_reject_left = LIFE_MINOR_SEC
+
+
+## R37 · A72 余辉 + 生命轮回各反馈计时器推进（desktop / mobile 均只在 FXBloom 节点执行）。
+func _update_life_timers(delta: float) -> void:
+	# A72 余辉：仅在主战技演出结束后推进，避免与峰值主段叠乘过曝；
+	# 主段期间余辉额度暂存不递减（切换战技由 _on_focus_spent 收干净）。
+	if _focus_fx_left <= 0.0 and _a72_arc_afterglow_left > 0.0:
+		_a72_arc_afterglow_left = maxf(0.0, _a72_arc_afterglow_left - delta)
+	if _life_heal_left > 0.0:
+		_life_heal_left = maxf(0.0, _life_heal_left - delta)
+	if _life_reject_left > 0.0:
+		_life_reject_left = maxf(0.0, _life_reject_left - delta)
+	if _life_restore_left > 0.0:
+		_life_restore_left = maxf(0.0, _life_restore_left - delta)
+	if _life_death_left > 0.0:
+		_life_death_left = maxf(0.0, _life_death_left - delta)
+	if _life_respawn_left > 0.0:
+		_life_respawn_left = maxf(0.0, _life_respawn_left - delta)
+	if _life_reclaim_left > 0.0:
+		_life_reclaim_left = maxf(0.0, _life_reclaim_left - delta)
+
+
+## R37 / A72 · 狮子斩大弧（主段 + 余辉）是否激活（供避让判定）。
+func _a72_arc_active() -> bool:
+	return a72_fx_enabled and ((_focus_fx_left > 0.0 and _focus_fx_art == "lion_slash") \
+		or _a72_arc_afterglow_left > 0.0)
+
+
+## R37 / ⑭ · 生命轮回反馈是否激活（供 R32 impact_fx 时间避让判定）。
+func _life_fx_active() -> bool:
+	return life_fx_enabled and (_life_heal_left > 0.0 or _life_reject_left > 0.0 \
+		or _life_restore_left > 0.0 or _life_death_left > 0.0 \
+		or _life_respawn_left > 0.0 or _life_reclaim_left > 0.0)
+
+
+## R37 / A72 · 狮子斩暖金大斩击弧可见性增强层（叠加在 _draw_focus_fx 之上；
+## 既有 FOCUS_* 弧逐字不动，本层只做大范围 / 暗衬 / 加粗 / 余辉 / 火花）。
+## 未绑定 FocusService / a72_fx_enabled=false → 静默 return（降级层保留）。
+## desktop 完整三层 + 火花；mobile 轻量单主线 + 暗衬（A63）。
+func _draw_lion_slash_a72(_t: float) -> void:
+	if _focus_service == null or not a72_fx_enabled:
+		return
+	if not _a72_arc_active():
+		return
+	var lite: bool = not _all_on
+	var a0: float = deg_to_rad(A72_ARC_FROM_DEG)
+	var span: float = deg_to_rad(A72_ARC_TO_DEG - A72_ARC_FROM_DEG)
+	if _focus_fx_left > 0.0 and _focus_fx_art == "lion_slash":
+		var p: float = 1.0 - clampf(_focus_fx_left / FOCUS_FX_SEC, 0.0, 1.0)
+		var a1: float = a0 + span * clampf(p * A72_ARC_SWEEP_GAIN, 0.0, 1.0)
+		# 峰值保持：前段不快速衰减，后段收束（延长可辨识帧数）
+		var peak: float = A72_ARC_ALPHA * (0.60 + 0.40 * (1.0 - p))
+		# ① 冷夜雾宽暗衬（局部亮度对比主来源，把暖金从亮石板托出来）
+		draw_arc(A72_ARC_CENTER, A72_ARC_R, a0, a1, 48,
+				_c(LIFE_DIM_HEX, A72_ARC_UNDERLAY_ALPHA), A72_ARC_UNDERLAY_W)
+		# ② 加粗暖金主弧
+		draw_arc(A72_ARC_CENTER, A72_ARC_R, a0, a1, 48,
+				_c(LIFE_GOLD_HEX, peak), A72_ARC_W)
+		if not lite:
+			draw_arc(A72_ARC_CENTER, A72_ARC_R - 8.0, a0, a1, 48,
+					_c(LIFE_WARM_HEX, peak * A72_ARC_INNER_ALPHA), A72_ARC_INNER_W)
+			draw_arc(A72_ARC_CENTER, A72_ARC_R + 9.0, a0, a1, 48,
+					_c(LIFE_BRIGHT_HEX, A72_ARC_HALO_ALPHA * (1.0 - 0.5 * p)), A72_ARC_HALO_W)
+			# 弧末端亮核 + 径向火花（与冷蓝弹头小圆点形态二次区分）
+			var dir := Vector2(cos(a1), sin(a1))
+			var tip: Vector2 = A72_ARC_CENTER + dir * A72_ARC_R
+			var tip2: Vector2 = A72_ARC_CENTER + dir * (A72_ARC_R + A72_ARC_SPARK_LEN)
+			draw_line(tip, tip2, _c(LIFE_BRIGHT_HEX, peak), A72_ARC_SPARK_W)
+			draw_circle(tip, A72_ARC_HEAD_R, _c(LIFE_GOLD_HEX, peak))
+	elif _a72_arc_afterglow_left > 0.0:
+		# ③ 余辉衰减（延长可见帧数）：pow(1-q, DECAY) 细环 + 缓慢外扩
+		var q: float = 1.0 - clampf(_a72_arc_afterglow_left / A72_ARC_AFTERGLOW_SEC, 0.0, 1.0)
+		var fade: float = pow(1.0 - q, A72_ARC_DECAY)
+		var rr: float = A72_ARC_R + A72_ARC_AFTERGLOW_GROW * q
+		draw_arc(A72_ARC_CENTER, rr, a0, a0 + span, 48,
+				_c(LIFE_GOLD_HEX, A72_ARC_AFTERGLOW_ALPHA * fade), A72_ARC_AFTERGLOW_W)
+		if not lite:
+			draw_arc(A72_ARC_CENTER, rr - 5.0, a0, a0 + span, 48,
+					_c(LIFE_WARM_HEX, A72_ARC_AFTERGLOW_ALPHA * fade * 0.5), 1.5)
+
+
+## R37 / ⑭ · 生命轮回视觉反馈（元素瓶回复光晕 / 死亡冷夜雾收束 + 压暗 /
+## 赐福重生暖金扩散环 + 拒绝 / 补满 / 回收轻反馈），最上层叠加。
+## 两个服务都未绑定 / life_fx_enabled=false → 静默 return（降级层保留）。
+## desktop 完整多层；mobile 轻量（去掉次级细环 / 收束环层数，A63）。
+func _draw_life_fx(_t: float) -> void:
+	if (_flask_service == null and _death_service == null) or not life_fx_enabled:
+		return
+	if not _life_fx_active():
+		return
+	var lite: bool = not _all_on
+	var center := PARRY_RING_ANCHOR_PLAYER
+	# a) 使用元素瓶：短促翠绿内核 + 暖金外环回复光晕
+	if _life_heal_left > 0.0:
+		var hp: float = 1.0 - clampf(_life_heal_left / LIFE_HEAL_SEC, 0.0, 1.0)
+		var hfade: float = 1.0 - hp
+		var hr: float = LIFE_HEAL_R0 + (LIFE_HEAL_R1 - LIFE_HEAL_R0) * hp
+		draw_arc(center, hr, 0.0, TAU, 40,
+				_c(LIFE_GOLD_HEX, LIFE_HEAL_ALPHA * hfade), LIFE_RING_W)
+		draw_arc(center, hr * 0.62, 0.0, TAU, 32,
+				_c(LIFE_JADE_HEX, LIFE_HEAL_JADE_ALPHA * hfade), LIFE_RING_W * 0.8)
+		if not lite:
+			draw_arc(center, hr * 0.42, 0.0, TAU, 24,
+					_c(LIFE_BRIGHT_HEX, LIFE_HEAL_ALPHA * hfade * 0.5), 1.5)
+	# b) 死亡瞬间：冷夜雾收束（由外向角色收拢的粗暗环）+ 画面压暗（不过黑）
+	if _life_death_left > 0.0:
+		var dp: float = 1.0 - clampf(_life_death_left / LIFE_DEATH_SEC, 0.0, 1.0)
+		var dfade: float = pow(1.0 - dp, 0.7)
+		var dim: float = LIFE_DEATH_DIM_ALPHA * dfade
+		# 压暗分块：主区 L 形两块（HUD 矩形之外）+ HUD 矩形区按 0.35 极淡压暗
+		# → 「不过黑、HUD 文字仍可读」由几何 + alpha 双重保证（深色压暗非 R35B
+		#   浅暖金提亮大三角；峰值 ≤0.26、HUD 区 ≤0.09）。
+		draw_rect(Rect2(LIFE_HUD_W, 0.0, BUFFER_W - LIFE_HUD_W, BUFFER_H),
+				_c(LIFE_DIM_HEX, dim))
+		draw_rect(Rect2(0.0, LIFE_HUD_H, LIFE_HUD_W, BUFFER_H - LIFE_HUD_H),
+				_c(LIFE_DIM_HEX, dim))
+		draw_rect(Rect2(0.0, 0.0, LIFE_HUD_W, LIFE_HUD_H),
+				_c(LIFE_DIM_HEX, dim * LIFE_HUD_DIM_RATIO))
+		var fog_r: float = LIFE_FOG_R0 + (LIFE_FOG_R1 - LIFE_FOG_R0) * dp
+		var fog_layers: int = 1 if lite else 3
+		for i in range(fog_layers):
+			draw_arc(center, fog_r - 26.0 * float(i), 0.0, TAU, 48,
+					_c(LIFE_FOG_HEX, LIFE_FOG_ALPHA * dfade * (1.0 - 0.22 * float(i))), 12.0)
+	# c) 赐福重生：暖金扩散环
+	if _life_respawn_left > 0.0:
+		var rp: float = 1.0 - clampf(_life_respawn_left / LIFE_RESPAWN_SEC, 0.0, 1.0)
+		var rfade: float = 1.0 - rp
+		var rr: float = LIFE_RING_R0 + (LIFE_RING_R1 - LIFE_RING_R0) * rp
+		draw_arc(center, rr, 0.0, TAU, 48,
+				_c(LIFE_GOLD_HEX, LIFE_HEAL_ALPHA * rfade), LIFE_RING_W)
+		if not lite:
+			draw_arc(center, rr * 0.78, 0.0, TAU, 40,
+					_c(LIFE_BRIGHT_HEX, LIFE_HEAL_ALPHA * rfade * 0.55), 2.0)
+	# 次级轻反馈：拒绝（冷夜雾小暗环）/ 补满（暖金小环）/ 回收（亮金小环）
+	if _life_reject_left > 0.0:
+		var jf: float = clampf(_life_reject_left / LIFE_MINOR_SEC, 0.0, 1.0)
+		draw_arc(center, 20.0 + 8.0 * (1.0 - jf), 0.0, TAU, 24,
+				_c(LIFE_FOG_HEX, 0.55 * jf), 2.0)
+	if _life_restore_left > 0.0:
+		var sf: float = clampf(_life_restore_left / LIFE_MINOR_SEC, 0.0, 1.0)
+		draw_arc(center, 22.0 + 20.0 * (1.0 - sf), 0.0, TAU, 32,
+				_c(LIFE_GOLD_HEX, 0.60 * sf), 3.0)
+	if _life_reclaim_left > 0.0:
+		var cf: float = clampf(_life_reclaim_left / LIFE_MINOR_SEC, 0.0, 1.0)
+		draw_arc(center, 26.0 + 24.0 * (1.0 - cf), 0.0, TAU, 32,
+				_c(LIFE_BRIGHT_HEX, 0.60 * cf), 2.5)
+
+
 func _ready() -> void:
 	_palette.clear()
 	for h in PALETTE_HEX:
@@ -1125,10 +1549,14 @@ func _ready() -> void:
 	# 与连击层同款 deferred + 自愈，绝不自建第二个实例、不读私有实现。
 	# R36：战技视觉反馈层 —— 同一 FXBloom 分派节点订阅唯一 FocusService（A54），
 	# 同款 deferred + 自愈，绝不自建第二个实例、不读私有实现。
+	# R37：生命轮回反馈层 —— 同一 FXBloom 分派节点订阅唯一 FlaskService /
+	#   DeathService（A54），同款 deferred + 自愈，绝不自建第二个实例、不读私有实现。
 	if str(name) == "FXBloom":
 		call_deferred("_try_bind_combo")
 		call_deferred("_try_bind_parry")
 		call_deferred("_try_bind_focus")
+		call_deferred("_try_bind_flask")
+		call_deferred("_try_bind_death")
 
 
 ## 档位开关的公共入口：改档位并立即重算四项门 / 可见性（供 build 脚本回读真跑验证）。
@@ -1228,6 +1656,12 @@ func _process(delta: float) -> void:
 			if _focus_service == null:
 				_try_bind_focus()
 			_update_focus_timers(delta)
+			# R37 / A72 + 生命轮回：FlaskService / DeathService 绑定自愈 + 计时器推进
+			if _flask_service == null:
+				_try_bind_flask()
+			if _death_service == null:
+				_try_bind_death()
+			_update_life_timers(delta)
 		queue_redraw()
 	elif is_bloom and fx_profile == PROFILE_MOBILE:
 		# R35B · mobile 四项全关档位【轻量降级】：四项光效 / impact_fx / 连击层零绘制，
@@ -1240,6 +1674,12 @@ func _process(delta: float) -> void:
 		if _focus_service == null:
 			_try_bind_focus()
 		_update_focus_timers(delta)
+		# R37 / A63：mobile 轻量路径同样推进生命轮回绑定自愈 + 计时器
+		if _flask_service == null:
+			_try_bind_flask()
+		if _death_service == null:
+			_try_bind_death()
+		_update_life_timers(delta)
 		queue_redraw()
 
 
@@ -1253,6 +1693,8 @@ func _draw() -> void:
 			_draw_parry_lightweight(t)   # R35B：mobile 轻量弹反环
 			_draw_parry_a67(t)           # R36 / A67：mobile 轻量光环增强（暗衬 + 加粗环 + 少量刻度 + 余辉）
 			_draw_focus_fx(t)            # R36 / A63：mobile 轻量战技反馈（单条弧 / 弹道）
+			_draw_lion_slash_a72(t)      # R37 / A72 / A63：mobile 轻量大弧（暗衬 + 主线）
+			_draw_life_fx(t)             # R37 / A63：mobile 轻量生命轮回反馈
 		return
 	# 单节点内按 HD-2D视觉规范.md §10 层序绘制：fx_0_back(倒影/体积光) → fx_1_front(光尘/bloom)。
 	# 独立场景由 4 个同名分派节点分担，各节点同处一个 CanvasLayer，靠子节点顺序叠加。
@@ -1274,6 +1716,8 @@ func _draw() -> void:
 			_draw_parry_fx(t)       # R35：精准弹反反馈层（未绑定 ParryService 则静默跳过）
 			_draw_parry_a67(t)      # R36 / A67：光环可见性增强层（最上层叠加，未绑定则静默跳过）
 			_draw_focus_fx(t)       # R36：战技视觉反馈层（未绑定 FocusService / 开关关闭则静默跳过）
+			_draw_lion_slash_a72(t) # R37 / A72：狮子斩暖金大弧可见性增强层（最上层叠加）
+			_draw_life_fx(t)        # R37：生命轮回视觉反馈层（最上层叠加）
 		_:
 			pass
 

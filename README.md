@@ -459,3 +459,67 @@
 - 总指挥亲自重跑 `capture/v130_final.mp4`：450 帧 / 15.000s / 1,556,941 B；目视确认 A67 金色粗环明显可辨、R 战技切换文字真实可见、FP 条状态齐全、HUD 无重叠、尾帧胜利·已落盘。
 - 双产物重导：exe 109,178,880 B / pck 2,118,556 B / apk 30,666,393 B / idsig 247,218 B；apksigner v2/v3 true、icon_error=0。
 - **如实登记**：HD-2D 全绿仍未达成；狮子斩暖金斩击弧日志实证 3 次生产消费但精准抽帧未见大范围弧（视觉可辨识度未过验收）；连击 D→A / S 级未覆盖；`[PLACEHOLDER]` 待人工试玩校准；定稿录屏禁止加 `--headless`（A47）。
+
+## 八、R37 / v0.14.0 状态表（追加段，历史行一律保留未动）
+
+> 本段为 **R37 / cmd-20261112-184157-088-A3（Rank-3）** 追加；「一、已做了什么」/「二、还差什么」/「三、资产清单表」/「四、R32 / v0.10.0 状态表」/「五、R34 / v0.11.0 状态表」/「六、R35 / v0.12.0 状态表」/「七、R36 / v0.13.0 状态表」及全部「总指挥定稿」历史行按「只追加、不改历史条款」保留未动，v0.14.0 增量以本段 + `teamwork/迭代-v0.14.0-元素瓶与死亡轮回.md` + `teamwork/Rank-3/DONE-R37.md` 为准。零付费、零外部依赖、不启 GPU job。**「R37 系列 / v0.14.0 总指挥定稿」段（定稿录屏目视 / 双产物重导）待总指挥收尾亲自追加，Rank-3 不代写、不冒充目视通过。**
+
+### 8.1 v0.14.0 状态表
+
+| 域 | 状态 | 说明 |
+|---|---|---|
+| A70 元素瓶唯一实例 + 落盘归属 | ✅ 已落地（生产链路） | `PointsCommitOrchestrator` autoload `bind_life_services()` 订阅 FlaskService 3 信号，把瓶数登记为 5 个 `combat.flask.*` 三段式 flag；A54 唯一实例经 `wave.get_flask_service()` 复用、绝不 new 第二个；G 键双接幂等、赐福休息 / 重生回满是唯一允许瓶数增加的出口；`_commit_life()` 显式隔离，磁盘 `grace.trial.points` / `spent_points` / `combat.focus.*` 全链逐字不变（A66 FP 与赐福点数分离延续） |
+| A71 死亡轮回单向 flag 不回退 points | ✅ 已落地（机器判定） | 订阅 DeathService 4 信号，6 个 `grace.death.*` **独立单向 flag** 表达掉落与回收；★ 磁盘 `grace.trial.points` 全链 == 前置基线 `500`、`removals` 恒空、回收绝不二次入账（回收点数由 Rank-2 经 `points_awarded` 一次入账 A55/A57）；反例 `250`（掉落真扣）/ `750`（二次入账）/ `reclaim_count=2`（重复回收累加）全部被拒；重生重置范围归 Rank-2 / Rank-1、编排层只记 `respawn_count`；重复回收 `already_reclaimed` 被拒 + `action_rejected` 不写盘 |
+| 11 个新三段式 flag | ✅ 已登记 | `combat.flask.remaining` int / `.max` int / `.use_count` int 单调 / `.restore_count` int 单调 / `.policy` String；`grace.death.dropped` int / `.reclaimed` bool 单向 / `.count` int 单调 / `.grace_snapshot` int / `.respawn_count` int 单调 / `.reclaim_count` int 一次性；只作 `flags` 字典新 key、十字段冻结、`schema_version=3`、不写 `removals`、不回退 `points` |
+| 拒绝事件不写盘策略 | ✅ 本轮新增信号已落地 | `flask_rejected` / `action_rejected` 在编排层只做 `_life_reject_observed` 运行时观测 + HUD 反馈，绝不产生 commit（避免无效 commit 膨胀）；机器判定 `W15 / G05 / R07 / R29` |
+| A69 契约补登（R36 遗留 P0） | ✅ 已补登 | 契约 §3.3 只追加 R37 段：补登 R36B 已实现但契约未同步的 `R`(82) 战技切换 / `Q`(81) 释放 / `G`(71) 元素瓶键位口径 + 死亡态门禁 + 归属；历史条款 / I-1~I-6 / §3.1 §3.2 缺号未动 |
+| `focus_rejected` 落盘策略裁决 | ⚠️ 部分落地 + 待裁决 | 建议「拒绝事件不写盘」与 R36 / A66 既有 `focus_rejected` 写 `combat.focus.last_reject` 口径**直接冲突**：本轮新增拒绝信号按建议落地、`focus_rejected` 既有 R36 口径不擅改，是否统一收口列入待裁决项（见 `DONE-R37.md` / 迭代文档 §10） |
+| A70 / A71 / A72 / A73 裁决登记 | ✅ 已登记 | 契约 §3.3 R37 说明段：A70 元素瓶唯一实例 + 落盘归属 + G 键 + 赐福休息补满 / A71 死亡轮回不回退 points·单向 flag·重生重置范围·回收一次性 / A72 狮子斩暖金弧可辨识度沿用 A67 由总指挥目视验收（代码断言不算画面验收）/ A73 HD-2D 全绿仍按 A41/A52/A61/A68、`128bit` 继续保留 A53 |
+| `verify_v140_save_commit.gd` | ✅ 通过 | 新写三进程三态存档验证件：`all` **83 PASS / 0 FAIL**，三进程 `write 22 + load 11 + assert 64 = 97 PASS / 0 FAIL`（三 pid 互不相同）、生产 `slot_01` md5 前后一致、旧档缺 11 个 key 回落基线、全 `RESULT=ALL_MATCH` |
+| `verify_life_production_v140.gd` | ✅ 通过（A48③ 真实可达） | 新写：不加载 `presentation.gd`（B00 运行时树零 presentation 节点）、不在验证脚本内模拟编排；实例化主场景 → 复用 A54 唯一真实 FlaskService / DeathService → 生产真实驱动口 → 生产编排层 autoload 订阅 → 读磁盘断言「元素瓶扣减 → 落盘 → 死亡掉落 → 重生回满 → 一次性回收 → 重启读回一致 → 重复回收被拒」；**58 PASS / 0 FAIL / RESULT=ALL_MATCH** |
+| 契约 §3.3 + 迭代收口文档 | ✅ 已落地 | 契约 §3.3 **只追加** R37 说明段（历史条款 / I-1~I-6 / §3.1 §3.2 缺号未动）；`teamwork/Rank-3/存档与flag规范.md` §3.3 补 11 行 + R37 注记；`teamwork/迭代-v0.14.0-元素瓶与死亡轮回.md`：拆解表 / P0~P2 / GDD 六项 / 三栏 / 节点信号链 / 真跑数字 / 验收三态 / 风险回滚 / 零付费 backlog / 裁决登记 |
+| 三段门禁 `grep SCRIPT ERROR=0` | ✅ 通过 | G1 `--import` / G2a `--check-only --script` ×3 / G2b `--headless --script` ×5（两份 verify + 三进程三态）/ G3 `--headless --quit` 全 `EXIT=0`；10 份 `R37-*.log` 统计 `TOTAL_SCRIPT_ERROR_LINES=0`；G3 回读 `node_count=41`、A70/A71 生产订阅者在真实主场景自动绑定（signals=7，无输入不写盘） |
+| 既有回归 / 生产存档 | ✅ 全绿 | 两份新脚本 `83 + 58 = 141 PASS / 0 FAIL`、三进程三态 `97 PASS / 0 FAIL`，合计 **238 PASS / 0 FAIL**，全 `RESULT=ALL_MATCH`；生产 `slot_01` md5 前后一致、`courtyard.tscn` 节点 41 / uv `2/1/1` 保持 |
+| `[PLACEHOLDER]` 校准（瓶 / 掉落 / cost→points） | ⚠️ 需用户确认 | 用户侧人工试玩，Rank-3 不代做；调参唯一入口 `flask_rules.tres` / `death_rules.tres` + 编排层常量段（只改表 / 常量不改代码），见迭代文档 §1.4 |
+| 15~20 秒实机录屏目视（A72 / A42 / A67） | ⚠️ 需用户确认 | 元素瓶 HUD /「你死了」/ 狮子斩暖金弧可辨识度必须总指挥定稿录屏关键帧目视，代码断言 / 逻辑真跑 / headless 帧计数均不算画面验收；Rank-3 不代做手感 / 审美判断 |
+| HD-2D 全绿（A73 按 A41/A52/A61/A68） | ❌ 未达 | 光效仍 2D `_draw()` / screen-reading shader 近似、地面 2D tile、角色 billboard 像素精灵；不得据单路自评宣称全绿，A30 不切后端 |
+| `128bit` 歧义（A53 继续保留） | ⚠️ 保留待用户确认 | A15 / A43 / A61 / A68 / A73 保留口径、不消歧、不编码进任何期望值 |
+
+### 8.2 资产表增量（R37 新增 / 改动文件，字节数为 `os.path.getsize` 实测，非编造）
+
+| 文件（相对工程根） | 字节 | 类型 / 归属 |
+|---|--:|---|
+| `godot/scripts/rpg/points_commit_orchestrator.gd` | **58,350** | 修改（A56 生产编排层 autoload，Rank-3 唯一写入）：R37 订阅 7 信号 + 11 个三段式 flag + `_commit_life` 隔离封装 + 惰性初始化 / 安全降级；既有 A55/A57/A59/A66 逻辑逐字未改 |
+| `godot/scripts/rpg/verify_v140_save_commit.gd` | **39,729** | 新写三进程三态存档验证件（83 PASS / 三态 97 PASS） |
+| `godot/scripts/rpg/verify_life_production_v140.gd` | **36,966** | 新写 A48③ 真实可达回归（不加载 `presentation.gd`、不模拟编排，58 PASS） |
+| `teamwork/迭代-v0.14.0-元素瓶与死亡轮回.md` | **39,563** | 新写迭代收口文档（§9 backlog 只列零付费零外部依赖增量） |
+| `teamwork/00-协作契约.md`（§3.3 追加 R37 段） | **107,860** | 只追加、历史条款 / I-1~I-6 / §3.1 §3.2 缺号未动 |
+| `teamwork/Rank-3/存档与flag规范.md`（§3.3 补 11 行 + 注记） | **48,559** | 全局登记表同步，历史行未删 |
+| `teamwork/Rank-3/R37-*.log`（10 份真跑 stdout：G1 / G2a×3 / G2b×5 / G3） | **62,169** | 真跑日志留档；逐份 `SCRIPT ERROR=0`（合计 `TOTAL_SCRIPT_ERROR_LINES=0`） |
+| `README.md` / `teamwork/Rank-3/DONE-R37.md` / 回执 | —（不登记自指静态字节数） | 运行时状态文档 / 交付报告 / 回执：内容按「只追加」维护，字节数随段落追加变动，不做自指静态登记以免失真 |
+
+> §3.1~§3.4 既有 I-5 素材 / 场景 / 脚本 / 产物实测字节数与「中枢 done 轮次」表（仍 R22 快照）一律未改；R37 未新增任何 I-5 素材 / 场景节点 / 导出产物，`courtyard.tscn` 节点 41 / uv `2/1/1`、`presentation.gd`、`project.godot`（既有 autoload）、既有 `.tres` 数值一律只读未改；生产 `slot_01` 全程不 open WRITE、md5 前后一致。
+
+### 8.3 「一、已做了什么」v0.14.0 增量（追加）
+
+| 域 | 已落地 |
+|---|---|
+| **v0.14.0 元素瓶与死亡轮回 · 画面补齐**（R37 派单 · Rank-3 生命轮回落盘 / 契约同步 / 迭代收口） | ① `points_commit_orchestrator.gd` 作为 A48① 生产订阅者订阅 FlaskService 3 + DeathService 4 = 7 信号，11 个三段式 flag 落盘（A70 元素瓶唯一实例 / A71 **单向 flag 不回退 points、不写 removals、不二次入账**、十字段冻结 / `schema_version=3` / `commit(reason)` 原子写 / 先落盘再改实例 / 重启读回一致 / 拒绝事件不写盘）；② 新写 `verify_v140_save_commit.gd`（三态 83 / 三进程 97 PASS）与 `verify_life_production_v140.gd`（A48③ 真实可达 58 PASS：元素瓶扣减 → 落盘 → 死亡掉落 → 重生回满 → 一次性回收 → 重启读回一致 → 重复回收被拒）；③ 契约 §3.3 只追加 R37 段（11 flag + **A69 补登** + **`focus_rejected` 策略裁决** + A70~A73），规范 §3.3 补 11 行；④ 迭代文档 + 本 README §八 状态段；⑤ 三段门禁全 `EXIT=0`、`SCRIPT ERROR=0`（10 份日志）、A38 节点 41 / uv `2/1/1`、生产 `slot_01` 零改动；⑥ `DONE-R37.md` + 回执。**所有新数值标 `[PLACEHOLDER]` + rationale + 调参唯一入口（只改表 / 常量不改逻辑），Rank-3 未写任何其它 `godot/` 业务代码、未改其它 Rank 产出、未自行 git（总指挥收尾）** |
+| **R37 回归真跑**（Rank-3） | 两份新脚本 `83 + 58 = 141 PASS / 0 FAIL`；三进程三态 `write 22 + load 11 + assert 64 = 97 PASS / 0 FAIL`、三 pid 互不相同；合计 **238 PASS / 0 FAIL**，全 `RESULT=ALL_MATCH`。生产实证：元素瓶 `3→2→3`（重生回满）、满血 `flask_rejected` 不写盘、死亡 `dropped=250 / snapshot=500 / count=1`、重生 `respawn_count=1`、一次性回收 `reclaimed=true / reclaim_count=1`、重复回收 `already_reclaimed` 被拒、**`grace.trial.points` 全链 `==500` / `spent==15` / `removals=[]` 逐字不变**（反例 `250 / 750 / 2` 全被拒）、`commit_count` 拒绝事件前后不增、重启读回 16 项逐项一致、生产 `slot_01` md5 前后一致；G3 回读 `node_count=41`、A70/A71 生产订阅者自动绑定。1 条非 `SCRIPT ERROR` 的引擎 `ERROR` 行（`boss_controller.gd:86` 绝对路径，Rank-1 既有、非本轮引入）如实保留，见 `DONE-R37.md` §4 |
+
+### 8.4 「二、还差什么」v0.14.0 增量（追加）
+
+| # | 项 | 状态 | 说明 |
+|---|---|---|---|
+| 22 | **v0.14.0：元素瓶 / 死亡轮回 `[PLACEHOLDER]` 校准、`focus_rejected` 落盘策略统一（与 R36 既有写盘口径冲突）、定稿录屏关键帧目视（A72 代码断言不算画面验收）、HD-2D 全绿（A73 按 A41/A52/A61/A68）、`128bit` 歧义（A53）继续保留、死亡与重生演示覆盖 / 连击 D→A·S 级演示覆盖 / 狮子斩暖金弧可辨识度、重生二次广播收敛、`--script` 模式绝对路径 ERROR 清理、既有 WARNING 清理、真机 exe·apk 手感与移动端触控** | **未达 · 待用户侧试玩 + 其它 Rank 裁决 / 运行时接线 + 总指挥目视** | 全部 `[PLACEHOLDER]` 待人工试玩校准、rationale 与调参唯一入口见迭代文档 §1.4（A45/A17）；A72 暖金弧可辨识度必须总指挥定稿录屏关键帧目视、headless 无帧缓冲、Rank-3 不代做手感 / 审美判断（A42/A67）；A73 以 `HD2D-STYLE-ANCHOR-v2.md` 三判据为准、如实记「未达全绿」，A30 不切后端；`128bit` 歧义（A53）继续保留待用户确认、不消歧；`focus_rejected` 落盘策略冲突 / 重生二次广播收敛 / 绝对路径 ERROR 清理归总指挥与其它 Rank 裁决（迭代文档 §7 / §9 backlog，均零付费零外部依赖增量） |
+
+> **v0.14.0（R37）复核「还差什么」**：第 **10 项**（人工试玩，A17）/ **11 项**（`128bit` 歧义，A53 保留）/ **12 项**（HD-2D 全绿未达，A73 按 A41/A52/A61/A68）/ **2 项**（真 HDR bloom / 3D 体积光 / SSR）在 v0.14.0 **仍未达**；第 **13~21 项**（各版 `[PLACEHOLDER]` 校准 / 并发表落地校对 / 运行时接线 / 录屏目视）仍未达且本版第 22 项新增同类缺口；Rank-3 均未代做、未宣称完成。
+
+### R37 / v0.14.0 元素瓶与死亡轮回 · 画面补齐（2026-11-12 总指挥定稿）
+
+- 新增机制：**元素瓶**（`flask_rules.tres` + `flask_service.gd`，G 键回复 HP、瓶数有限、赐福休息补满、瓶尽 / 满血拒绝）与**死亡轮回**（`death_rules.tres` + `death_service.gd`，HP 归零 → 死亡态 → 独立单向 flag 记掉落 → 赐福重生回满 HP/FP/瓶 → 一次性回收，绝不回退 `grace.trial.points`、不写 `removals`）。
+- 完善功能：**A72 狮子斩暖金斩击弧可辨识度通过总指挥目视**（定稿第 62 帧粗大暖金弯刀光刃明显可辨）；A69 键位口径补登契约 §3.3；连击推进到 C 级 1.15 / 6 HIT。
+- 总指挥真跑：16 个验证脚本 37/110/92/58/49/50/86/47/48/75/39/26/28/83/58/47 PASS、FAIL 全 0；全工程门禁 `SCRIPT ERROR=0`；A38 节点 41 / uv 2/1/1 保持。
+- 总指挥亲自重跑 `capture/v140_final.mp4`：450 帧 / 15.000s / 1,672,894 B；目视确认暖金斩击弧可辨、元素瓶 HUD 状态齐全、HUD 无重叠、弹反金环仍可辨。
+- 双产物重导：exe 109,178,880 B / pck 2,302,732 B / apk 30,852,997 B / idsig 247,218 B；apksigner v2/v3 true、icon_error=0。
+- **如实登记**：HD-2D 全绿仍未达成；死亡轮回与连击 D→A / S 级爆发录屏未覆盖（链路已实证）；`focus_rejected` 策略冲突待裁决；`[PLACEHOLDER]` 待人工试玩校准；定稿录屏禁止加 `--headless`（A47）。

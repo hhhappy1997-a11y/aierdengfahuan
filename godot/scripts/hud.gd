@@ -45,6 +45,93 @@ signal parry_performed(window_id: String, bonus_points: int, poise_bonus: float)
 #   绝不只是验证脚本订阅；HUD 自身同时订阅刷新「专注值 FP」条与提示文本。
 signal focus_skill_performed(skill_id: String, fp_before: int, fp_after: int, fp_cost: int, damage: int, poise: float, multiplier: float)
 signal focus_skill_rejected(reason: String, fp: int, fp_max: int)
+# ---- R37 [ROUND=R37] 新增信号（既有 12 信号逐字不动）----
+#   元素瓶 G：真实 G 输入 → A54 唯一 flask_service 判定瓶数 / HP → 成功扣瓶回 HP 广播、
+#   失败（瓶数不足 / 生命已满 / 死亡期间）广播。A48①：4 个新信号的生产运行时订阅者 =
+#   EncounterDirector（_r37_bootstrap connect，hp_after 原样写回真实 _player_hp，A57），
+#   绝不只是验证脚本订阅。
+signal flask_used(flask_before: int, flask_after: int, hp_before: int, hp_after: int)
+signal flask_rejected(reason: String, flask: int)
+#   死亡轮回：HP 归零 → death_service 判定死亡态 → 广播掉落赐福点数（HUD 显示「你死了」）；
+#   赐福重生 → death_service 判定 → 广播回满 HP/FP/瓶。Rank-1 只做状态表现与信号转发，
+#   不新增第二套胜负判定（既有 ENC._finish / encounter_finished 逐字不动）。
+signal player_died(dropped_points: int)
+signal player_respawned(hp: int, fp: int, flask: int)
+
+# ==========================================================================
+# 19) R37 [ROUND=R37 / v0.14.0] · 元素瓶 G + 死亡轮回（运行时侧，Rank-1 唯一写入方）
+#   常量 / 状态变量【前置声明】（函数实现见文件末尾 19 节），确保 _r34_build_visible /
+#   _process_r32_keys / set_layout_viewport / _r34_refresh_visible 等既有段落引用时
+#   无 GDScript 前向声明问题；既有常量 / 变量 / 信号 / 分区数组逐字不动。
+#   A48①：4 个新信号（flask_used / flask_rejected / player_died / player_respawned）
+#          的【生产运行时订阅者 = EncounterDirector】（_r37_bootstrap connect）。
+#   A54：flask_service / death_service 唯一实例从 wave_trial_director.get_flask_service() /
+#        get_death_service() 复用，绝不自建第二个；并发未落盘时判空降级、不崩、
+#        不产生 SCRIPT ERROR、如实登记「真实判定逻辑待 Rank-2 落盘联调」（同 R35/R36 先例）。
+#   A57：元素瓶回复后的 hp_after / flask_after 一律取服务【最终结算值】原样采信，
+#        本层不二次计算；ENC 生产订阅者把 hp_after 原样写回真实 _player_hp。
+#   不改既有普通攻击判定 / 帧数据 / 输出格式 / 既有胜负结算分支：G 为新增输入分支，
+#     死亡态只做状态表现与信号转发，不订阅 / 不改 ENC._finish / encounter_finished。
+# ==========================================================================
+# ---- Rank-2 flask_service / death_service 鸭子类型契约（命名差异不崩）----
+#   R37 真实接口（Rank-2 派单 cmd-...-082-A2）：flask_service.use_flask(current_hp,max_hp) /
+#   on_grace_rest() / reset() / get_snapshot()；death_service HP 归零判定 / 掉落 / 重生 /
+#   get_snapshot()。下列候选同时兼容契约替身，字段命名差异不改本层代码即可兼容。
+const R37_FLASK_METHOD_USE: Array[String] = ["use_flask", "try_use_flask", "drink_flask"]
+const R37_FLASK_METHOD_REST: Array[String] = ["on_grace_rest", "rest_at_grace", "rest", "refill"]
+const R37_FLASK_METHOD_SNAPSHOT: Array[String] = ["get_snapshot", "get_status", "get_view", "get_flask_view"]
+#   Rank-2 真实 DeathService 主接口：on_death(grace_points) / on_grace_respawn() /
+#   reclaim_dropped()；契约替身 observe_hp(hp,max_hp) / respawn() 作为降级候选。
+const R37_DEATH_METHOD_ON_DEATH: Array[String] = ["on_death", "on_player_death", "enter_death"]
+const R37_DEATH_METHOD_OBSERVE: Array[String] = ["observe_hp", "on_hp_changed", "notify_hp", "check_death", "update_hp"]
+const R37_DEATH_METHOD_RESPAWN: Array[String] = ["on_grace_respawn", "respawn", "on_respawn", "rebirth"]
+const R37_DEATH_METHOD_SNAPSHOT: Array[String] = ["get_snapshot", "get_status", "get_view", "get_death_view"]
+const R37_KEY_OK: Array[String] = ["ok", "success", "accepted"]
+const R37_KEY_REASON: Array[String] = ["reason", "result", "reject_reason"]
+const R37_KEY_FLASK: Array[String] = ["flask", "flask_remaining", "flask_count", "current_flask", "remaining", "flask_after"]
+const R37_KEY_FLASK_MAX: Array[String] = ["flask_max", "max_flask", "flask_capacity", "capacity"]
+const R37_KEY_FLASK_BEFORE: Array[String] = ["flask_before", "prev_flask"]
+const R37_KEY_HP: Array[String] = ["hp_after", "current_hp", "hp", "hp_remaining", "new_hp"]
+const R37_KEY_HP_BEFORE: Array[String] = ["hp_before", "prev_hp"]
+const R37_KEY_HEAL: Array[String] = ["heal_amount", "heal", "hp_restored", "healed"]
+const R37_KEY_IS_DEAD: Array[String] = ["is_dead", "dead", "is_death", "in_death_state", "death_state", "dead_state"]
+const R37_KEY_DROPPED: Array[String] = ["dropped_points", "dropped", "points_dropped", "pending_drop", "drop"]
+# [PLACEHOLDER] 服务未落盘时的 HUD【显示降级初值】（非玩法数值，权威瓶数恒以
+#   flask_rules.tres / flask_service.get_snapshot() 为准）；rationale：Rank-2 服务未装配时
+#   HUD 仍显示稳定的「当前/上限」条，不伪装成真实瓶数。调参唯一入口 = 本常量表（只改表不改算法）。
+const R37_FLASK_FALLBACK: int = 3
+const R37_FLASK_MAX_FALLBACK: int = 3
+# [PLACEHOLDER] 元素瓶 / 死亡提示显示时长（秒），待试玩校准；rationale：短暂可见反馈不常驻遮挡。
+#   调参唯一入口 = 本常量表。
+const R37_HINT_SHOW_SEC: float = 1.2
+const R37_FLASK_LABEL_NAME: String = "ProdFlaskLabel"
+const R37_DEATH_LABEL_NAME: String = "ProdDeathLabel"
+const R37_WAVE_REL_PATH: String = "WaveTrialDirector"
+const R37_ENC_REL_PATH: String = "EncounterRoot"
+
+var _r37_flask: Object = null                # A54 唯一 flask_service（wave 复用，不自建）
+var _r37_death: Object = null                # A54 唯一 death_service（wave 复用，不自建）
+var _r37_flask_label: Label = null           # 「元素瓶 N/M」真实节点 ProdFlaskLabel
+var _r37_death_label: Label = null           # 「你死了」真实节点 ProdDeathLabel
+var _r37_flask_cur: int = R37_FLASK_FALLBACK         # 当前瓶数镜像（权威来自服务快照）
+var _r37_flask_max: int = R37_FLASK_MAX_FALLBACK     # 瓶上限镜像
+var _r37_hp: float = 0.0                    # 玩家 HP 镜像（只读 ENC.get_life_hp_view()）
+var _r37_hp_max: float = 0.0                 # 玩家 HP 上限镜像
+var _r37_is_dead_state: bool = false         # 死亡态（death_service 权威 / 降级 HP 归零）
+var _r37_dropped_points: int = 0             # 首轮掉落赐福点数（重复死亡不二次掉落）
+var _r37_death_count: int = 0                # 死亡态进入次数（边沿触发）
+var _r37_respawn_count: int = 0              # 赐福重生次数
+var _r37_hint_text: String = ""              # 「瓶数不足 / 生命已满 / 回复 N HP」提示
+var _r37_hint_remaining: float = 0.0
+var _r37_last_g_event_id: int = 0            # 同一 InputEvent 实例幂等去重（ENC+HUD 双接 G）
+var _r37_last_g_result: Dictionary = {}
+var _r37_attempt_count: int = 0
+var _r37_success_count: int = 0
+var _r37_reject_count: int = 0
+var _r37_attempt_log: Array[Dictionary] = []
+var _r37_bootstrapped: bool = false
+var _r37_grace_subscribed: bool = false      # ENC.grace_rested 生产订阅
+var _r37_resting: bool = false               # 赐福休息重入守卫（防 wave.trial_grace_rest 二次广播）
 
 # ==========================================================================
 # 常量
@@ -1266,6 +1353,18 @@ const ANCHOR_FOCUS: Rect2 = Rect2(0.01875, 0.51389, 0.27813, 0.04167)   # 左中
 #   y=453.6~483.6 与 FP 条(370~400)/combo(616~652) 均不相交。与中央角色左沿
 #   0.31250 留 0.01562 水平缝；长文本 autowrap 不越界；调参只改本节常量。
 const ANCHOR_ART: Rect2 = Rect2(0.01875, 0.63000, 0.27813, 0.04167)     # 左中·当前战技名（独立分区）
+# ---- R37 [ROUND=R37] · 「元素瓶 N/M」【独立分区】（沿用 R34C/R36/R36B 锚点口径）----
+#   x 0.01875~0.29688 严格在中央角色保护区(ANCHOR_CHAR x≥0.31250)/右侧面板(x≥0.70313)之左；
+#   y 0.74500~0.78667 落在当前战技名(ANCHOR_ART 0.63000~0.67167)之后、连击评价带
+#   (ANCHOR_COMBO 0.85556~0.90556)之前，与 FP 条(0.51389)/弹反预兆带(0.40278)/波次·引导带
+#   全部错行；低档 Label 最小内容高度撑开（同 R36B L3 实证）仍有 ≥6px 间隙。
+#   【不并入 get_layout_rects() 的 6 分区数组】（保护既有 A1「size()==6」断言不放宽），
+#   只经 get_flask_rect() 暴露。
+const ANCHOR_FLASK: Rect2 = Rect2(0.01875, 0.74500, 0.27813, 0.04167)
+# ---- R37 · 「你死了 / 掉落赐福点数」【独立分区】（仅死亡态可见，居中上方醒目）----
+#   x 0.31250~0.68750 与 y 0.20500~0.26056：在左上标题(≤0.13889)/右上画质(≤0.18889)之下、
+#   中央角色保护区(≥0.31944)之上；与右侧面板(x≥0.70313)/兑换面板(x≥0.578,y≥0.497)无交集。
+const ANCHOR_DEATH: Rect2 = Rect2(0.31250, 0.20500, 0.37500, 0.05556)
 
 var _layout_viewport: Vector2 = LAYOUT_BASE
 
@@ -1285,6 +1384,9 @@ func set_layout_viewport(size: Vector2) -> void:
 	_r36_apply_focus_rect()
 	# R36B：当前战技名真实节点随视口重定位（独立分区，四档降级不与文字相交）。
 	_r36b_apply_art_rect()
+	# R37：元素瓶 / 死亡态真实节点随视口重定位（独立分区，四档降级不与文字相交）。
+	_r37_apply_flask_rect()
+	_r37_apply_death_rect()
 
 
 func _scaled_rect(anchor: Rect2) -> Rect2:
@@ -1342,6 +1444,16 @@ func get_focus_rect() -> Rect2:
 ##   不并入 6 分区数组（A1 不回退）。
 func get_current_art_rect() -> Rect2:
 	return _scaled_rect(ANCHOR_ART)
+
+
+## R37 · 「元素瓶 N/M」独立分区实际包围盒（供 ProdFlaskLabel 定位与避让断言读取）。
+func get_flask_rect() -> Rect2:
+	return _scaled_rect(ANCHOR_FLASK)
+
+
+## R37 · 「你死了」独立分区实际包围盒（供 ProdDeathLabel 定位与避让断言读取）。
+func get_death_rect() -> Rect2:
+	return _scaled_rect(ANCHOR_DEATH)
 
 
 func get_hud_layout() -> Dictionary:
@@ -1770,6 +1882,17 @@ func _process_r32_keys(event: InputEvent) -> bool:
 		return false
 	var pc: int = k.physical_keycode
 	var kc: int = k.keycode
+	# R37 [ROUND=R37] · 死亡态门禁（任务②「死亡期间拒绝 G/Q/K/F」）：death_service 权威
+	#   死亡态期间对 G/Q/K/F（+R 切换）消费事件但不执行；E（赐福休息 → 重生）/ Tab /
+	#   数字键既有行为逐字不动。权威态只读 A54 唯一 death_service 快照 _r37_is_dead()，
+	#   不新增第二套胜负判定、不改既有普通攻击判定 / 帧数据 / 输出格式。
+	if _r37_is_dead() and (pc == KEY_G or kc == KEY_G or pc == KEY_Q or kc == KEY_Q \
+			or pc == KEY_K or kc == KEY_K or pc == KEY_F or kc == KEY_F \
+			or pc == KEY_R or kc == KEY_R):
+		_r37_hint_text = "死亡期间无法行动"
+		_r37_hint_remaining = R37_HINT_SHOW_SEC
+		_r37_refresh_flask()
+		return true
 	if _boon_draft_open:
 		var di: int = _digit_index(pc, kc)
 		if di >= 0:
@@ -1800,6 +1923,13 @@ func _process_r32_keys(event: InputEvent) -> bool:
 	if pc == KEY_R or kc == KEY_R:
 		_try_art_switch_input(event)
 		return true
+	# R37 [ROUND=R37] · 元素瓶 G 真实输入（与 F / Tab / K / Q / R 同走 HUD
+	#   单一 _unhandled_input → _process_r32_keys 仲裁者路径）。权威判定 =
+	#   request_flask_use()（复用 A54 唯一 flask_service 判定瓶数 / HP）；
+	#   ENC 侧同接 G 并转发本入口，靠同一 event 实例幂等去重，绝不重复扣瓶。
+	if pc == KEY_G or kc == KEY_G:
+		_try_flask_input(event)
+		return true
 	return false
 
 
@@ -1812,6 +1942,7 @@ func _exit_tree() -> void:
 	_unbind_stagger_signals()
 	_codex_director = null
 	_r34_release()
+	_r37_release()                      # R37：ENC.grace_rested 生产订阅的释放路径
 
 
 # ==========================================================================
@@ -2080,6 +2211,7 @@ func _r34_bootstrap() -> void:
 					print("[R35][HUD] A54 唯一 ParryService 已复用 wave.get_parry_service()（不自建第二实例）")
 	_r34_build_visible()
 	_r36_bootstrap()                     # R36：A54 唯一 focus_service + A65 免伤 / 赐福回满 生产订阅
+	_r37_bootstrap()                     # R37：A54 唯一 flask/death_service + 赐福重生 生产订阅
 	set_process(true)
 	_r34_refresh_visible()
 	print("[R34][HUD] 生产链装配完成 | stagger_bound=%s boon_bound=%s combo_bound=%s combo_signals=%s wave_cleared=%s wave_started=%s visible=%s" % [
@@ -2320,12 +2452,29 @@ func _r34_build_visible() -> void:
 		al.add_theme_color_override("font_color", Color(1.0, 0.84, 0.30, 1.0))
 		layer.add_child(al)
 	_r36b_art_label = al
+	# R37：「元素瓶 N/M」真实节点（生产常驻可见层，独立分区锚点，不与任一文字相交）。
+	var kl: Label = layer.get_node_or_null(NodePath(R37_FLASK_LABEL_NAME)) as Label
+	if kl == null:
+		kl = _r34_make_label(R37_FLASK_LABEL_NAME)
+		kl.add_theme_color_override("font_color", Color(0.55, 0.92, 0.72, 1.0))
+		layer.add_child(kl)
+	_r37_flask_label = kl
+	# R37：「你死了 · 掉落赐福点数 N」真实节点（仅死亡态可见，独立分区锚点）。
+	var xl: Label = layer.get_node_or_null(NodePath(R37_DEATH_LABEL_NAME)) as Label
+	if xl == null:
+		xl = _r34_make_label(R37_DEATH_LABEL_NAME)
+		xl.add_theme_color_override("font_color", Color(1.0, 0.36, 0.32, 1.0))
+		xl.visible = false
+		layer.add_child(xl)
+	_r37_death_label = xl
 	# R34C：连击评级 / 倍率 / 命中数文本按【独立分区锚点】定位，不再用
 	#   R34_RECT_BOTTOM+8/+36 硬编码像素堆叠压在赐福成长标题行上。
 	_r34_apply_combo_rect()
 	_r35_apply_parry_rect()
 	_r36_apply_focus_rect()
 	_r36b_apply_art_rect()
+	_r37_apply_flask_rect()
+	_r37_apply_death_rect()
 	_r34_hide_all()
 	print("[R34][HUD] f 链：生产常驻可见层 %s 入树 is_inside_tree=%s（按状态显示，非 presentation.gd 构造）" % [
 			R34_LAYER_NAME, str(layer.is_inside_tree())])
@@ -2402,6 +2551,9 @@ func _r34_refresh_visible() -> void:
 	# R36：专注值 FP 条常驻可见 + A65「弹反·免伤」/ 战技失败提示文本（按本地状态镜像刷新，
 	#   不每帧读服务快照；FP 权威值由 request / bind / 赐福事件后显式 poll_focus_service 同步）。
 	_r36_refresh_focus()
+	# R37：元素瓶 N/M 常驻可见 + 死亡态「你死了 / 掉落赐福点数」按状态显示。
+	_r37_refresh_flask()
+	_r37_refresh_death()
 
 
 func _r34_combo_text() -> String:
@@ -2432,6 +2584,7 @@ func _process(delta: float) -> void:
 	if _r35_parry_window_open or _r35_parry_cooldown > 0.0:
 		tick_parry(delta)
 	tick_focus(delta)                     # R36：FP 冷却 / 提示显示镜像递减（生产帧驱动）
+	tick_life(delta)                      # R37：元素瓶提示显示镜像递减（生产帧驱动）
 	_r34_refresh_visible()
 
 
@@ -3422,3 +3575,441 @@ func _r36b_refresh_art() -> void:
 	var v: Dictionary = get_current_art_view()
 	_r36b_art_label.text = String(v.get("text", "当前战技：—"))
 	_r36b_art_label.visible = true
+
+
+# ==========================================================================
+# 19) R37 [ROUND=R37 / v0.14.0] · 元素瓶 G / 死亡轮回 运行时实现
+#   （承接文件前部 19 节常量 / 变量前置声明）
+# ==========================================================================
+
+func _r37_pick(d: Dictionary, keys: Array[String], default_value: Variant) -> Variant:
+	for k: String in keys:
+		if d.has(k):
+			return d[k]
+	return default_value
+
+
+func _r37_find_courtyard() -> Node:
+	var ml: MainLoop = Engine.get_main_loop()
+	var c: Node = null
+	if ml is SceneTree:
+		c = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+	if c == null:
+		c = _r34_find_mount_root()
+	return c
+
+
+func _r37_find_enc() -> Node:
+	var c: Node = _r37_find_courtyard()
+	if c == null:
+		return null
+	return c.get_node_or_null(NodePath(R37_ENC_REL_PATH))
+
+
+## A54 唯一实例注入口（生产由 _r37_bootstrap 经 wave.get_flask_service() 复用；
+## 验证进程注入契约替身）。绝不 new 第二个生产实例。
+func bind_flask_service(svc: Object) -> void:
+	_r37_flask = svc
+	_r37_flask_snapshot()
+	_r37_refresh_flask()
+
+
+func get_flask_service() -> Object:
+	return _r37_flask
+
+
+func bind_death_service(svc: Object) -> void:
+	_r37_death = svc
+	_r37_death_snapshot()
+
+
+func get_death_service() -> Object:
+	return _r37_death
+
+
+## 只读服务快照同步本地瓶数镜像（权威值恒取服务，不写表 / 不二次计算）。
+func _r37_flask_snapshot() -> Dictionary:
+	var svc: Object = _r37_flask
+	if svc == null or not is_instance_valid(svc):
+		return {"flask": _r37_flask_cur, "flask_max": _r37_flask_max}
+	var snap: Dictionary = {}
+	for m: String in R37_FLASK_METHOD_SNAPSHOT:
+		if svc.has_method(m):
+			var v: Variant = svc.call(m)
+			if typeof(v) == TYPE_DICTIONARY:
+				snap = v as Dictionary
+			break
+	_r37_flask_cur = int(_r37_pick(snap, R37_KEY_FLASK, _r37_flask_cur))
+	_r37_flask_max = int(_r37_pick(snap, R37_KEY_FLASK_MAX, _r37_flask_max))
+	return snap
+
+
+func _r37_death_snapshot() -> Dictionary:
+	var svc: Object = _r37_death
+	if svc == null or not is_instance_valid(svc):
+		return {"is_dead": _r37_is_dead_state, "dropped_points": _r37_dropped_points}
+	var snap: Dictionary = {}
+	for m: String in R37_DEATH_METHOD_SNAPSHOT:
+		if svc.has_method(m):
+			var v: Variant = svc.call(m)
+			if typeof(v) == TYPE_DICTIONARY:
+				snap = v as Dictionary
+			break
+	return snap
+
+
+## 真实玩家 HP 只读来源 = ENC 既有状态（新增只读 getter，不改既有判定 / 帧数据）。
+func _r37_enc_hp_view() -> Dictionary:
+	var enc: Node = _r37_find_enc()
+	if enc != null and is_instance_valid(enc) and enc.has_method("get_life_hp_view"):
+		var v: Variant = enc.call("get_life_hp_view")
+		if typeof(v) == TYPE_DICTIONARY:
+			return v as Dictionary
+	return {"hp": _r37_hp, "max_hp": _r37_hp_max}
+
+
+## 死亡态只读（_process_r32_keys 门禁 / ENC 侧判定 / 验证读回共用）。
+func _r37_is_dead() -> bool:
+	return _r37_is_dead_state
+
+
+func is_player_dead() -> bool:
+	return _r37_is_dead_state
+
+
+## 元素瓶 / 死亡轮回 HUD 只读视图（供可见层、运行日志、验证脚本读回；不写盘）。
+func get_life_hud_view() -> Dictionary:
+	return {
+		"flask": _r37_flask_cur,
+		"flask_max": _r37_flask_max,
+		"flask_text": "元素瓶 %d/%d" % [_r37_flask_cur, _r37_flask_max],
+		"hp": _r37_hp,
+		"hp_max": _r37_hp_max,
+		"is_dead": _r37_is_dead_state,
+		"dropped_points": _r37_dropped_points,
+		"death_text": ("你死了 · 掉落赐福点数 %d" % _r37_dropped_points) if _r37_is_dead_state else "",
+		"hint_text": _r37_hint_text,
+		"flask_service_available": _r37_flask != null and is_instance_valid(_r37_flask),
+		"death_service_available": _r37_death != null and is_instance_valid(_r37_death),
+		"attempt_count": _r37_attempt_count,
+		"success_count": _r37_success_count,
+		"reject_count": _r37_reject_count,
+		"death_count": _r37_death_count,
+		"respawn_count": _r37_respawn_count,
+		"flask_rect": get_flask_rect(),
+		"death_rect": get_death_rect(),
+	}
+
+
+func get_life_attempt_log() -> Array[Dictionary]:
+	return _r37_attempt_log.duplicate(true)
+
+
+func _r37_log(reason: String, ok: bool, hp: int, flask: int) -> void:
+	_r37_attempt_log.append({"reason": reason, "ok": ok, "hp": hp, "flask": flask})
+
+
+func _r37_reason_hint(reason: String) -> String:
+	var r: String = reason.to_lower()
+	if r.contains("empty") or r.contains("exhaust") or r.contains("no_flask") \
+			or r.contains("insufficient") or r.contains("out_of") or r.contains("瓶"):
+		return "瓶数不足"
+	if r.contains("full") or r.contains("max_hp") or r.contains("满"):
+		return "生命已满"
+	if r.contains("death") or r.contains("dead"):
+		return "死亡期间无法行动"
+	if r.contains("duplicate") or r.contains("重复"):
+		return "重复按键已忽略"
+	if r.contains("unavailable"):
+		return "元素瓶服务未就绪"
+	return "元素瓶无法使用（%s）" % reason
+
+
+## 失败统一出口：不扣瓶、发 flask_rejected（A48① ENC 生产订阅者记录）、HUD 提示。
+func _r37_reject(reason: String, flask: int) -> Dictionary:
+	_r37_reject_count += 1
+	_r37_hint_text = _r37_reason_hint(reason)
+	_r37_hint_remaining = R37_HINT_SHOW_SEC
+	flask_rejected.emit(reason, flask)
+	_r37_log(reason, false, int(_r37_hp), flask)
+	_r37_refresh_flask()
+	var r: Dictionary = {"ok": false, "reason": reason, "flask": flask}
+	_r37_last_g_result = r
+	return r.duplicate()
+
+
+## 真实 G 输入【唯一权威判定】（HUD._process_r32_keys / ENC._r37_request_flask_use
+## 同调本入口）。成功 → 扣 1 瓶 + 回 HP（服务权威）+ 发 flask_used（A57 最终值）；
+## 失败（瓶数不足 / 生命已满 / 死亡期间 / 服务未就绪）→ 不扣瓶 + 提示 + 发 flask_rejected。
+## 同一 event 实例幂等去重；服务自身保证瓶尽 / 满血 / 重复按键不二次扣瓶（幂等）。
+func request_flask_use(event: InputEvent = null) -> Dictionary:
+	if event != null:
+		if event is InputEventKey:
+			var k: InputEventKey = event as InputEventKey
+			if not k.pressed or k.echo:
+				return {"ok": false, "reason": "not_pressed"}
+		var eid: int = event.get_instance_id()
+		if eid == _r37_last_g_event_id and not _r37_last_g_result.is_empty():
+			return _r37_last_g_result.duplicate()
+		_r37_last_g_event_id = eid
+	_r37_attempt_count += 1
+	if _r37_is_dead():
+		return _r37_reject("death_state_reject", _r37_flask_cur)
+	var svc: Object = _r37_flask
+	if svc == null or not is_instance_valid(svc):
+		return _r37_reject("flask_service_unavailable", _r37_flask_cur)
+	var hp_view: Dictionary = _r37_enc_hp_view()
+	var hp: float = float(hp_view.get("hp", _r37_hp))
+	var hp_max: float = maxf(1.0, float(hp_view.get("max_hp", _r37_hp_max)))
+	_r37_hp = hp
+	_r37_hp_max = hp_max
+	var flask_before_observed: int = _r37_flask_cur
+	var result: Dictionary = {}
+	var called: bool = false
+	for m: String in R37_FLASK_METHOD_USE:
+		if svc.has_method(m):
+			var v: Variant = svc.call(m, hp, hp_max)
+			if typeof(v) == TYPE_DICTIONARY:
+				result = v as Dictionary
+			elif typeof(v) == TYPE_BOOL:
+				result = {"ok": bool(v)}
+			called = true
+			break
+	if not called:
+		return _r37_reject("flask_method_unavailable", _r37_flask_cur)
+	_r37_flask_snapshot()                 # 权威瓶数来自服务快照（A54 / A57 原样采信）
+	var ok: bool = bool(_r37_pick(result, R37_KEY_OK, false))
+	var reason: String = String(_r37_pick(result, R37_KEY_REASON, ""))
+	if not ok:
+		return _r37_reject(reason if not reason.is_empty() else "flask_rejected", _r37_flask_cur)
+	var flask_before: int = int(_r37_pick(result, R37_KEY_FLASK_BEFORE, flask_before_observed))
+	var flask_after: int = int(_r37_pick(result, R37_KEY_FLASK, _r37_flask_cur))
+	var hp_before: int = int(_r37_pick(result, R37_KEY_HP_BEFORE, int(hp)))
+	var hp_after: int = int(_r37_pick(result, R37_KEY_HP, int(hp)))
+	_r37_success_count += 1
+	_r37_hint_text = "元素瓶 · 回复 %d HP" % maxi(0, hp_after - hp_before)
+	_r37_hint_remaining = R37_HINT_SHOW_SEC
+	flask_used.emit(flask_before, flask_after, hp_before, hp_after)
+	_r37_log("ok", true, hp_after, flask_after)
+	_r37_refresh_flask()
+	_r37_last_g_result = result
+	print("[R37][HUD] 真实 G → 元素瓶成功 | 瓶 %d->%d HP %d->%d → flask_used 已发（A57 原样采信服务最终值，ENC 生产订阅者写回真实 _player_hp）" % [
+			flask_before, flask_after, hp_before, hp_after])
+	return result.duplicate()
+
+
+## 真实 G 输入落点（与 _unhandled_input 同走 R32 键路径）。
+func _try_flask_input(event: InputEvent) -> Dictionary:
+	return request_flask_use(event)
+
+
+## 赐福点数【只读】来源（death_service.on_death 的 grace_points 实参）：
+##   WorldState 既有三段式 flag grace.trial.points（HUD 既有只读口径，绝不写回）；
+##   autoload 不可用 → 0 降级（掉落 0，不崩、不伪装点数）。
+func _r37_grace_points() -> float:
+	var ws: Node = _world_state
+	if ws != null and is_instance_valid(ws) and ws.has_method("get_flag"):
+		var v: Variant = ws.call("get_flag", FLAG_POINTS, 0)
+		if typeof(v) == TYPE_INT or typeof(v) == TYPE_FLOAT:
+			return maxf(0.0, float(v))
+	return 0.0
+
+
+## ENC 转发的 HP 变化 → A54 唯一 death_service 权威判定死亡态（Rank-1 只做状态表现
+## 与信号转发）。HP 归零且未进入死亡态 → 调真实接口 on_death(grace_points)（掉落点数
+## 只读 WorldState 赐福点数 flag，绝不写回）；契约替身走 observe_hp(hp,max_hp)；
+## 服务未落盘 / 无判定方法 → 按 HP 归零做纯状态表现（不判定掉落、不二次结算）。
+## 重复 HP 归零转发不二次调 on_death（death_service 自身 already_dead 亦拒绝二次掉落）。
+func on_player_hp_changed(hp: float, max_hp: float) -> Dictionary:
+	_r37_hp = hp
+	_r37_hp_max = maxf(1.0, max_hp)
+	var svc: Object = _r37_death
+	if svc == null or not is_instance_valid(svc):
+		_r37_set_death_state(hp <= 0.0, 0)
+		_r37_refresh_flask()
+		return {"is_dead": _r37_is_dead_state, "dropped_points": _r37_dropped_points}
+	if hp <= 0.0 and not _r37_is_dead_state:
+		var triggered: bool = false
+		for m: String in R37_DEATH_METHOD_ON_DEATH:
+			if svc.has_method(m):
+				svc.call(m, _r37_grace_points())   # 真实 DeathService.on_death(grace_points)
+				triggered = true
+				break
+		if not triggered:
+			for m2: String in R37_DEATH_METHOD_OBSERVE:
+				if svc.has_method(m2):
+					svc.call(m2, hp, max_hp)       # 契约替身 observe_hp(hp,max_hp)
+					break
+	# 快照判定（真实服务 get_snapshot().is_dead / dropped_points）
+	var snap: Dictionary = _r37_death_snapshot()
+	var dead: bool = bool(_r37_pick(snap, R37_KEY_IS_DEAD, hp <= 0.0))
+	var dropped: int = int(_r37_pick(snap, R37_KEY_DROPPED, 0))
+	_r37_set_death_state(dead, dropped)
+	_r37_refresh_flask()
+	return snap
+
+
+## 死亡态边沿触发：仅在「未死 → 死」时发 player_died（A48① ENC 生产订阅者）并记掉落；
+## 重复死亡（已死 → 仍死）不二次掉落 / 不二次发信号 / 不覆盖首轮掉落点数。
+func _r37_set_death_state(dead: bool, dropped: int) -> void:
+	if dead and not _r37_is_dead_state:
+		_r37_is_dead_state = true
+		_r37_dropped_points = dropped
+		_r37_death_count += 1
+		player_died.emit(dropped)
+		print("[R37][HUD] HP 归零 → 死亡态 | 掉落赐福点数=%d death_count=%d → player_died 已发（death_service 权威判定，不新增第二套胜负判定）" % [
+				dropped, _r37_death_count])
+	_r37_refresh_death()
+
+
+## 赐福休息 / 重生（ENC.grace_rested 的【生产运行时订阅者】，_r37_bootstrap connect）：
+##   flask_service.on_grace_rest() 补满瓶 + death_service.respawn() 判定重生；
+##   HP 回满由 ENC 既有 _grace_rest() 完成、FP 回满由 R36 既有订阅完成、
+##   连击 / 弹反 / 处决窗口重置由 ENC 既有 _state.reset() + Rank-2 wave 完成，
+##   本层只清死亡态显示 + 发 player_respawned（A48①），不新增第二套胜负判定。
+func _r37_on_grace_rested(_rest_count: int) -> void:
+	# 重入守卫（真跑实证修复）：Rank-2 wave._on_respawn_performed → encounter.trial_grace_rest()
+	# → _grace_rest() → grace_rested 二次广播会嵌套回到本回调，造成二次补瓶 /
+	# 二次 player_respawned。嵌套直接 return；外层先清死亡态杜绝二次判定 was_dead。
+	if _r37_resting:
+		return
+	_r37_resting = true
+	var was_dead: bool = _r37_is_dead_state
+	_r37_is_dead_state = false
+	var fs: Object = _r37_flask
+	if fs != null and is_instance_valid(fs):
+		for m: String in R37_FLASK_METHOD_REST:
+			if fs.has_method(m):
+				fs.call(m)
+				break
+	_r37_flask_snapshot()
+	var ds: Object = _r37_death
+	if ds != null and is_instance_valid(ds):
+		for m2: String in R37_DEATH_METHOD_RESPAWN:
+			if ds.has_method(m2):
+				ds.call(m2)
+				break
+	_r37_is_dead_state = false
+	_r37_dropped_points = 0
+	var hp_view: Dictionary = _r37_enc_hp_view()
+	_r37_hp = float(hp_view.get("hp", _r37_hp))
+	_r37_hp_max = maxf(1.0, float(hp_view.get("max_hp", _r37_hp_max)))
+	if was_dead:
+		_r37_respawn_count += 1
+		player_respawned.emit(int(_r37_hp), _r36_fp, _r37_flask_cur)
+		print("[R37][HUD] 赐福重生 → HP/FP/瓶回满 | hp=%d fp=%d flask=%d → player_respawned 已发（清除「你死了」，回到当前波起点由 Rank-2 wave 既有链完成）" % [
+				int(_r37_hp), _r36_fp, _r37_flask_cur])
+	_r37_hint_text = "赐福休息 · 元素瓶补满"
+	_r37_hint_remaining = R37_HINT_SHOW_SEC
+	_r37_refresh_flask()
+	_r37_refresh_death()
+	_r37_resting = false                       # 释放重入守卫（外层回调结束）
+
+
+## 「元素瓶 N/M」真实节点按独立分区锚点定位（视口变化由 set_layout_viewport 联动重算）。
+func _r37_apply_flask_rect() -> void:
+	if _r37_flask_label == null or not is_instance_valid(_r37_flask_label):
+		return
+	var r: Rect2 = get_flask_rect()
+	_r37_flask_label.offset_left = r.position.x
+	_r37_flask_label.offset_top = r.position.y
+	_r37_flask_label.offset_right = r.end.x
+	_r37_flask_label.offset_bottom = r.end.y
+
+
+## 「你死了」真实节点按独立分区锚点定位（仅死亡态可见）。
+func _r37_apply_death_rect() -> void:
+	if _r37_death_label == null or not is_instance_valid(_r37_death_label):
+		return
+	var r: Rect2 = get_death_rect()
+	_r37_death_label.offset_left = r.position.x
+	_r37_death_label.offset_top = r.position.y
+	_r37_death_label.offset_right = r.end.x
+	_r37_death_label.offset_bottom = r.end.y
+
+
+## 元素瓶常驻可见刷新（本地镜像 + 提示，不写既有 Label.text、不读服务快照）。
+func _r37_refresh_flask() -> void:
+	if _r37_flask_label == null or not is_instance_valid(_r37_flask_label):
+		return
+	var line: String = "元素瓶 %d/%d  ｜  G 使用" % [_r37_flask_cur, _r37_flask_max]
+	if not _r37_hint_text.is_empty():
+		line += "  ｜  %s" % _r37_hint_text
+	_r37_flask_label.text = line
+	_r37_flask_label.visible = true
+
+
+## 死亡态显示刷新：死亡 → 「你死了 · 掉落赐福点数 N」，重生 → 隐藏。
+func _r37_refresh_death() -> void:
+	if _r37_death_label == null or not is_instance_valid(_r37_death_label):
+		return
+	if _r37_is_dead_state:
+		_r37_death_label.text = String(get_life_hud_view().get("death_text", "你死了")) + "  ｜  赐福 E 重生"
+		_r37_death_label.visible = true
+	else:
+		_r37_death_label.text = ""
+		_r37_death_label.visible = false
+
+
+## 生产帧驱动：元素瓶提示显示时长递减（不调服务方法、不改既有帧数据）。
+func tick_life(delta: float) -> void:
+	if _r37_hint_remaining > 0.0:
+		_r37_hint_remaining = maxf(0.0, _r37_hint_remaining - maxf(0.0, delta))
+		if _r37_hint_remaining <= 0.0:
+			_r37_hint_text = ""
+			_r37_refresh_flask()
+
+
+func _r37_dedup_connect(obj: Object, sig: String, method: String) -> void:
+	if obj == null or not obj.has_signal(sig):
+		return
+	var cb: Callable = Callable(self, method)
+	for conn in obj.get_signal_connection_list(sig):
+		var c: Callable = conn.get("callable", Callable())
+		if c.get_object() == self and String(c.get_method()) == method:
+			return
+	if not obj.is_connected(sig, cb):
+		obj.connect(sig, cb)
+
+
+## 生产装配（_r34_bootstrap 末尾调用 / --script 验证显式调用同一入口）：
+##   ① A54 唯一 flask_service / death_service 从 wave.get_*_service() 复用（绝不自建）；
+##   ② A48① 订阅 ENC.grace_rested → _r37_on_grace_rested（补满瓶 / 判定重生）。
+func _r37_bootstrap() -> void:
+	if _r37_bootstrapped:
+		return
+	_r37_bootstrapped = true
+	var courtyard: Node = _r37_find_courtyard()
+	if courtyard != null:
+		var wave: Node = courtyard.get_node_or_null(NodePath(R37_WAVE_REL_PATH))
+		if wave != null:
+			if wave.has_method("get_flask_service"):
+				var fs: Object = wave.call("get_flask_service") as Object
+				if fs != null and is_instance_valid(fs):
+					bind_flask_service(fs)        # A54：复用唯一实例，不自建第二个
+			if wave.has_method("get_death_service"):
+				var ds: Object = wave.call("get_death_service") as Object
+				if ds != null and is_instance_valid(ds):
+					bind_death_service(ds)
+		var enc: Node = courtyard.get_node_or_null(NodePath(R37_ENC_REL_PATH))
+		if enc == null:
+			enc = _r37_find_enc()
+		if enc != null and is_instance_valid(enc):
+			_r37_dedup_connect(enc, "grace_rested", "_r37_on_grace_rested")
+			_r37_grace_subscribed = true
+	_r37_flask_snapshot()
+	_r37_refresh_flask()
+	_r37_refresh_death()
+	print("[R37][HUD] 生产装配 | flask_unique=%s death_unique=%s grace_subscribed=%s（A48①/A54，不自建第二实例）" % [
+			str(_r37_flask != null and is_instance_valid(_r37_flask)),
+			str(_r37_death != null and is_instance_valid(_r37_death)), str(_r37_grace_subscribed)])
+
+
+## 信号 connect 的释放路径（_exit_tree → _r37_release）。
+func _r37_release() -> void:
+	var enc: Node = _r37_find_enc()
+	if enc != null and is_instance_valid(enc) and enc.has_signal("grace_rested"):
+		var cb: Callable = Callable(self, "_r37_on_grace_rested")
+		if enc.is_connected("grace_rested", cb):
+			enc.disconnect("grace_rested", cb)
+	_r37_grace_subscribed = false

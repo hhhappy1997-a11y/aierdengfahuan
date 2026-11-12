@@ -168,6 +168,21 @@ extends SceneTree
 ##   如实登记：本轮不含新录屏 / 目视帧；暖金斩击弧是否在该 450 帧录屏中可见由总指挥
 ##   定稿录屏目视确认，逻辑真跑只证明「真实 R+Q 按键 → 生产链路 → lion_slash 释放」。
 ## [PLACEHOLDER] R36B_* 为演示节奏（非战斗数值，待试玩校准，调参只改本节常量）。
+##
+## R37 [ROUND=R37] · 【只追加真实按键注入节奏，让元素瓶 / 连击收束 / 一次死亡与重生有机会自然出现】
+##   任务③（R36 遗留 P0）：只改 Input.parse_input_event 注入节奏，绝不改任何既有
+##   [PLACEHOLDER] 数值、绝不回退 R34 已移除的演示驱动。四段真实注入：
+##   ⑮ 周期 G(KEY_G=71) → HUD/ENC._unhandled_input → request_flask_use() → A54 唯一 flask_service，
+##      给「元素瓶 N/M 扣减 / HP 回复 / 瓶尽 / 满血拒绝」在 450 帧内自然出现机会；
+##   ⑯ 尾段更密 J(light_attack) + ⑰ K(弹反) → 给「连击 D→A 递进 / S 级收束爆发」更多真实命中
+##      机会（评级阈值 / 倍率全来自 combo_rules.tres [PLACEHOLDER]，本脚本不调服务 / 不写数值）；
+##   ⑱ 两次赐福 E(interact) → ENC 既有 _grace_rest()（HP 回满 / grace_rested 广播）→
+##      HUD 生产订阅者补满瓶 / 清死亡态；若此前 HP 曾归零，则给「一次死亡与重生」自然出现机会。
+##      两次 E 互相抵消兑换面板 toggle，f=225 / f=449 既有只读回读值逐字不变。
+##   如实登记：不写 Label.text / 不调 debug_* / 不显式 apply_hit / 不构造服务状态 /
+##   不建动态可见层；死亡与重生是否在 450 帧内自然出现由真跑日志判定，未覆盖则
+##   在 DONE-R37.md 登记「链路已接线但演示未覆盖」，不冒充。
+## [PLACEHOLDER] R37_* 为演示节奏（非玩法数值，待试玩校准；调参唯一入口 = 本节常量，只改节奏不改代码）。
 
 const TOTAL_FRAMES: int = 450
 
@@ -243,6 +258,23 @@ const KEY_R_CODE: int = 82             # KEY_R（战技切换；A69 裁决，不
 #   4 个 R 帧点均落在相邻两个 Q 周期帧（f=30,60,90,...,420）之间，保证 R 先生效、
 #   紧随的 Q 释放【当前选中】战技：魔砾→狮斩→魔砾→狮斩 循环，两战技各自真实可达。
 const R36B_SWITCH_FRAMES: Array = [45, 165, 285, 405]
+
+# ---- R37 [ROUND=R37] · 演示按键密度补齐（只新增，R28/R34/R35/R36/R36B 既有常量数值逐字不动）----
+const KEY_G_CODE: int = 71             # KEY_G（元素瓶；HUD/ENC._unhandled_input → request_flask_use）
+# [PLACEHOLDER] R37 演示节奏，待试玩校准；rationale 见头部 R37 注释（调参唯一入口 = 本节常量）。
+#   G 周期 45 帧 → 450 帧内约 9 次真实 G 注入（flask_service 权威判定瓶尽 / 满血拒绝，不构造）；
+#   两次 E 落在 f=225 / f=449 既有只读回读之间，互相抵消兑换面板 toggle 且给赐福补瓶 / 重生机会；
+#   尾段 J 间隔 1 / K 间隔 2 在 R36 密度之上再提高真实命中 / 弹反窗口命中概率。
+const R37_FLASK_SCAN_FROM: int = 60
+const R37_FLASK_SCAN_TO: int = 445
+const R37_FLASK_KEY_INTERVAL: int = 45
+const R37_REST_FRAMES: Array = [246, 430]
+const R37_COMBO_BURST_FROM: int = 360
+const R37_COMBO_BURST_TO: int = 445
+const R37_COMBO_BURST_INTERVAL: int = 1
+const R37_PARRY_BURST_FROM: int = 350
+const R37_PARRY_BURST_TO: int = 445
+const R37_PARRY_BURST_INTERVAL: int = 2
 
 # R28 既有输入路由节点路径（只读引用）
 const HUD_PATH: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
@@ -833,6 +865,27 @@ func _drive_real_input(f: int) -> void:
 	if R36B_SWITCH_FRAMES.has(f):
 		_inject_key(KEY_R_CODE)
 		print("[R36B][INPUT] frame=%d 真实按键 R(KEY_R=%d) -> Input.parse_input_event(InputEventKey) → HUD._unhandled_input → request_art_switch()（切换当前战技，下一个 Q 周期释放当前选中；狮子斩暖金斩击弧机会）" % [f, KEY_R_CODE])
+	# ⑮ R37 [ROUND=R37] · 元素瓶 G 注入 —— 只追加真实 Input.parse_input_event 的 G 注入节奏。
+	#   是否扣瓶 / 回 HP / 瓶尽 / 满血拒绝全由 A54 唯一 flask_service 权威判定，不构造状态。
+	if f >= R37_FLASK_SCAN_FROM and f <= R37_FLASK_SCAN_TO \
+			and (f - R37_FLASK_SCAN_FROM) % R37_FLASK_KEY_INTERVAL == 0:
+		_inject_key(KEY_G_CODE)
+		print("[R37][INPUT] frame=%d 真实按键 G(KEY_G=%d) -> Input.parse_input_event(InputEventKey) → HUD/ENC._unhandled_input → request_flask_use() → A54 唯一 flask_service（元素瓶扣减 / HP 回复机会）" % [f, KEY_G_CODE])
+	# ⑯ R37：尾段更密 J(light_attack) 真实注入 —— 连击 D→A 递进 / S 级收束爆发机会。
+	if f >= R37_COMBO_BURST_FROM and f <= R37_COMBO_BURST_TO \
+			and (f - R37_COMBO_BURST_FROM) % R37_COMBO_BURST_INTERVAL == 0:
+		_inject_key(KEY_J)
+		print("[R37][INPUT] frame=%d 真实按键 light_attack(J) 收束密度增强 -> Input.parse_input_event(InputEventKey)（连击 D→A→S / S 级爆发机会，评级来自 combo_rules.tres）" % f)
+	# ⑰ R37：尾段更密 K(弹反) 真实注入 —— 弹反窗口 / A65 免伤更多命中机会。
+	if f >= R37_PARRY_BURST_FROM and f <= R37_PARRY_BURST_TO \
+			and (f - R37_PARRY_BURST_FROM) % R37_PARRY_BURST_INTERVAL == 0:
+		_inject_key(KEY_K_CODE)
+		print("[R37][INPUT] frame=%d 真实按键 K(KEY_K=%d) 收束密度增强 -> Input.parse_input_event(InputEventKey) → request_parry()（弹反 / 免伤机会，由生产窗口决定）" % [f, KEY_K_CODE])
+	# ⑱ R37：赐福休息 / 重生 E 注入 —— ENC 既有 _grace_rest() → grace_rested 广播 →
+	#   HUD 生产订阅者补满瓶 / 清死亡态；两次 E 互相抵消兑换面板 toggle（f=225/f=449 回读不变）。
+	if R37_REST_FRAMES.has(f):
+		_inject_key(KEY_E)
+		print("[R37][INPUT] frame=%d 真实按键 E(interact) -> Input.parse_input_event(InputEventKey) → ENC._grace_rest() → grace_rested（赐福补满瓶 / 一次死亡与重生机会）" % f)
 
 
 ## 教学闭环监测：读 tutorial_director 既有只读快照 + is_tutorial_active()；
