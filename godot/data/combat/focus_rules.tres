@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="FocusConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/focus_config.gd" id="1_fc"]
+
+[resource]
+script = ExtResource("1_fc")
+fp_max = 100.0
+fp_regen_on_rest = 40.0
+arts = Array[Dictionary]([{
+"cooldown_sec": 0.6,
+"damage": 18.0,
+"fp_cost": 12.0,
+"id": "glintstone_pebble",
+"poise_damage": 8.0,
+"title": "辉石魔砾"
+}, {
+"cooldown_sec": 1.8,
+"damage": 45.0,
+"fp_cost": 35.0,
+"id": "lion_slash",
+"poise_damage": 40.0,
+"title": "狮子斩"
+}])
+rest_refill = true
+invalid_input_policy = "reject"

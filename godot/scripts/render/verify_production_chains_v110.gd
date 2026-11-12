@@ -150,6 +150,7 @@ func _initialize() -> void:
 	_t_combo_static()
 	_t_a57_full_chain()
 	_t_r35_parry_chain()
+	_t_r36_focus_chain()             # R36：专注值 FP / 战技 Q 生产链追加组（既有断言不删不放宽）
 	_finish(false)
 
 
@@ -1002,3 +1003,107 @@ func _t_r35_parry_chain() -> void:
 	_ck("R35-6 生产常驻可见层含 R35 金色预兆真实节点 ProdParryLabel（hud.gd 自建，非 presentation.gd）",
 			pl != null and is_instance_valid(pl), "node=%s" % str(pl != null))
 	print("[V110][R35] ==== R35 精准弹反生产接线组结束 ====")
+
+
+# ===========================================================================
+# R36 [ROUND=R36] · 专注值 FP / 战技 Q 生产链追加组（既有断言逐字不删不放宽）
+#   A48①：HUD 新信号 focus_skill_performed / rejected 的生产订阅者 = ENC；
+#          ENC 新信号 parry_damage_negated（A65）的生产订阅者 = HUD；
+#          真实 FocusService.focus_spent 的生产订阅者 = wave_trial_director。
+#   A54：focus_service 唯一实例从 wave.get_focus_service() 复用，三方同一 Object。
+#   真实输入：真实 Q（Input.parse_input_event + process_key_event，与 _unhandled_input 同路径）
+#          → FP 扣减 → 生产订阅者 ENC 真实削韧 / 伤害（A48③，不加载 presentation.gd）。
+# ===========================================================================
+const KEY_Q_R36: int = 81
+
+
+func _t_r36_focus_chain() -> void:
+	print("[V110][R36] ==== R36 专注值 FP / 战技 Q 生产链接线组开始（追加，既有断言不删不放宽）====")
+	if _hud == null or _enc == null or _wave == null:
+		_ck("R36-0 关键节点可用", false, "hud/enc/wave null")
+		return
+	# ① 新信号 + FP 条真实节点
+	var sigs: Array[String] = ["focus_skill_performed", "focus_skill_rejected"]
+	var miss: Array[String] = []
+	for s: String in sigs:
+		if not _hud.has_signal(s):
+			miss.append(s)
+	_ck("R36-1 HUD 新增 focus_skill_performed / focus_skill_rejected 信号齐全",
+			miss.is_empty(), "missing=%s" % str(miss))
+	_ck("R36-1b ENC 新增 parry_damage_negated 信号（A65 免伤）存在",
+			_enc.has_signal("parry_damage_negated"), "has=%s" % str(_enc.has_signal("parry_damage_negated")))
+	var layer: Node = _courtyard.get_node_or_null(NodePath("ProductionMechanismsLayer"))
+	var fl: Label = layer.get_node_or_null(NodePath("ProdFocusLabel")) as Label if layer != null else null
+	_ck("R36-1c 生产常驻可见层含「专注值 FP」条真实节点 ProdFocusLabel（hud.gd 自建，非演示构造）",
+			fl != null and is_instance_valid(fl), "node=%s" % str(fl != null))
+	# ② A54 唯一实例：HUD / ENC / wave 三方同一真实 FocusService
+	var hf: Object = _hud.call("get_focus_service") as Object if _hud.has_method("get_focus_service") else null
+	var ef: Object = _enc.call("get_focus_service") as Object if _enc.has_method("get_focus_service") else null
+	var wf: Object = _wave.call("get_focus_service") as Object if _wave.has_method("get_focus_service") else null
+	_ck("R36-2 A54 ★ HUD / ENC / wave.get_focus_service() 三方同一真实 Object（绝不自建第二实例）",
+			hf != null and hf == ef and ef == wf and hf.has_method("spend_fp"),
+			"same=%s spend_fp=%s" % [str(hf != null and hf == ef and ef == wf),
+					str(hf != null and hf.has_method("spend_fp"))])
+	# ③ A48① 生产运行时订阅者（非验证脚本）
+	var enc_sub: bool = false
+	if _hud.has_signal("focus_skill_performed"):
+		for conn in _hud.get_signal_connection_list("focus_skill_performed"):
+			var c: Callable = conn.get("callable", Callable())
+			if c.get_object() == _enc:
+				enc_sub = true
+	_ck("R36-3 A48① ★ focus_skill_performed 有生产运行时订阅者 EncounterDirector",
+			enc_sub, "enc_subscribed=%s" % str(enc_sub))
+	var hud_sub: bool = false
+	if _enc.has_signal("parry_damage_negated"):
+		for conn2 in _enc.get_signal_connection_list("parry_damage_negated"):
+			var c2: Callable = conn2.get("callable", Callable())
+			if c2.get_object() == _hud:
+				hud_sub = true
+	_ck("R36-3b A48① ★ parry_damage_negated 有生产运行时订阅者 HUD（A65「弹反·免伤」反馈）",
+			hud_sub, "hud_subscribed=%s" % str(hud_sub))
+	var wave_sub: bool = false
+	if hf != null and hf.has_signal("focus_spent"):
+		for conn3 in hf.get_signal_connection_list("focus_spent"):
+			var c3: Callable = conn3.get("callable", Callable())
+			if c3.get_object() == _wave:
+				wave_sub = true
+	_ck("R36-3c A48① ★ 真实 FocusService.focus_spent 有生产订阅者 wave_trial_director（Rank-2 真实结算链）",
+			wave_sub, "wave_subscribed=%s" % str(wave_sub))
+	# ④ 真实 Q 输入 → FP 扣减 → 生产订阅者真实消费（A48③，不加载 presentation.gd）
+	var svc: Object = hf
+	if svc != null and svc.has_method("reset"):
+		svc.call("reset")                  # 干净基线（真实服务公开方法，不模拟编排）
+	if _hud.has_method("close_boon_draft"):
+		_hud.call("close_boon_draft")
+	_hud.set("shop_open", false)
+	if _hud.has_method("set_codex_open"):
+		_hud.call("set_codex_open", false)
+	_hud.call("poll_focus_service")
+	var fp_before: float = float(svc.call("get_snapshot").get("fp", 0.0)) if svc != null and svc.has_method("get_snapshot") else 0.0
+	var esnap0: Dictionary = _enc.call("get_focus_production_snapshot") as Dictionary if _enc.has_method("get_focus_production_snapshot") else {}
+	var events0: int = (esnap0.get("skill_events", []) as Array).size()
+	var q: InputEventKey = _key(KEY_Q_R36, true)
+	Input.parse_input_event(q)
+	_hud.call("process_key_event", q)
+	var qr: InputEventKey = _key(KEY_Q_R36, false)
+	Input.parse_input_event(qr)
+	var fp_after: float = float(svc.call("get_snapshot").get("fp", 0.0)) if svc != null and svc.has_method("get_snapshot") else 0.0
+	var esnap1: Dictionary = _enc.call("get_focus_production_snapshot") as Dictionary if _enc.has_method("get_focus_production_snapshot") else {}
+	var events1: int = (esnap1.get("skill_events", []) as Array).size()
+	_ck("R36-4 ★ A48③ 真实 Q 输入 → 生产链路：FP 扣减（%.1f → %.1f）+ ENC 生产订阅者真实消费（skill_events %d → %d）" % [fp_before, fp_after, events0, events1],
+			fp_after < fp_before and events1 > events0 \
+					and (int(esnap1.get("skill_poise_applied_count", 0)) >= 1 \
+							or int(esnap1.get("skill_damage_applied_count", 0)) >= 1),
+			"fp %.1f -> %.1f events %d -> %d poise_applied=%s dmg_applied=%s" % [
+					fp_before, fp_after, events0, events1,
+					str(esnap1.get("skill_poise_applied_count", "?")),
+					str(esnap1.get("skill_damage_applied_count", "?"))])
+	# ⑤ A38 节点 41 保持（只读核对，不改场景）
+	var text: String = FileAccess.get_file_as_string(COURTYARD_PATH)
+	var count: int = 0
+	for line: String in text.split("\n"):
+		if line.begins_with("[node "):
+			count += 1
+	_ck("R36-5 A38 courtyard.tscn 节点数 == 41（R36 运行时建层、不写场景）",
+			count == NODE_COUNT_EXPECTED, "count=%d expected=%d" % [count, NODE_COUNT_EXPECTED])
+	print("[V110][R36] ==== R36 专注值 FP / 战技 Q 生产链接线组结束 ====")

@@ -78,6 +78,19 @@ const K_UNLOCKED: String = "grace.boon_draft.unlocked"        # A59 抉择解锁
 const K_PARRY_COUNT: String = "combat.parry.success_count"    # A60 弹反成功计数（int，单调递增）
 const K_PARRY_WID: String = "combat.parry.window_id"          # A58 最近弹反窗口 id（String）
 
+## ---- R36 / v0.13.0 新增三段式 flag（契约 §3.3 R36 段登记 / 裁决 A66）----
+## A66：专注值 FP 落盘 flag，与赐福点数 grace.trial.points / spent_points 完全分离。
+##  7 个 key 均严格匹配三段式正则 ^(world|quest|combat|grace|dungeon)\.[a-z0-9_]+\.[a-z0-9_]+$。
+const K_FOCUS_CURRENT: String = "combat.focus.current"             # int 当前专注值（战技减 / 休息回满 / 上限封顶）
+const K_FOCUS_MAX: String = "combat.focus.max"                     # int 专注值上限（唯一实例 get_fp_max() 鸭子读）
+const K_FOCUS_ART_ID: String = "combat.focus.art_id"               # String 最近成功战技 id
+const K_FOCUS_SPEND_COUNT: String = "combat.focus.spend_count"     # int 成功施放累计（单调递增、只增不减）
+const K_FOCUS_RESTORE_COUNT: String = "combat.focus.restore_count" # int 赐福休息回满累计（单调递增、只增不减）
+const K_FOCUS_POLICY: String = "combat.focus.policy"               # String 最近休息策略（rest_refill / rest_regen）
+const K_FOCUS_LAST_REJECT: String = "combat.focus.last_reject"     # String 最近拒绝原因（no_config/invalid_art/...）
+## R36 / A48①：3 个 FocusService 信号的生产运行时订阅者 = 本编排层 autoload（非验证脚本）。
+const FOCUS_SIGNALS: Array[String] = ["focus_spent", "focus_restored", "focus_rejected"]
+
 ## ---- [PLACEHOLDER] cost→points 映射（A59）----
 ## rationale：Rank-2 boon_draft_service.apply() 的 cost_value 是「下一波敌人难度乘性修正」
 ##   （hp_scale / telegraph_scale，> 0 的倍率），并非赐福点数；A59 需要把它换算成点数消耗，
@@ -122,6 +135,13 @@ var _commit_count: int = 0
 var _last_reason: String = ""
 var _last_points: int = 0
 
+## ---- R36 / v0.13.0 运行时态（不落盘）：A54 唯一实例引用 / 上限缓存 / 拒绝观测 ----
+var _focus_service: Object = null       # A54：RefCounted 唯一实例，经 wave.get_focus_service() 复用，绝不 new 第二个
+var _focus_max_cache: int = 0           # 从唯一实例 get_fp_max() 鸭子读到的上限（运行时观测，不落盘依赖）
+var _focus_reject_observed: int = 0     # focus_rejected 观测计数（A48① 生产订阅者存在性证据）
+var _focus_bind_retry: int = 0
+var _focus_bound: bool = false
+
 
 func _ready() -> void:
 	_re = RegEx.new()
@@ -134,6 +154,8 @@ func _ready() -> void:
 	}
 	# autoload 早于主场景入树 → 延迟绑定（绝不在 _ready 里立即连尚未入树的 HUD）。
 	call_deferred("_deferred_bind")
+	# R36 / A66：延迟绑定 A54 唯一 FocusService（生产订阅者；无主场景时安全降级、不写盘）。
+	call_deferred("_deferred_bind_focus")
 
 
 ## 相对 root 查找 WorldState 单例（不用 /root/... 绝对路径字符串）。
@@ -242,6 +264,7 @@ func bind_hud(hud: Node) -> bool:
 
 
 func _release() -> void:
+	_release_focus()
 	if _hud != null and is_instance_valid(_hud):
 		for sig: String in BOUND_SIGNALS:
 			var cb: Callable = Callable(self, "_on_" + sig)
@@ -280,6 +303,17 @@ func get_status() -> Dictionary:
 		"pending_wave_key": _pending_wave_key,
 		"pending_parry_key": _pending_parry_key,
 		"charge_reject_count": _charge_reject_count,
+		"focus_bound": _focus_bound,
+		"focus_service": _focus_service != null,
+		"focus_max_cache": _focus_max_cache,
+		"focus_reject_observed": _focus_reject_observed,
+		"focus_current": int(_runtime_flags.get(K_FOCUS_CURRENT, 0)),
+		"focus_max": int(_runtime_flags.get(K_FOCUS_MAX, 0)),
+		"focus_art_id": String(_runtime_flags.get(K_FOCUS_ART_ID, "")),
+		"focus_spend_count": int(_runtime_flags.get(K_FOCUS_SPEND_COUNT, 0)),
+		"focus_restore_count": int(_runtime_flags.get(K_FOCUS_RESTORE_COUNT, 0)),
+		"focus_policy": String(_runtime_flags.get(K_FOCUS_POLICY, "")),
+		"focus_last_reject": String(_runtime_flags.get(K_FOCUS_LAST_REJECT, "")),
 	}
 
 
@@ -612,3 +646,214 @@ func _try_charge_boon_cost(dedup_key: String, choice_id: String,
 	_last_charge_cost_key = cost_key
 	_last_charge_cost_value = cost_value
 	return true
+
+
+# ===========================================================================
+# R36 / v0.13.0「专注值与战技 · 画面补齐」追加段（Rank-3 唯一写入）
+#   A66：专注值 FP 唯一实例（A54 经 wave.get_focus_service() 复用、绝不 new 第二个）
+#         + 落盘归属编排层、与赐福点数分离（不混用 points / spent_points）。
+#   A48①：focus_spent / focus_restored / focus_rejected 的生产运行时订阅者 =
+#          本编排层 autoload（生产节点，非验证脚本）；验证脚本只调本层
+#          bind_focus_service() 显式入口，不在此自建订阅 / 不模拟编排。
+#   订阅信号签名逐字来自 Rank-2 DONE-R36.md §3.1 / focus_service.gd：
+#     focus_spent(art_id, fp_cost, damage, poise_damage, fp_remaining)
+#     focus_restored(fp_before, fp_after, policy)
+#     focus_rejected(art_id, reason)
+#   口径：十字段冻结 / schema_version=3 / 不写 removals / commit(reason) 原子写 /
+#     ★ 先落盘再改运行时实例 / 重启读回一致；FP 与赐福点数分离（focus_writes
+#     绝不含 K_POINTS / K_SPENT）；重复释放不二次扣费（FP 新值须严格小于磁盘旧值）。
+#   安全降级：无 HUD / 无 WaveTrialDirector 的纯 --headless --quit / --import /
+#     --check-only 场景重试耗尽仅 push_warning，不写盘、不报错、不 null 解引用。
+# ===========================================================================
+
+## 延迟绑定 A54 唯一 FocusService（autoload 早于主场景入树）。
+##   重试耗尽仍无 FocusService → push_warning 降级（不订阅 / 不写盘 / 不报错）。
+func _deferred_bind_focus() -> void:
+	if _focus_bound:
+		return
+	var focus: Object = _find_focus_service()
+	if focus != null:
+		bind_focus_service(focus)
+		return
+	_focus_bind_retry += 1
+	if _focus_bind_retry <= MAX_BIND_RETRY:
+		call_deferred("_deferred_bind_focus")
+	else:
+		push_warning("[R36][PCO] A66：FocusService 未就绪（重试 %d 次）→ 绑定降级：不订阅、不写盘" % MAX_BIND_RETRY)
+
+
+## 相对 root 查找 WaveTrialDirector → 调 get_focus_service() 取 A54 唯一实例。
+##   不静态引用 class_name、不用 /root/... 绝对路径、不自建第二个 FocusService。
+func _find_focus_service() -> Object:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return null
+	var wave: Node = _scan_wave(tree.root)
+	if wave == null or not wave.has_method("get_focus_service"):
+		return null
+	return wave.call("get_focus_service") as Object
+
+
+func _scan_wave(n: Node) -> Node:
+	if n.name == "WaveTrialDirector" and n.has_method("get_focus_service"):
+		return n
+	for c: Node in n.get_children():
+		var found: Node = _scan_wave(c)
+		if found != null:
+			return found
+	return null
+
+
+## 显式绑定入口（正常游戏由 _deferred_bind_focus 调；--script 验证进程直接调以保证确定性）。
+##   connect 前 is_connected 去重，绝不重复连接；A54 唯一实例由参数传入、不 new。
+func bind_focus_service(focus: Object) -> bool:
+	if focus == null or not is_instance_valid(focus):
+		return false
+	_focus_service = focus
+	var connected: int = 0
+	for sig: String in FOCUS_SIGNALS:
+		if not focus.has_signal(sig):
+			continue
+		var method: String = "_on_" + sig
+		var cb: Callable = Callable(self, method)
+		if not focus.is_connected(sig, cb):
+			focus.connect(sig, cb)
+		connected += 1
+	_focus_max_cache = _focus_read_max(focus)
+	_focus_bound = connected == FOCUS_SIGNALS.size()
+	if _focus_bound:
+		print("[R36][PCO] A66 生产订阅者已绑定 FocusService 唯一实例 | signals=%d slot=%s（FP 落盘与赐福点数分离）" % [
+			connected, _slot_dir])
+	else:
+		push_warning("[R36][PCO] A66 FocusService 信号不全，绑定降级（connected=%d/%d）" % [
+			connected, FOCUS_SIGNALS.size()])
+	return _focus_bound
+
+
+## 从 A54 唯一实例鸭子读 FP 上限（Rank-2 接口命名差异不产生 SCRIPT ERROR）。
+func _focus_read_max(focus: Object) -> int:
+	if focus != null and is_instance_valid(focus) and focus.has_method("get_fp_max"):
+		var m: int = int(round(float(focus.call("get_fp_max"))))
+		if m > 0:
+			return m
+	if _focus_max_cache > 0:
+		return _focus_max_cache
+	return 0
+
+
+## FP 上限权威值：优先唯一实例，回落磁盘已落盘 max，再回落缓存。
+func _focus_max_value(flags: Dictionary) -> int:
+	var m: int = _focus_read_max(_focus_service)
+	if m > 0:
+		return m
+	var dm: int = int(flags.get(K_FOCUS_MAX, 0))
+	if dm > 0:
+		return dm
+	return _focus_max_cache
+
+
+## 释放 3 个信号连接（有释放路径，不留悬空 Callable）。
+func _release_focus() -> void:
+	if _focus_service != null and is_instance_valid(_focus_service):
+		for sig: String in FOCUS_SIGNALS:
+			var cb: Callable = Callable(self, "_on_" + sig)
+			if _focus_service.has_signal(sig) and _focus_service.is_connected(sig, cb):
+				_focus_service.disconnect(sig, cb)
+	_focus_service = null
+	_focus_bound = false
+
+
+## FP 专用 commit 封装：★ 显式隔离，focus_writes 绝不含 K_POINTS / K_SPENT，
+##   所有 key 必须以 "combat.focus." 开头且通过三段式正则；复用既有 _commit
+##   （十字段冻结 / schema_version=3 / 不写 removals / 原子写 / 先落盘再改实例）。
+##   awarded_points=0 / new_total=磁盘 points 原值 → points_committed 不误导。
+func _commit_focus(reason: String, focus_writes: Dictionary, delta: Dictionary) -> bool:
+	if _re == null:
+		_re = RegEx.new()
+		_re.compile(FLAG_KEY_REGEX)
+	for k: Variant in focus_writes.keys():
+		var key: String = String(k)
+		if not key.begins_with("combat.focus.") or key == K_POINTS or key == K_SPENT:
+			push_warning("[R36][PCO] A66 非法 FP flag key（越界或混用赐福点数），本次不落盘：%s" % key)
+			return false
+		if _re.search(key) == null:
+			push_warning("[R36][PCO] A66 非法三段式 FP flag key，本次不落盘：%s" % key)
+			return false
+		var val: Variant = focus_writes[k]
+		if not _is_scalar(val):
+			push_warning("[R36][PCO] A66 非标量 FP flag value，本次不落盘：%s" % key)
+			return false
+	var disk_points: int = int((delta.get("flags", {}) as Dictionary).get(K_POINTS, 0))
+	return _commit(reason, focus_writes, 0, disk_points)
+
+
+## A66 生产回调 ①：战技成功扣 FP → 落盘。
+##   ★ 重复释放不二次扣费：磁盘已有 current 时新值必须严格 < 旧值；
+##     否则（同参重放 / 冷却期误发 / 异常）拒绝、不落盘、spend_count 不增。
+##   ★ FP 只减不增除休息：合法 focus_spent 恒使 current 减少、且不超过上限。
+func _on_focus_spent(art_id: String, _fp_cost: float, _damage: float,
+		_poise_damage: float, fp_remaining: float) -> void:
+	if is_nan(fp_remaining) or is_inf(fp_remaining):
+		push_warning("[R36][PCO] A66 focus_spent fp_remaining 非有限值 → 拒绝、不落盘")
+		return
+	var new_cur: int = int(round(fp_remaining))
+	if new_cur < 0:
+		push_warning("[R36][PCO] A66 focus_spent 负 FP → 拒绝、不落盘")
+		return
+	var delta: Dictionary = _read_delta()
+	var flags: Dictionary = delta.get("flags", {}) as Dictionary
+	var maxv: int = _focus_max_value(flags)
+	if maxv > 0 and new_cur > maxv:
+		push_warning("[R36][PCO] A66 focus_spent 越过 FP 上限 → 拒绝、不落盘 | cur=%d max=%d" % [new_cur, maxv])
+		return
+	if flags.has(K_FOCUS_CURRENT) and new_cur >= int(flags.get(K_FOCUS_CURRENT, 0)):
+		_focus_reject_observed += 1
+		push_warning("[R36][PCO] A66 重复释放/重放拒绝（FP 未减少，不二次扣费）| cur=%d disk=%d" % [
+			new_cur, int(flags.get(K_FOCUS_CURRENT, 0))])
+		return
+	var spend: int = int(flags.get(K_FOCUS_SPEND_COUNT, 0)) + 1
+	var writes: Dictionary = {
+		K_FOCUS_CURRENT: new_cur,
+		K_FOCUS_MAX: maxv,
+		K_FOCUS_ART_ID: String(art_id),
+		K_FOCUS_SPEND_COUNT: spend,
+	}
+	if not _commit_focus("focus_spent_" + String(art_id), writes, delta):
+		push_warning("[R36][PCO] A66 focus_spent commit 失败 → 磁盘未改、运行时实例保持旧值")
+
+
+## A66 生产回调 ②：赐福休息回满 → 落盘（唯一允许 FP 增加的出口）。
+##   ★ FP 上限不被突破：fp_after 超过 max 时封顶到 max，绝不写 > max 的 current。
+func _on_focus_restored(_fp_before: float, fp_after: float, policy: String) -> void:
+	if is_nan(fp_after) or is_inf(fp_after):
+		push_warning("[R36][PCO] A66 focus_restored fp_after 非有限值 → 拒绝、不落盘")
+		return
+	var delta: Dictionary = _read_delta()
+	var flags: Dictionary = delta.get("flags", {}) as Dictionary
+	var maxv: int = _focus_max_value(flags)
+	var new_cur: int = int(round(fp_after))
+	if maxv > 0 and new_cur > maxv:
+		push_warning("[R36][PCO] A66 FP 上限保护：回满值 %d > max %d → 封顶（不突破上限）" % [new_cur, maxv])
+		new_cur = maxv
+	if new_cur < 0:
+		new_cur = 0
+	var restore: int = int(flags.get(K_FOCUS_RESTORE_COUNT, 0)) + 1
+	var writes: Dictionary = {
+		K_FOCUS_CURRENT: new_cur,
+		K_FOCUS_MAX: maxv,
+		K_FOCUS_RESTORE_COUNT: restore,
+		K_FOCUS_POLICY: String(policy),
+	}
+	if not _commit_focus("focus_restored_" + String(policy), writes, delta):
+		push_warning("[R36][PCO] A66 focus_restored commit 失败 → 磁盘未改、运行时实例保持旧值")
+
+
+## A66 生产回调 ③：施放被拒 → 运行时观测 + 落盘最近拒绝原因（不扣 FP）。
+##   只写 combat.focus.last_reject（String），绝不动 combat.focus.current /
+##   spend_count / points / spent_points；重复释放不二次扣费。
+func _on_focus_rejected(_art_id: String, reason: String) -> void:
+	_focus_reject_observed += 1
+	var delta: Dictionary = _read_delta()
+	var writes: Dictionary = {K_FOCUS_LAST_REJECT: String(reason)}
+	if not _commit_focus("focus_rejected_" + String(reason), writes, delta):
+		push_warning("[R36][PCO] A66 focus_rejected commit 失败 → 磁盘未改")

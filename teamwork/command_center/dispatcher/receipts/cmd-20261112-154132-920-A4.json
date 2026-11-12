@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-154132-920-A4",
+  "ai": 4,
+  "status": "done",
+  "result": "R36/v0.13.0 完成，实际结论见 teamwork/Rank-4/DONE-R36.md。① hd2d_fx.gd 落地 A67 光环可见性增强层（暗衬/加粗/提亮/静止读秒刻度/余辉延长衰减[PLACEHOLDER]+rationale/形态+时间+空间三重避让R32 impact_fx循环帧），既有PARRY_*与R35B [PLACEHOLDER]数值语义逐字不动、零新增色号；② 按A54经get_focus_service()复用唯一FocusService订阅focus_spent/focus_rejected/focus_restored/focus_cooldown_ready四信号（A48①生产运行时订阅者），程序化_draw()画Q释放冷蓝弹道/暖金斩击弧两战技可区分+拒绝/回满/就绪反馈，保留降级开关与移动端轻量绘制(A63)、单帧≤16色/项目级≥256色不变；③ capture/v130_final.mp4 15秒定稿录屏：磁盘450帧连续0..449/ffprobe 450帧15.000000s/1,491,435字节/Movie Maker未加--headless(A47)/录屏前--headless --import/录屏SCRIPT ERROR=0；④ A67改前/改后关键帧像素对比证据：背景角落逐像素Δ=0确定性校验，f21弹反开窗环带暖金高亮像素2947→6528(+121%)、局部亮度对比std 42.1→49.7(+18%)、峰值212→228，三连对比图r36_a67_tri_f024目视改后金色粗环+暗衬+白色刻度明确可辨识（改前极淡）；⑤ 三段门禁+全工程G3 grep SCRIPT ERROR=0/PARSE_ERROR=0全绿，A38节点41/uv2/1/1/节点名不变。A41目视按总指挥R35纠正口径：弹反HUD文字层清晰、HUD无重叠(含新增FP条)、D→C及D→B连击可见、地面规整错缝石板、暖金收束未过曝、面板不遮挡角色、A59扣费出口生效。如实：HD-2D全绿未达(仍CanvasItem._draw() 2D近似)、D→A/S级爆发本录屏未覆盖、战技Q默认只释放glintstone_pebble冷蓝(暖金lion_slash弧代码已实现但录屏未触发)、R35B半透明浅色大矩形本体仍在(Rank-1只读impact_feedback.gd非本轮授权)。最终画面验收由总指挥在定稿录屏关键帧目视确认(A67)，代码断言不算画面验收。"
+}

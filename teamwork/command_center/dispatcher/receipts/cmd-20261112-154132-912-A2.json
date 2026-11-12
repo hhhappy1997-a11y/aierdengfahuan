@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-154132-912-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "R36/v0.13.0 交付完成，实际结论见 teamwork/Rank-2/DONE-R36.md：三段门禁最终统一 SCRIPT ERROR=0（GATE-1/2a/2b/3 全 EXIT=0），两份自测 RESULT=ALL_MATCH（92+85=177 PASS / 0 FAIL）；9 份既有 .tres md5 前后一致零改动、只新增 focus_rules.tres（289fd4f0…）；courtyard.tscn node_count=41 保持；A48① 4 信号生产订阅者 / A54 唯一实例 / A57 结算不二次入账落地；供 Rank-1 与 Rank-4 使用的公开方法 + 信号完整签名见 DONE-R36.md §3，验收三态 / 未完成项 / 待裁决项见 §5 / §6 / §7。如实登记：首次 GATE-1/GATE-3 因 Rank-1 并行写入 encounter_director.gd:232 中间态各出现 1 条 Parse Error（非 Rank-2 文件引入），复跑 + 最终统一门禁 SCRIPT ERROR=0。"
+}

@@ -42,6 +42,8 @@ const COMBO_RULES_PATH: String = "res://data/rpg/combo_rules.tres"     # 新增�
 const BOON_DRAFT_PATH: String = "res://data/rpg/boon_draft.tres"       # 既有表（R32），只读
 # ---- R35 / v0.12.0 最小接线 · 精准弹反 Parry（Rank-2 唯一写入）----
 const PARRY_RULES_PATH: String = "res://data/combat/parry_rules.tres"   # 新增表（R35），只读
+# ---- R36 / v0.13.0 最小接线 · 专注值 FP 与战技（Rank-2 唯一写入）----
+const FOCUS_RULES_PATH: String = "res://data/combat/focus_rules.tres"   # 新增表（R36），只读
 const REQUIRED_WAVE_FIELDS: PackedStringArray = [
 	"telegraph_sec", "time_limit_sec", "reward_points"
 ]
@@ -149,6 +151,19 @@ var _parry_last_poise_applied: float = 0.0  # 实际作用于既有 StaggerServi
 var _parry_last_combo_keep: bool = false
 var _parry_last_close_reason: String = ""
 
+# ---- R36 / v0.13.0 最小接线 · 专注值 FP 与战技（Rank-2 唯一写入）----
+# A54 唯一实例：FocusService 由本导演装配，Rank-1 / Rank-4 经 get_focus_service() 复用。
+var _focus: FocusService = null
+var _focus_points_acc: int = 0           # 本波战技 damage 累积（并入清波点数结算基数）
+var _focus_poise_acc: float = 0.0        # 本波战技 poise_damage 累积（并入既有削韧结算记录）
+var _focus_poise_applied: float = 0.0    # 实际作用于既有 StaggerService.apply_hit 的量
+var _focus_spend_count: int = 0          # 本局战技成功累计（只读统计 / A48① 生产订阅者实证）
+var _focus_reject_count: int = 0         # 本局战技拒绝累计（只读统计）
+var _focus_restore_count: int = 0        # 本局赐福休息回满累计（只读统计）
+var _focus_cooldown_ready_count: int = 0 # 本局冷却就绪信号累计（A48① 生产订阅者实证）
+var _focus_last_art_id: String = ""
+var _focus_last_reject_reason: String = ""
+
 
 func _ready() -> void:
 	_label = get_node_or_null(hud_label_path) as Label
@@ -185,6 +200,9 @@ func _process(delta: float) -> void:
 	# R35：精准弹反窗口 / 冷却由导演层每帧确定性推进（纯逻辑不读真实时钟）。
 	if _parry != null:
 		_parry.tick(delta)
+	# R36：专注值冷却由导演层每帧确定性推进（纯逻辑不读真实时钟）。
+	if _focus != null:
+		_focus.tick(delta)
 	_advance(delta)
 
 
@@ -535,6 +553,8 @@ func _enter_telegraph() -> void:
 	_consume_pending_boon()
 	# R35 最小接线（波次开始）：精准弹反从本波干净重算、按 Boss 出招节奏开窗（生产链路）。
 	_open_parry_window_for_wave()
+	# R36 最小接线（波次开始）：只清本波战技累计，不回满 FP（专注值跨波保留，仅赐福休息回满）。
+	_clear_focus_wave_records()
 	_refresh_hud()
 
 
@@ -619,6 +639,10 @@ func _clear_wave() -> void:
 	#      沿用 A57：base_for_combo 经 combo.settle() 得到唯一最终结算值，HUD 经
 	#      get_last_settlement() 取该值发 points_awarded 一次入账，绝不二次入账。
 	base_for_combo = maxi(0, base_for_combo + _parry_points_acc)
+	# ---- R36 最小接线 ③：本波战技 damage 累积并入清波点数结算基数 ----
+	#      沿用 A57：base_for_combo 经 combo.settle() 得到唯一最终结算值，
+	#      HUD 经 get_last_settlement() 取该值发 points_awarded 一次入账，绝不二次入账。
+	base_for_combo = maxi(0, base_for_combo + _focus_points_acc)
 	# ---- R35：最后一波（Boss 波）死亡 → ParryService 不再开窗 ----
 	if _index + 1 >= _total and _parry != null:
 		_parry.on_boss_defeated()
@@ -667,6 +691,9 @@ func _fail_wave(reason: String) -> void:
 
 
 func _request_grace_rest() -> void:
+	# R36 最小接线：赐福休息回满专注值（生产链路，非验证脚本模拟）。
+	if _focus != null:
+		_focus.on_grace_rest()
 	if _encounter == null:
 		push_warning("[WaveTrial] EncounterDirector 不可用：赐福休息仅登记、未实际复位（降级，不崩）")
 		return
@@ -791,6 +818,14 @@ func _init_combat_services() -> void:
 		_bind_parry_signals()
 	else:
 		push_warning("[WaveTrial] ParryService 规则表不可用：精准弹反降级为不开窗（不崩）")
+	# ---- R36 / v0.13.0：装配 FocusService 唯一实例 + 生产运行时订阅者 ----
+	var focus_cfg: FocusConfig = ResourceLoader.load(
+			FOCUS_RULES_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as FocusConfig
+	if focus_cfg != null:
+		_focus = FocusService.new(focus_cfg)
+		_bind_focus_signals()
+	else:
+		push_warning("[WaveTrial] FocusService 规则表不可用：专注值/战技降级为不可施放（不崩）")
 	if _combo != null:
 		_combo.reset()
 
@@ -817,6 +852,18 @@ func _reset_r34_records() -> void:
 	_parry_last_poise_applied = 0.0
 	_parry_last_combo_keep = false
 	_parry_last_close_reason = ""
+	# ---- R36：新一局清空专注值/战技记录，并把 FP 回满（新局初始态）----
+	_focus_points_acc = 0
+	_focus_poise_acc = 0.0
+	_focus_poise_applied = 0.0
+	_focus_spend_count = 0
+	_focus_reject_count = 0
+	_focus_restore_count = 0
+	_focus_cooldown_ready_count = 0
+	_focus_last_art_id = ""
+	_focus_last_reject_reason = ""
+	if _focus != null:
+		_focus.reset()
 	if _boon != null:
 		_boon.reset()
 
@@ -944,6 +991,96 @@ func on_boss_move_landed() -> Dictionary:
 	return _parry.on_boss_move_landed()
 
 
+# ===========================================================================
+# R36 / v0.13.0 最小接线 · 专注值 FP 与战技（Rank-2 唯一写入）
+#   - A48①：本导演（挂 courtyard.tscn 的生产节点）在装配时 connect 全部 4 信号，
+#     生产运行时订阅者真实存在，绝不在验证脚本里才订阅；
+#   - A54：唯一实例 _focus 由本导演装配，经 get_focus_service() 供 Rank-1 / Rank-4 复用；
+#   - 不改既有判定分支 / 帧数据 / 输出格式 / 既有 .tres 数值；
+#   - 战技 damage 并入既有清波点数结算基数、poise_damage 并入既有削韧结算，
+#     沿用 A57 经 points_awarded 发最终值、不二次入账；Rank-2 不写存档、不碰渲染。
+# ===========================================================================
+
+## 取本导演装配的 FocusService 唯一实例（供 Rank-1 接线 / Rank-4 视觉反馈 / A54 复用）。
+func get_focus_service() -> FocusService:
+	return _focus
+
+
+## A48① 生产订阅者：4 个公开信号在装配时即 connect 到本导演（非验证脚本）。
+func _bind_focus_signals() -> void:
+	if _focus == null:
+		return
+	var pairs: Array = [
+		["focus_spent", "_on_focus_spent"],
+		["focus_rejected", "_on_focus_rejected"],
+		["focus_restored", "_on_focus_restored"],
+		["focus_cooldown_ready", "_on_focus_cooldown_ready"],
+	]
+	for p: Array in pairs:
+		var sig: String = str(p[0])
+		var method: String = str(p[1])
+		if not _focus.has_signal(sig):
+			continue
+		var cb: Callable = Callable(self, method)
+		if not _focus.is_connected(sig, cb):
+			_focus.connect(sig, cb)
+	print("[R36][WaveTrial] 专注值/战技生产订阅者已装配：FocusService 唯一实例 + 4 信号 connect（A48①/A54）")
+
+
+## 战技成功：damage 累计到清波结算基数、poise_damage 并入既有削韧。
+## 既有 StaggerService 经 encounter_director.get_stagger_service() 取同一实例（A54 口径延展），
+## 调既有 apply_hit()，不改其判定分支；依赖缺失（--script / 无 EncounterDirector）只记录、不崩。
+func _on_focus_spent(art_id: String, _fp_cost: float, damage: float,
+		poise_damage: float, _fp_remaining: float) -> void:
+	_focus_spend_count += 1
+	_focus_last_art_id = art_id
+	_focus_points_acc = maxi(0, _focus_points_acc + int(damage))
+	var pd: float = maxf(0.0, poise_damage)
+	_focus_poise_acc += pd
+	var ss: Object = null
+	if _encounter != null and is_instance_valid(_encounter) \
+			and _encounter.has_method("get_stagger_service"):
+		ss = _encounter.call("get_stagger_service") as Object
+	if ss != null and is_instance_valid(ss) and ss.has_method("apply_hit"):
+		var hit: Dictionary = ss.call("apply_hit", pd) as Dictionary
+		if bool(hit.get("ok", false)):
+			_focus_poise_applied += pd
+
+
+func _on_focus_rejected(_art_id: String, reason: String) -> void:
+	_focus_reject_count += 1
+	_focus_last_reject_reason = reason
+
+
+func _on_focus_restored(_fp_before: float, _fp_after: float, _policy: String) -> void:
+	_focus_restore_count += 1
+
+
+func _on_focus_cooldown_ready(_art_id: String) -> void:
+	_focus_cooldown_ready_count += 1
+
+
+## 波次开始：只清「本波累计」，不回满 FP（专注值跨波保留，仅赐福休息回满 / 新局 reset 回满）。
+func _clear_focus_wave_records() -> void:
+	_focus_points_acc = 0
+	_focus_poise_acc = 0.0
+	_focus_poise_applied = 0.0
+	_focus_last_reject_reason = ""
+
+
+## ---- R36 真实输入驱动口（供 Rank-1 输入层 / 验证调用；转调 A54 唯一实例）----
+func spend_focus(art_id: Variant) -> Dictionary:
+	if _focus == null:
+		return {"ok": false, "reason": "no_focus_service"}
+	return _focus.spend_fp(art_id)
+
+
+func focus_grace_rest() -> Dictionary:
+	if _focus == null:
+		return {"ok": false, "reason": "no_focus_service"}
+	return _focus.on_grace_rest()
+
+
 ## 抉择三选一注入口（未来 UI / 验证脚本调用）；本导演不替玩家选择、不含数值。
 func select_boon(index: Variant) -> Dictionary:
 	if _boon == null:
@@ -967,6 +1104,12 @@ func get_settlement_snapshot() -> Dictionary:
 		"parry_poise_applied": _parry_last_poise_applied,
 		"parry_success_count": _parry_success_count,
 		"parry_combo_keep": _parry_last_combo_keep,
+		# ---- R36 新增只读 key（既有 key 逐字不动）----
+		"focus_points_bonus": _focus_points_acc,
+		"focus_poise_bonus": _focus_poise_acc,
+		"focus_poise_applied": _focus_poise_applied,
+		"focus_spend_count": _focus_spend_count,
+		"focus_last_art_id": _focus_last_art_id,
 	}
 
 
@@ -1019,4 +1162,16 @@ func get_snapshot() -> Dictionary:
 		"parry_poise_applied": _parry_last_poise_applied,
 		"parry_last_combo_keep": _parry_last_combo_keep,
 		"parry_last_close_reason": _parry_last_close_reason,
+		# ---- R36 新增只读 key（既有 27 + R34 8 + R35 8 个 key 逐字不动，回归不回退）----
+		"focus_fp": _focus.get_fp() if _focus != null else 0.0,
+		"focus_fp_max": _focus.get_fp_max() if _focus != null else 0.0,
+		"focus_points_acc": _focus_points_acc,
+		"focus_poise_acc": _focus_poise_acc,
+		"focus_poise_applied": _focus_poise_applied,
+		"focus_spend_count": _focus_spend_count,
+		"focus_reject_count": _focus_reject_count,
+		"focus_restore_count": _focus_restore_count,
+		"focus_cooldown_ready_count": _focus_cooldown_ready_count,
+		"focus_last_art_id": _focus_last_art_id,
+		"focus_last_reject_reason": _focus_last_reject_reason,
 	}

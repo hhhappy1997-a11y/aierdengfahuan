@@ -96,6 +96,31 @@ extends Node2D
 ##      · HUD 文字提示框（hud.gd 的 ProdParryLabel / 抉择卡片等，Rank-1 独占只读）
 ##        逐字不动：已被总指挥确认可读、位置合适。
 ##      · 完整 [PLACEHOLDER] 数值表 / rationale 见下方「R35B 弹反视觉收敛」块。
+##
+## R36 / v0.13.0 追加（派单 cmd-20261112-154132-920-A4 · Rank-4）：
+##   ⑪ A67 光环可辨识度：R35C 后 HUD 文字层清晰，但金色预兆环 / 成功闪光在
+##      1280×720 实机仍不易辨识（开窗 ~10 帧 / alpha 0.40 / 与 R32 暖金同心环
+##      循环帧、角色、面板叠加）。本轮【既有 PARRY_* / R35B [PLACEHOLDER] 常量
+##      数值与语义逐字不动】，新增一层 A67 可见性增强绘制（独立 [PLACEHOLDER]
+##      常量表 + rationale，调参唯一入口）：
+##        · 暗色衬底环（冷夜雾）垫在金环下 → 局部亮度对比；
+##        · 加粗金环线宽 + 提高环 alpha + 外发光细环 + 加粗读秒刻度 → 对比度；
+##        · 成功闪光加「峰值保持 + 余辉衰减」（衰减指数 [PLACEHOLDER] + rationale）
+##          → 延长可见帧数（~11 帧 → ~29 帧）；
+##        · 形态差异化（暗衬粗环 + 刻度 / 冷蓝内芯）+ 时间避让：弹反 / 战技
+##          反馈激活帧把 R32 impact_fx 循环帧降权 → 避免被误认为 R31 打击反馈。
+##   ⑫ 战技视觉反馈：订阅 Rank-2 FocusService 4 个公开信号（A54 唯一实例，
+##      经 wave_trial_director.get_focus_service() 复用、不自建、不读私有实现），
+##      程序化 _draw() 画 Q 释放的冷蓝（辉石魔砾 glintstone_pebble · 直线弹道）/
+##      暖金（狮子斩 lion_slash · 大斩击弧）两战技可区分、短促不过曝；被拒绝 /
+##      赐福回满 / 冷却就绪各有短促轻量反馈。锚点全部落在 R32 impact_fx 屏幕区
+##      (x400-592/y300-492) 之外 → 空间避让。保留降级层开关 focus_fx_enabled、
+##      移动端轻量绘制（A63）、单帧 ≤16 色受控 / 项目级 ≥256 色色库不变、
+##      零新增色号（全部复用既有 PALETTE_HEX / _draw 已用 hex）。
+##      【A48①】本层（挂 courtyard.tscn 的 FXBloom 生产节点）即生产运行时订阅者；
+##      真实输入 Q → HUD.request_focus_skill → focus_service.spend_fp →
+##      focus_spent → 本层绘制到画面，非验证脚本、非演示驱动。
+##      完整 [PLACEHOLDER] 数值表 / rationale 见下方「R36 / A67」块。
 
 # ---------------------------------------------------------------------------
 # 冻结口径常量（引用 hd2d_placeholder.gd / HD2D-FX-PLAN.md §3 / ART-SPEC-FINAL.md §2.2）
@@ -437,6 +462,125 @@ var _parry_last_close_reason: String = ""
 var _parry_last_success: Dictionary = {}
 
 
+# ---------------------------------------------------------------------------
+# R36 / v0.13.0 · ⑪ A67 光环可见性增强层（对比度 / 线宽 / 局部亮度 / 延长帧 / 避让）
+# ---------------------------------------------------------------------------
+# 【设计前提 · 不改 [PLACEHOLDER] 数值语义】既有 PARRY_* / R35B [PLACEHOLDER]
+#   常量的数值与语义逐字不动；本节全部是【新增叠加层】的独立 [PLACEHOLDER]
+#   常量（调参唯一入口 = 本节常量表，只改表不改算法）。增强层只在 FXBloom
+#   分派节点 _draw() 最上层叠加，未绑定 ParryService 时静默降级；mobile 档走
+#   轻量绘制；零新增色号（全部复用既有 PALETTE_HEX / _draw 已用 hex）。
+#
+# ---- A67 ① 金色预兆环：对比度 / 线宽 / 局部亮度对比 ----
+# [PLACEHOLDER] A67_RING_UNDERLAY_W=6.0 / A67_RING_UNDERLAY_ALPHA=0.72 ·
+#   rationale：在金环正下方垫一圈冷夜雾 #16233F 暗环（宽约为金环 3x），把暖金
+#   环从亮石板 / 角色底上「托」出来 —— 这是「局部亮度对比」主来源（改前金环
+#   直接叠亮地面，环带与紧邻背景亮度差仅 ~4，见 DONE-R36 A67 证据）。暗色属
+#   既有冷夜雾色号、零新增色号、非纯白、不过曝。
+const A67_RING_UNDERLAY_W: float = 6.0
+const A67_RING_UNDERLAY_ALPHA: float = 0.72
+# [PLACEHOLDER] A67_RING_W=4.0 / A67_RING_ALPHA=0.95 ·
+#   rationale：改前 PARRY_RING_WIDTH=2.0 / ALPHA=0.40 在 2x 后仅 4px 且偏淡；
+#   叠加层加粗到 4.0（2x=8px）、峰值 alpha 提到 0.95（仍非纯白、不叠乘 FXBloom
+#   的 #FFF0C2 a=.85 核心，防过曝 A41），让 1280×720 实机可辨识。
+const A67_RING_W: float = 4.0
+const A67_RING_ALPHA: float = 0.95
+# [PLACEHOLDER] A67_RING_HALO_W=1.5 / A67_RING_HALO_ALPHA=0.55 /
+#   A67_RING_COLD_INNER_W=2.0 / A67_RING_COLD_INNER_ALPHA=0.60 ·
+#   rationale：金环外一圈 #FFF0C2 细亮环作外发光轮廓、内一圈冷蓝 #BFD0EA 内芯，
+#   进一步拉大与背景亮度差并强化「暖金 × 冷蓝」色彩对比；与 R32 impact_fx 的
+#   「单暖金同心环 + 十字准星」形成形态差异，避免误认。
+const A67_RING_HALO_W: float = 1.5
+const A67_RING_HALO_ALPHA: float = 0.55
+const A67_RING_COLD_INNER_W: float = 2.0
+const A67_RING_COLD_INNER_ALPHA: float = 0.60
+# [PLACEHOLDER] A67_RING_TICK_W=3.0 / A67_RING_TICK_LEN=9.0 ·
+#   rationale：12 格读秒刻度由改前 1px 细弧加粗到 3px、加长径向 9px 短刻线，
+#   形成「静止读秒环」轮廓；R32 impact_fx 是 12fps 循环帧，静止刻度环不与之混淆。
+const A67_RING_TICK_W: float = 3.0
+const A67_RING_TICK_LEN: float = 9.0
+#
+# ---- A67 ② 成功闪光延长可见帧数（衰减 [PLACEHOLDER] + rationale）----
+# [PLACEHOLDER] A67_FLASH_AFTERGLOW_SEC=0.60 / A67_FLASH_DECAY=2.2 /
+#   A67_FLASH_AFTERGLOW_ALPHA=0.62 / A67_FLASH_RING_W=4.0 ·
+#   rationale：改前 PARRY_FLASH_SEC=0.36（~11 帧 @30fps）收束过快，实机一闪即逝。
+#   主闪光 0.36s 逐字保留并叠加加粗/高对比环；主闪光结束后再接一段 0.60s 的
+#   「余辉衰减」环（~18 帧），总可辨识帧数 ~11 → ~29。余辉 alpha 按
+#   pow(1-p, A67_FLASH_DECAY) 衰减（指数 2.2 = 前段保持可辨、后段快速收干净，
+#   避免拖尾糊画面 / 过曝）；衰减段只用低 alpha 暖金 #FFD27A / 冷蓝 #BFD0EA
+#   细环、无纯白核心、不叠乘 bloom。
+const A67_FLASH_AFTERGLOW_SEC: float = 0.60
+const A67_FLASH_DECAY: float = 2.2
+const A67_FLASH_AFTERGLOW_ALPHA: float = 0.62
+const A67_FLASH_RING_W: float = 4.0
+#
+# ---- A67 ③ 避让既有 R32 impact_fx 循环帧以免误认 ----
+# [PLACEHOLDER] A67_IMPACT_DODGE_ALPHA=0.18 ·
+#   rationale：R32 impact_fx 是 12fps 循环的透明底暖金同心环 + 十字准星，与弹反
+#   金色环 / 成功闪光同色同形，同时出现会被误认为「打击反馈」。当弹反开窗 /
+#   闪光 / 余辉 / 战技反馈任一激活时，把该循环帧 alpha 从 0.32 乘此系数降到
+#   ~0.06（时间避让），画面里此时只保留 A67 静止读秒环 / 斩击弧；再叠加前述
+#   形态差异化 + 战技锚点落在 R32 屏幕区外（空间避让），三者共同避免误认。
+#   impact_fx_enabled 开关与既有加载 / 循环逻辑逐字不改，仅绘制时按激活态降权。
+const A67_IMPACT_DODGE_ALPHA: float = 0.18
+
+# A67 运行期状态（仅 FXBloom 分派节点绘制；_a67_flash_afterglow_left 是新增余辉计时）
+var _a67_flash_afterglow_left: float = 0.0
+
+
+# ---------------------------------------------------------------------------
+# R36 / v0.13.0 · ⑫ 战技视觉反馈层（订阅 FocusService 4 信号 · A54 唯一实例）
+# ---------------------------------------------------------------------------
+# 【A54】经 wave_trial_director.gd 公开 get_focus_service() 复用唯一 FocusService，
+#   与 R34 连击层 / R35 弹反层同款 _find_node_with_method 遍历 + deferred 自愈；
+#   绝不 new() 第二个、不读私有实现、不依赖 /root 绝对路径 / group。4 信号任一
+#   缺失（Rank-2 并发半成品）→ 不绑定、静默降级（既有四项 / impact_fx /
+#   连击层 / 弹反层 / A67 增强层照常），不产生 ERROR。
+# 【A48①】本 FXBloom 节点（挂 courtyard.tscn 的生产节点）即生产运行时订阅者：
+#   真实 Q 输入 → HUD.request_focus_skill → spend_fp → focus_spent → 本层绘制。
+# 【色数】零新增色号：冷蓝 #BFD0EA / #4A6089 / #7E96BF / #2B3A5C、暖金
+#   #FFD27A / #F0A94C / #FFF0C2，均为既有 PALETTE_HEX / _draw 已用 hex；
+#   单帧 ≤16 色受控 + 项目级 ≥256 色两层口径（A15）不变。
+# 【移动端 A63】mobile 四项全关档位画轻量战技弧（单条 2px 弧 / 弹道），与
+#   _draw_parry_lightweight 同款路径；desktop 四项全开画完整双层弧 + 弹头。
+# 【降级开关】focus_fx_enabled=false → 整层零绘制（既有层照常）。
+# 【空间避让 R32 impact_fx】全部锚点位于逻辑 x300-420 / y140-250（屏幕
+#   x600-840 / y280-500），在 R32 impact_fx 屏幕区 x400-592 / y300-492 之外，
+#   且 y>110 逻辑不进 HUD 矩形（仅 x<365 AND y<110 才避让）。
+#
+# [PLACEHOLDER] 战技演出时长 FOCUS_FX_SEC=0.42（秒）· rationale：短促斩击 /
+#   弹道，~13 帧 @30fps，不与 R35 弹反闪光(0.36s)、R34 S 爆发(0.45s) 叠乘过曝；
+#   两战技共用此时长、以形态（冷蓝直线弹道 vs 暖金大弧）+ 色相区分、短促不过曝。
+const FOCUS_FX_SEC: float = 0.42
+const FOCUS_FX_ALPHA: float = 0.90
+const FOCUS_FX_ARC_W: float = 4.0
+const FOCUS_FX_BOLT_W: float = 3.0
+# [PLACEHOLDER] 失败 / 回满 / 就绪反馈时长 FOCUS_MINOR_SEC=0.24 ·
+#   rationale：比主战技演出更短，仅一次轻提示，避免与弹反 / 连击层抢画面。
+const FOCUS_MINOR_SEC: float = 0.24
+const FOCUS_MINOR_ALPHA: float = 0.55
+const FOCUS_BIND_MAX_ATTEMPTS: int = 90
+# 冷蓝弹道（辉石魔砾 glintstone_pebble）：玩家右手 → Boss 躯干（逻辑坐标，2x → 屏幕）
+const FOCUS_BOLT_FROM: Vector2 = Vector2(338.0, 232.0)
+const FOCUS_BOLT_TO: Vector2 = Vector2(386.0, 172.0)
+# 暖金斩击弧（狮子斩 lion_slash）：围绕玩家 / Boss 之间的一道大弧
+const FOCUS_ARC_CENTER: Vector2 = Vector2(360.0, 206.0)
+const FOCUS_ARC_R: float = 52.0
+const FOCUS_ARC_FROM_DEG: float = -150.0
+const FOCUS_ARC_TO_DEG: float = -20.0
+@export var focus_fx_enabled: bool = true
+
+# 战技反馈层运行期状态（仅 FXBloom 分派节点订阅 / 绘制；_focus_service 是只读引用）
+var _focus_service: Object = null
+var _focus_bind_attempts: int = 0
+var _focus_fx_left: float = 0.0
+var _focus_fx_art: String = ""
+var _focus_reject_left: float = 0.0
+var _focus_reject_reason: String = ""
+var _focus_restore_left: float = 0.0
+var _focus_ready_left: float = 0.0
+
+
 ## R34 · 绑定唯一 ComboService（A54 复用 get_combo_service，绝不自建第二个实例）。
 ## 仅 FXBloom 节点在 _ready() 里 call_deferred 触发；装配时序未就绪时由 _process 自愈重试。
 func _try_bind_combo() -> void:
@@ -638,6 +782,7 @@ func _on_parry_window_opened(window_sec: float) -> void:
 	_parry_window_open = true
 	_parry_flash_left = 0.0
 	_parry_fail_left = 0.0
+	_a67_flash_afterglow_left = 0.0   # R36 / A67：开窗时清余辉，避免残留
 
 
 func _on_parry_succeeded(poise_bonus: float, points_bonus: int, combo_keep: bool) -> void:
@@ -646,6 +791,7 @@ func _on_parry_succeeded(poise_bonus: float, points_bonus: int, combo_keep: bool
 	_parry_window_left = 0.0
 	_parry_flash_left = PARRY_FLASH_SEC
 	_parry_fail_left = 0.0
+	_a67_flash_afterglow_left = A67_FLASH_AFTERGLOW_SEC   # R36 / A67：主闪结束后接余辉（延长可见帧数）
 	_parry_last_success = {"poise": poise_bonus, "points": points_bonus, "combo_keep": combo_keep}
 
 
@@ -655,6 +801,7 @@ func _on_parry_failed(reason: String, fail_penalty: int) -> void:
 	_parry_window_left = 0.0
 	_parry_flash_left = 0.0
 	_parry_fail_left = PARRY_FAIL_SEC
+	_a67_flash_afterglow_left = 0.0   # R36 / A67：失败不接余辉
 	_parry_last_close_reason = reason
 
 
@@ -674,6 +821,9 @@ func _update_parry_timers(delta: float) -> void:
 		_parry_flash_left = maxf(0.0, _parry_flash_left - delta)
 	if _parry_fail_left > 0.0:
 		_parry_fail_left = maxf(0.0, _parry_fail_left - delta)
+	# R36 / A67：主闪光结束后才推进余辉（不与主闪叠乘过曝，总可辨识帧数 ~11 → ~29）
+	if _parry_flash_left <= 0.0 and _a67_flash_afterglow_left > 0.0:
+		_a67_flash_afterglow_left = maxf(0.0, _a67_flash_afterglow_left - delta)
 
 
 ## R35 / R35B · 精准弹反视觉反馈绘制（仅由 _draw() 的 FXBloom 分派调用，最上层）。
@@ -764,6 +914,191 @@ func _draw_parry_lightweight(_t: float) -> void:
 				_c("#16233F", 0.24 * frac), 1.0)
 
 
+## R36 · 绑定唯一 FocusService（A54 复用 get_focus_service，绝不自建第二个实例）。
+## 仅 FXBloom 节点在 _ready() 里 call_deferred 触发；装配时序未就绪由 _process 自愈重试。
+## 4 信号任一缺失（Rank-2 并发半成品）→ 不绑定、静默降级，既有层照常、不产生 ERROR。
+func _try_bind_focus() -> void:
+	if _focus_service != null:
+		return
+	if _focus_bind_attempts >= FOCUS_BIND_MAX_ATTEMPTS:
+		return
+	_focus_bind_attempts += 1
+	var tree := get_tree()
+	if tree == null:
+		return
+	var director := _find_node_with_method(tree.root, "get_focus_service")
+	if director == null:
+		return
+	var svc: Object = director.call("get_focus_service")
+	if svc == null:
+		return
+	var sigs := ["focus_spent", "focus_rejected", "focus_restored", "focus_cooldown_ready"]
+	var cbs := ["_on_focus_spent", "_on_focus_rejected", "_on_focus_restored", "_on_focus_cooldown_ready"]
+	for s in sigs:
+		if not svc.has_signal(s):
+			return
+	_focus_service = svc
+	for i in range(sigs.size()):
+		if not svc.is_connected(sigs[i], Callable(self, cbs[i])):
+			svc.connect(sigs[i], Callable(self, cbs[i]))
+	# HUD 与 WaveTrialDirector 的 get_focus_service() 均转调 wave_trial_director 装配的
+	# 唯一 FocusService（见 hud.gd _r36_bootstrap / wave_trial_director.gd:1005），
+	# 故 _find_node_with_method 命中任一 getter 拿到的都是同一唯一实例，A54 成立。
+	print("[R36][FocusFX] 绑定唯一 FocusService 成功 fx_node=%s getter_owner=%s signals=%d（A54 复用 get_focus_service，不自建）" % [
+			str(name), str(director.name), sigs.size()])
+
+
+# ---- R36 · 4 个公开信号回调（签名真源：teamwork/Rank-2/DONE-R36.md §3.1）----
+func _on_focus_spent(art_id: String, _fp_cost: float, _damage: float,
+		_poise_damage: float, _fp_remaining: float) -> void:
+	_focus_fx_art = art_id
+	_focus_fx_left = FOCUS_FX_SEC
+
+
+func _on_focus_rejected(_art_id: String, reason: String) -> void:
+	_focus_reject_reason = reason
+	_focus_reject_left = FOCUS_MINOR_SEC
+
+
+func _on_focus_restored(_fp_before: float, _fp_after: float, _policy: String) -> void:
+	_focus_restore_left = FOCUS_MINOR_SEC
+
+
+func _on_focus_cooldown_ready(_art_id: String) -> void:
+	_focus_ready_left = FOCUS_MINOR_SEC
+
+
+## R36 · 战技 / 次级反馈计时器推进（desktop 四项全开 + mobile 轻量，均只在 FXBloom 节点执行）。
+func _update_focus_timers(delta: float) -> void:
+	if _focus_fx_left > 0.0:
+		_focus_fx_left = maxf(0.0, _focus_fx_left - delta)
+	if _focus_reject_left > 0.0:
+		_focus_reject_left = maxf(0.0, _focus_reject_left - delta)
+	if _focus_restore_left > 0.0:
+		_focus_restore_left = maxf(0.0, _focus_restore_left - delta)
+	if _focus_ready_left > 0.0:
+		_focus_ready_left = maxf(0.0, _focus_ready_left - delta)
+
+
+## 任一弹反 / 战技反馈激活（供 R32 impact_fx 循环帧时间避让判定）。
+func _a67_fx_active() -> bool:
+	return _parry_window_open or _parry_flash_left > 0.0 \
+		or _a67_flash_afterglow_left > 0.0 or _focus_fx_left > 0.0 \
+		or _focus_reject_left > 0.0 or _focus_restore_left > 0.0 \
+		or _focus_ready_left > 0.0
+
+
+## R36 / A67 · 光环可见性增强层（在 _draw_parry_fx 之上叠加；未绑定 ParryService → 静默 return）。
+## desktop：暗衬底 + 加粗金环 + 外发光 + 冷蓝内芯 + 静止读秒刻度 + 主闪光加粗 + 余辉衰减。
+## mobile：轻量（暗衬 + 加粗环 + 少量刻度 + 余辉细环），与 _draw_parry_lightweight 同款不劣化。
+func _draw_parry_a67(_t: float) -> void:
+	if _parry_service == null:
+		return
+	var center := PARRY_RING_ANCHOR_PLAYER
+	var boss_center := PARRY_RING_ANCHOR_BOSS
+	var lite: bool = not _all_on
+	# ① 开窗预兆环增强（围绕角色）：暗衬底 → 加粗亮金环 → 外发光 / 冷蓝内芯 → 静止读秒刻度
+	if _parry_window_open and _parry_window_left > 0.0:
+		var wr: float = clampf(_parry_window_left / _parry_window_total, 0.0, 1.0)
+		var ring_r: float = PARRY_RING_MIN_R + (PARRY_RING_BASE_R - PARRY_RING_MIN_R) * wr
+		draw_arc(center, ring_r, 0.0, TAU, 48,
+				_c("#16233F", A67_RING_UNDERLAY_ALPHA), A67_RING_UNDERLAY_W)
+		draw_arc(center, ring_r, 0.0, TAU, 48,
+				_c("#F0A94C", A67_RING_ALPHA), A67_RING_W)
+		if not lite:
+			draw_arc(center, ring_r + 5.0, 0.0, TAU, 48,
+					_c("#FFF0C2", A67_RING_HALO_ALPHA), A67_RING_HALO_W)
+			draw_arc(center, ring_r - 5.0, 0.0, TAU, 48,
+					_c("#BFD0EA", A67_RING_COLD_INNER_ALPHA), A67_RING_COLD_INNER_W)
+		# 静止 12 格读秒刻度（径向短刻线）：与 R32 12fps 循环帧形态区分，避免误认
+		var lit: int = mini(PARRY_RING_TICKS, int(float(PARRY_RING_TICKS) * wr) + 1)
+		var tick_step: int = 2 if lite else 1
+		var k: int = 0
+		while k < lit:
+			var ang: float = TAU * float(k) / float(PARRY_RING_TICKS)
+			var dir := Vector2(cos(ang), sin(ang))
+			var p0: Vector2 = center + dir * (ring_r + 3.0)
+			var p1: Vector2 = center + dir * (ring_r + 3.0 + A67_RING_TICK_LEN)
+			draw_line(p0, p1, _c("#FFF0C2", A67_RING_ALPHA * 0.9), A67_RING_TICK_W)
+			k += tick_step
+	# ② 成功闪光主段加粗（围绕 Boss）：主 0.36s 逐字保留，叠加更亮更粗的扩散环
+	if _parry_flash_left > 0.0:
+		var p: float = 1.0 - clampf(_parry_flash_left / PARRY_FLASH_SEC, 0.0, 1.0)
+		var fade: float = 1.0 - p
+		var flash_r: float = PARRY_FLASH_R0 + (PARRY_FLASH_R1 - PARRY_FLASH_R0) * p
+		var hex: String = "#BFD0EA" if p < PARRY_FLASH_COLD_RATIO else "#FFD27A"
+		draw_arc(boss_center, flash_r, 0.0, TAU, 48,
+				_c(hex, A67_FLASH_AFTERGLOW_ALPHA * fade), A67_FLASH_RING_W)
+		if not lite:
+			draw_arc(boss_center, flash_r * 0.66, 0.0, TAU, 32,
+					_c("#F0A94C", A67_FLASH_AFTERGLOW_ALPHA * fade * 0.6), 2.0)
+	# ③ 余辉衰减（延长可见帧数）：主闪光结束后接 pow(1-q, DECAY) 衰减环
+	if _parry_flash_left <= 0.0 and _a67_flash_afterglow_left > 0.0:
+		var q: float = 1.0 - clampf(_a67_flash_afterglow_left / A67_FLASH_AFTERGLOW_SEC, 0.0, 1.0)
+		var fade2: float = pow(1.0 - q, A67_FLASH_DECAY)
+		var ag_r: float = PARRY_FLASH_R1 + 10.0 * q
+		draw_arc(boss_center, ag_r, 0.0, TAU, 48,
+				_c("#FFD27A", A67_FLASH_AFTERGLOW_ALPHA * fade2), 2.0)
+		if not lite:
+			draw_arc(boss_center, ag_r * 0.8, 0.0, TAU, 32,
+					_c("#BFD0EA", A67_FLASH_AFTERGLOW_ALPHA * fade2 * 0.6), 1.5)
+
+
+## R36 · 战技视觉反馈绘制（仅由 _draw() 的 FXBloom 分派调用，最上层）。
+## 未绑定 FocusService / focus_fx_enabled=false → 静默 return（降级层保留）。
+## desktop 完整双层弧 / 弹道；mobile 轻量单条弧 / 弹道（A63）。
+func _draw_focus_fx(_t: float) -> void:
+	if _focus_service == null or not focus_fx_enabled:
+		return
+	var lite: bool = not _all_on
+	# ① 主战技演出：冷蓝弹道（辉石魔砾） / 暖金大弧（狮子斩），形态 + 色相双重可区分
+	if _focus_fx_left > 0.0:
+		var p: float = 1.0 - clampf(_focus_fx_left / FOCUS_FX_SEC, 0.0, 1.0)
+		var fade: float = pow(1.0 - p, 0.8)
+		var warm: bool = (_focus_fx_art == "lion_slash")
+		if warm:
+			var a0: float = deg_to_rad(FOCUS_ARC_FROM_DEG)
+			var span: float = deg_to_rad(FOCUS_ARC_TO_DEG - FOCUS_ARC_FROM_DEG)
+			var a1: float = a0 + span * clampf(p * 1.6, 0.0, 1.0)
+			draw_arc(FOCUS_ARC_CENTER, FOCUS_ARC_R, a0, a1, 32,
+					_c("#FFD27A", FOCUS_FX_ALPHA * fade), FOCUS_FX_ARC_W)
+			if not lite:
+				draw_arc(FOCUS_ARC_CENTER, FOCUS_ARC_R - 6.0, a0, a1, 32,
+						_c("#F0A94C", FOCUS_FX_ALPHA * fade * 0.7), 2.0)
+				draw_arc(FOCUS_ARC_CENTER, FOCUS_ARC_R + 6.0, a0, a1, 32,
+						_c("#FFF0C2", FOCUS_FX_ALPHA * fade * 0.45), 1.5)
+		else:
+			var head_t: float = clampf(p * 1.5, 0.0, 1.0)
+			var tail_t: float = clampf(head_t - 0.4, 0.0, 1.0)
+			var head: Vector2 = FOCUS_BOLT_FROM.lerp(FOCUS_BOLT_TO, head_t)
+			var tail: Vector2 = FOCUS_BOLT_FROM.lerp(FOCUS_BOLT_TO, tail_t)
+			draw_line(tail, head, _c("#BFD0EA", FOCUS_FX_ALPHA * fade), FOCUS_FX_BOLT_W)
+			if not lite:
+				draw_line(FOCUS_BOLT_FROM, tail,
+						_c("#4A6089", FOCUS_FX_ALPHA * fade * 0.5), 1.5)
+				draw_arc(head, 5.0 + 4.0 * p, 0.0, TAU, 16,
+						_c("#BFD0EA", FOCUS_FX_ALPHA * fade * 0.55), 1.5)
+			draw_circle(head, 3.0, _c("#FFF0C2", FOCUS_FX_ALPHA * fade))
+	# ② 施放被拒（FP 不足 / 冷却中）：短促冷夜雾暗环，低 alpha
+	if _focus_reject_left > 0.0:
+		var rf: float = clampf(_focus_reject_left / FOCUS_MINOR_SEC, 0.0, 1.0)
+		draw_arc(FOCUS_ARC_CENTER, 12.0 + 10.0 * (1.0 - rf), 0.0, TAU, 24,
+				_c("#2B3A5C", FOCUS_MINOR_ALPHA * rf), 2.0)
+	# ③ 赐福休息回满：柔和暖金扩散环
+	if _focus_restore_left > 0.0:
+		var sf: float = clampf(_focus_restore_left / FOCUS_MINOR_SEC, 0.0, 1.0)
+		draw_arc(FOCUS_ARC_CENTER, 16.0 + 26.0 * (1.0 - sf), 0.0, TAU, 32,
+				_c("#FFD27A", FOCUS_MINOR_ALPHA * sf), 2.0)
+		if not lite:
+			draw_arc(FOCUS_ARC_CENTER, 10.0 + 20.0 * (1.0 - sf), 0.0, TAU, 32,
+					_c("#FFF0C2", FOCUS_MINOR_ALPHA * sf * 0.5), 1.0)
+	# ④ 冷却就绪：冷蓝小点亮
+	if _focus_ready_left > 0.0:
+		var df: float = clampf(_focus_ready_left / FOCUS_MINOR_SEC, 0.0, 1.0)
+		draw_arc(FOCUS_BOLT_TO, 8.0, 0.0, TAU, 16,
+				_c("#BFD0EA", FOCUS_MINOR_ALPHA * df), 2.0)
+
+
 func _ready() -> void:
 	_palette.clear()
 	for h in PALETTE_HEX:
@@ -788,9 +1123,12 @@ func _ready() -> void:
 	# deferred 排在 WaveTrialDirector._ready() 装配完成之后；装配时序未就绪由 _process 自愈重试。
 	# R35：精准弹反反馈层 —— 同一 FXBloom 分派节点订阅唯一 ParryService（A54），
 	# 与连击层同款 deferred + 自愈，绝不自建第二个实例、不读私有实现。
+	# R36：战技视觉反馈层 —— 同一 FXBloom 分派节点订阅唯一 FocusService（A54），
+	# 同款 deferred + 自愈，绝不自建第二个实例、不读私有实现。
 	if str(name) == "FXBloom":
 		call_deferred("_try_bind_combo")
 		call_deferred("_try_bind_parry")
+		call_deferred("_try_bind_focus")
 
 
 ## 档位开关的公共入口：改档位并立即重算四项门 / 可见性（供 build 脚本回读真跑验证）。
@@ -878,7 +1216,7 @@ func _process(delta: float) -> void:
 	# 落地建议，本轮不擅自实现，如实登记为待接线项。
 	var is_bloom: bool = (str(name) == "FXBloom")
 	if _all_on:
-		# R34 / R35：连击 + 弹反反馈层计时器 + 绑定自愈
+		# R34 / R35 / R36：连击 + 弹反 + 战技反馈层计时器 + 绑定自愈
 		# （仅 FXBloom 节点；desktop 四项全开）
 		if is_bloom:
 			if _combo_service == null:
@@ -887,14 +1225,21 @@ func _process(delta: float) -> void:
 			if _parry_service == null:
 				_try_bind_parry()
 			_update_parry_timers(delta)
+			if _focus_service == null:
+				_try_bind_focus()
+			_update_focus_timers(delta)
 		queue_redraw()
 	elif is_bloom and fx_profile == PROFILE_MOBILE:
 		# R35B · mobile 四项全关档位【轻量降级】：四项光效 / impact_fx / 连击层零绘制，
 		# 但弹反计时器 / 绑定自愈仍推进，并逐帧 queue_redraw() 让轻量环随窗口收紧读秒
 		# （每帧仅 1~2 个 draw_arc，开销可忽略 → 「移动端不劣化」≠「完全不绘制」）。
+		# R36 / A63：战技计时器 + 绑定自愈同样在 mobile 轻量绘制路径推进。
 		if _parry_service == null:
 			_try_bind_parry()
 		_update_parry_timers(delta)
+		if _focus_service == null:
+			_try_bind_focus()
+		_update_focus_timers(delta)
 		queue_redraw()
 
 
@@ -905,7 +1250,9 @@ func _draw() -> void:
 	# 使第 150 帧落在 SEG-B 切换点时也能看到弹反反馈。
 	if not _all_on:
 		if str(name) == "FXBloom" and fx_profile == PROFILE_MOBILE:
-			_draw_parry_lightweight(t)
+			_draw_parry_lightweight(t)   # R35B：mobile 轻量弹反环
+			_draw_parry_a67(t)           # R36 / A67：mobile 轻量光环增强（暗衬 + 加粗环 + 少量刻度 + 余辉）
+			_draw_focus_fx(t)            # R36 / A63：mobile 轻量战技反馈（单条弧 / 弹道）
 		return
 	# 单节点内按 HD-2D视觉规范.md §10 层序绘制：fx_0_back(倒影/体积光) → fx_1_front(光尘/bloom)。
 	# 独立场景由 4 个同名分派节点分担，各节点同处一个 CanvasLayer，靠子节点顺序叠加。
@@ -922,9 +1269,11 @@ func _draw() -> void:
 		"FXBloom":
 			if _on_bloom:
 				_draw_bloom(t)
-			_draw_impact_fx(t)   # R32：只读加载的 4 帧打击反馈（资源缺失则降级跳过）
+			_draw_impact_fx(t)   # R32：只读加载的 4 帧打击反馈（资源缺失则降级跳过；A67 激活帧降权避让）
 			_draw_combo_rank_fx(t)  # R34：连击评级反馈层（未绑定 ComboService 则静默跳过）
 			_draw_parry_fx(t)       # R35：精准弹反反馈层（未绑定 ParryService 则静默跳过）
+			_draw_parry_a67(t)      # R36 / A67：光环可见性增强层（最上层叠加，未绑定则静默跳过）
+			_draw_focus_fx(t)       # R36：战技视觉反馈层（未绑定 FocusService / 开关关闭则静默跳过）
 		_:
 			pass
 
@@ -1135,4 +1484,9 @@ func _draw_impact_fx(t: float) -> void:
 	var row: int = int(idx / cols)
 	var src := Rect2(float(col) * fw, float(row) * fh, fw, fh)
 	var dst := Rect2(200.0, 150.0, 96.0, 96.0)
-	draw_texture_rect_region(_impact_sheet, dst, src, Color(1.0, 1.0, 1.0, impact_fx_alpha))
+	# R36 / A67 ③：弹反 / 战技反馈激活帧把 R32 循环帧降权（时间避让），
+	#   避免暖金同心环 + 十字准星与弹反光环 / 成功闪光被误认为同一个打击反馈。
+	#   impact_fx_enabled 开关 / 加载 / 循环逻辑逐字不改，仅此处按激活态乘降权系数。
+	var fx_alpha: float = impact_fx_alpha if not _a67_fx_active() \
+		else (impact_fx_alpha * A67_IMPACT_DODGE_ALPHA)
+	draw_texture_rect_region(_impact_sheet, dst, src, Color(1.0, 1.0, 1.0, fx_alpha))

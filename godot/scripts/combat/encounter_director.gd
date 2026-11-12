@@ -27,6 +27,11 @@ signal grace_rested(rest_count: int)
 ## R31B [ROUND=R31B] · HOST 裁决 A39：玩家命中信号，供打击反馈层订阅自动触发。
 ## 只新增本信号 + _try_player_hit() 内一处 emit；不改既有数值 / 判定分支 / 帧数据 / 输出格式 / 其它信号。
 signal player_hit_landed(damage: int)
+## R36 [ROUND=R36] · HOST 裁决 A65：弹反窗口内成功 → 免除该次 Boss 招式伤害。
+##   A48①：本信号的【生产运行时订阅者 = HUD】（_r36_bootstrap 里 connect 显示「弹反·免伤」），
+##   不只是验证脚本订阅；只在 _on_boss_move_landed 本次窗口 guard 命中时 emit 一次，
+##   不改翻滚无敌等其它伤害路径 / 帧数据 / 输出格式。
+signal parry_damage_negated(window_id: String)
 
 @export var player_table_path: String = "res://data/combat/player_actions.tres"
 @export var boss_data_path: String = "res://data/combat/boss_01_margit.tres"
@@ -135,6 +140,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		_request_action("attack_heavy")
 	elif event.is_action_pressed("interact"):
 		_grace_rest()
+	# R36 [ROUND=R36] · 战技 Q 真实输入（既有 roll/light/heavy/interact 判定逐字不动）：
+	#   Q 的【权威判定】在 HUD.request_focus_skill()（复用 A54 唯一 focus_service）；
+	#   本导演层同接 Q 并转发到该入口，靠同一 event 实例幂等去重，绝不重复扣 FP。
+	elif event is InputEventKey and _r36_is_q(event as InputEventKey):
+		_r36_request_focus_skill(event as InputEventKey)
+	# R36B [ROUND=R36B / A69 裁决] · 战技切换 R 真实输入（既有 roll/light/heavy/interact/Q 判定逐字不动）：
+	#   与 Q 同口径，本导演层接 R 并转发到 HUD 唯一权威入口 request_art_switch()；
+	#   HUD 侧靠同一 event 实例幂等去重，绝不重复切换 / 不重置 FP 与冷却 / 不误触其它键。
+	elif event is InputEventKey and _r36_is_r(event as InputEventKey):
+		_r36_request_art_switch(event as InputEventKey)
 
 
 func _physics_process(delta: float) -> void:
@@ -216,12 +231,21 @@ func _on_boss_move_landed(_defeat_id: String, _move: Variant, _attacker: Variant
 	if _state.is_invulnerable():
 		_dodges += 1
 		return
+	# A65 [ROUND=R36 / HOST 裁决] · 弹反窗口内成功 → 免除【该次】Boss 招式伤害。
+	#   _r35_parry_guard 由生产订阅者 _on_parry_performed（parry_performed 信号）置位；
+	#   此处一次性消费：guard=true（本次窗口内成功弹反）→ 免伤 return，玩家 HP 不变、
+	#   不计 hits_taken、连击不断（不调 on_hit_taken），并 emit parry_damage_negated
+	#   供 HUD 生产订阅者显示「弹反·免伤」。
+	#   guard=false（窗口外 / 超时 / 未弹反）→ 逐字走既有扣血 + 连击中断结算：
+	#   只作用于本次窗口，不改翻滚无敌等任何其它伤害路径 / 帧数据 / 输出格式。
+	if _r35_consume_parry_guard():
+		_r36_parry_negate_count += 1
+		parry_damage_negated.emit(_r35_last_parry_wid)
+		return
 	_player_hp = maxf(0.0, _player_hp - incoming_damage)
 	_hits_taken += 1
-	# R35「连击不断」：本次出招已被成功弹反 → 跳过 on_hit_taken 回调（不改既有伤害判定 /
-	#   扣血 / 帧数据 / 输出格式，逐字保留既有伤害结算；失败或超时照常中断连击）。
-	if not _r35_consume_parry_guard():
-		_r34b_combo_on_hit_taken()      # R34B 任务1 c：玩家受击 → ComboService.on_hit_taken()（受击中断连击）
+	# R34B 任务1 c：玩家受击 → ComboService.on_hit_taken()（受击中断连击）。
+	_r34b_combo_on_hit_taken()
 	if _player_hp <= 0.0:
 		_finish(false)
 
@@ -841,6 +865,7 @@ func _r34_bootstrap() -> void:
 	_r34_connect_hit_signal()
 	_r34_push_services_to_hud()
 	_r35_bootstrap()                      # R35：ParryService 唯一实例 + parry_performed 生产订阅者
+	_r36_bootstrap()                      # R36：focus_service 唯一实例 + focus_skill_performed / rejected 生产订阅者
 
 
 func _r34_connect_hit_signal() -> void:
@@ -940,6 +965,7 @@ func _r34_release() -> void:
 		disconnect("player_hit_landed", cb)
 	_r34_hit_signal_connected = false
 	_r35_release()                       # R35：HUD.parry_performed 订阅的释放路径
+	_r36_release()                       # R36：HUD.focus_skill_* 订阅的释放路径
 
 
 # ===========================================================================
@@ -1115,7 +1141,8 @@ const R35_PARRY_TICK_METHODS: Array[String] = ["tick", "advance", "step"]
 var _r35_parry: Object = null              # A54 唯一 ParryService（wave 复用，不自建）
 var _r35_parry_connected: bool = false    # HUD.parry_performed 生产订阅已建立
 var _r35_parry_bootstrapped: bool = false
-var _r35_parry_guard: bool = false        # 成功弹反 → 本次出招连击不断
+var _r35_parry_guard: bool = false        # 成功弹反 → 本次出招连击不断 / A65 免伤
+var _r35_last_parry_wid: String = ""      # 最近一次成功弹反 window_id（A65 免伤信号带出）
 var _r35_parry_events: Array[Dictionary] = []
 var _r35_parry_poise_applied_count: int = 0
 var _r35_tick_count: int = 0
@@ -1172,6 +1199,7 @@ func _r35_bootstrap() -> void:
 ## A48① 生产订阅者回调：弹反成功 → 真实削韧（既有 _resolve_poise 生产链）+ 连击不断门控。
 func _on_parry_performed(window_id: String, bonus_points: int, poise_bonus: float) -> void:
 	_r35_parry_guard = true
+	_r35_last_parry_wid = window_id
 	_r35_parry_events.append({
 		"window_id": window_id, "bonus_points": bonus_points, "poise_bonus": poise_bonus})
 	if poise_bonus > 0.0:
@@ -1244,3 +1272,230 @@ func _r35_release() -> void:
 			if hud.is_connected("parry_performed", cb):
 				hud.disconnect("parry_performed", cb)
 	_r35_parry_connected = false
+
+
+# ===========================================================================
+# R36 [ROUND=R36] · 专注值 FP / 战技 Q 运行时侧（Rank-1 唯一写入方）
+#   A48①：HUD 新信号 focus_skill_performed / focus_skill_rejected 的【生产运行时订阅者】
+#          = 本导演层（_r36_bootstrap connect），成功时真实施加战技伤害 / 削韧，
+#          绝不只是验证脚本订阅；A65 新信号 parry_damage_negated 的生产订阅者 = HUD
+#          （HUD._r36_bootstrap connect 显示「弹反·免伤」）。
+#   A54：focus_service 唯一实例从 wave_trial_director.get_focus_service() 复用，绝不自建
+#        第二个实例；Rank-2 本轮并发新增件尚未落盘时判空降级、不崩、不产生 SCRIPT ERROR、
+#        如实登记「真实判定逻辑待 Rank-2 落盘联调」（同 R35 FakeParry / A54 口径）。
+#   A57：战技伤害的倍率后值由 HUD 侧按唯一 ComboService 有效倍率算好后随信号带出，
+#        本导演层原样采信、不再二次结算（不二次入账口径）。
+#   不改既有普通攻击判定（_try_player_hit / _compute_damage）/ 帧数据 / 输出格式：
+#     Q 为新增 _unhandled_input 分支，走 HUD 唯一权威判定 + 本层生产消费，既有
+#     roll/light_attack/heavy_attack/interact 分支逐字不动。
+# ===========================================================================
+
+const R36_HUD_REL_PATH: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
+const R36_WAVE_REL_PATH: String = "WaveTrialDirector"
+## focus_service 鸭子类型契约（Rank-2 未落盘 / 命名差异均不崩、不产生 SCRIPT ERROR）。
+const R36_FOCUS_METHOD_TRY: Array[String] = ["try_focus_skill", "cast_skill", "try_skill", "use_skill"]
+const R36_FOCUS_METHOD_SNAPSHOT: Array[String] = ["get_snapshot", "get_status", "get_focus_view"]
+const R36_FOCUS_METHOD_TICK: Array[String] = ["tick", "advance", "step"]
+const R36_FOCUS_METHOD_REST: Array[String] = ["rest", "reset", "rest_at_grace", "on_grace_rest", "refill"]
+const R36_KEY_OK: Array[String] = ["ok", "success", "accepted", "cast"]
+const R36_KEY_REASON: Array[String] = ["reason", "result"]
+const R36_KEY_FP: Array[String] = ["fp", "fp_after", "current_fp", "focus"]
+const R36_KEY_FP_MAX: Array[String] = ["fp_max", "max_fp", "focus_max"]
+const R36_KEY_FP_COST: Array[String] = ["fp_cost", "cost", "fp_spent"]
+const R36_KEY_DAMAGE: Array[String] = ["damage", "skill_damage", "base_damage"]
+const R36_KEY_POISE: Array[String] = ["poise", "poise_damage", "skill_poise"]
+const R36_KEY_COOLDOWN: Array[String] = ["cooldown_remaining", "cooldown", "cooldown_sec"]
+const R36_KEY_WID: Array[String] = ["window_id", "skill_id", "wid"]
+
+var _r36_focus: Object = null                 # A54 唯一 focus_service（wave 复用，不自建）
+var _r36_focus_connected: bool = false        # HUD.focus_skill_* 生产订阅已建立
+var _r36_bootstrapped: bool = false
+var _r36_parry_negate_count: int = 0          # A65 免伤次数（本次窗口逐次累计）
+var _r36_skill_events: Array[Dictionary] = [] # 真实战技成功生产消费记录（只读快照用）
+var _r36_skill_poise_applied_count: int = 0   # 战技削韧真实生效次数
+var _r36_skill_damage_applied_count: int = 0  # 战技伤害真实生效次数（Boss.apply_damage）
+var _r36_reject_events: Array[Dictionary] = []# 专注不足 / 冷却中拒绝记录（不扣 FP）
+
+
+func _r36_find_hud(root_node: Node) -> Node:
+	var scr: Script = root_node.get_script() as Script
+	if scr != null and scr.resource_path == "res://scripts/hud.gd":
+		return root_node
+	if root_node.has_signal("focus_skill_performed") and root_node.has_signal("points_awarded"):
+		return root_node
+	for c: Node in root_node.get_children():
+		var found: Node = _r36_find_hud(c)
+		if found != null:
+			return found
+	return null
+
+
+## 生产装配（_r34_bootstrap 末尾调用 / --script 验证显式调用同一入口）：
+##   ① 从 wave_trial_director 复用 A54 唯一 focus_service（绝不自建）；
+##   ② connect HUD.focus_skill_performed / rejected → 本层生产订阅者（去重）。
+func _r36_bootstrap() -> void:
+	if _r36_bootstrapped:
+		return
+	_r36_bootstrapped = true
+	var ml: MainLoop = Engine.get_main_loop()
+	var courtyard: Node = null
+	if ml is SceneTree:
+		courtyard = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+	if courtyard == null:
+		courtyard = get_parent()
+	if courtyard != null:
+		# A54：唯一实例优先从 wave_trial_director.get_focus_service() 复用（绝不自建）；
+		#   若验证 / 集成已注入实例则保留，不覆盖。
+		if _r36_focus == null or not is_instance_valid(_r36_focus):
+			var wave: Node = courtyard.get_node_or_null(NodePath(R36_WAVE_REL_PATH))
+			if wave != null and wave.has_method("get_focus_service"):
+				_r36_focus = wave.call("get_focus_service") as Object
+		var hud: Node = courtyard.get_node_or_null(NodePath(R36_HUD_REL_PATH))
+		if hud == null:
+			hud = _r36_find_hud(courtyard)
+		if hud != null and is_instance_valid(hud) and hud.has_signal("focus_skill_performed"):
+			_r36_subscribe(hud, "focus_skill_performed", "_on_focus_skill_performed")
+			_r36_subscribe(hud, "focus_skill_rejected", "_on_focus_skill_rejected")
+			_r36_focus_connected = true
+	print("[R36][ENC] 生产装配 | focus_unique_instance=%s focus_skill_subscribed=%s（A48① 生产运行时订阅者，A54 不自建第二实例）" % [
+			str(_r36_focus != null and is_instance_valid(_r36_focus)), str(_r36_focus_connected)])
+
+
+func _r36_subscribe(obj: Object, sig: String, method: String) -> void:
+	if obj == null or not obj.has_signal(sig):
+		return
+	var cb: Callable = Callable(self, method)
+	for conn in obj.get_signal_connection_list(sig):
+		var c: Callable = conn.get("callable", Callable())
+		if c.get_object() == self and String(c.get_method()) == method:
+			return
+	if not obj.is_connected(sig, cb):
+		obj.connect(sig, cb)
+
+
+## A48① 生产运行时订阅者：战技成功 → 真实削韧（既有 _resolve_poise 生产链）+ 真实伤害
+## （既有 Boss.apply_damage）。伤害为 A57 倍率后值，原样采信不二次结算。
+## 不改既有普通攻击判定 / 帧数据 / 输出格式：本调用独立于 _try_player_hit。
+func _on_focus_skill_performed(skill_id: String, fp_before: int, fp_after: int, fp_cost: int,
+		damage: int, poise: float, multiplier: float) -> void:
+	_r36_skill_events.append({
+		"skill_id": skill_id, "fp_before": fp_before, "fp_after": fp_after,
+		"fp_cost": fp_cost, "damage": damage, "poise": poise, "multiplier": multiplier})
+	if poise > 0.0:
+		var before: float = _boss_poise
+		_resolve_poise(poise)                 # 既有生产削韧链（数据表 PoiseConfig）
+		if _boss_poise != before or _last_poise_after_hit != before:
+			_r36_skill_poise_applied_count += 1
+	if damage > 0 and _boss != null and is_instance_valid(_boss) and _boss.has_method("apply_damage"):
+		_boss.call("apply_damage", float(damage))   # 真实战技伤害（既有 Boss 接口）
+		_r36_skill_damage_applied_count += 1
+	print("[R36][ENC] 战技生产消费 | skill=%s fp %d->%d cost=%d dmg=%d(×%.2f) poise=%.1f 削韧=%d 伤害=%d（A48① 生产订阅者，非验证脚本）" % [
+			skill_id, fp_before, fp_after, fp_cost, damage, multiplier, poise,
+			_r36_skill_poise_applied_count, _r36_skill_damage_applied_count])
+
+
+## A48① 失败（专注不足 / 冷却中）亦有生产订阅者记录，不扣 FP、不发战技效果。
+func _on_focus_skill_rejected(reason: String, fp: int, fp_max: int) -> void:
+	_r36_reject_events.append({"reason": reason, "fp": fp, "fp_max": fp_max})
+	print("[R36][ENC] 战技拒绝生产记录 | reason=%s fp=%d/%d（不扣 FP、不发效果）" % [reason, fp, fp_max])
+
+
+## 真实 Q 输入：本导演层同接 Q（任务①「encounter_director.gd / hud.gd 接真实
+## _unhandled_input(Q)」），转发到 HUD 唯一权威判定入口；同一 event 由 HUD 侧
+## _r36_last_q_event_id 幂等去重，绝不重复扣 FP / 不重复发信号。
+func _r36_request_focus_skill(event: InputEventKey) -> Dictionary:
+	var ml: MainLoop = Engine.get_main_loop()
+	var courtyard: Node = null
+	if ml is SceneTree:
+		courtyard = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+	if courtyard == null:
+		courtyard = get_parent()
+	var hud: Node = null
+	if courtyard != null:
+		hud = courtyard.get_node_or_null(NodePath(R36_HUD_REL_PATH))
+		if hud == null:
+			hud = _r36_find_hud(courtyard)
+	if hud != null and is_instance_valid(hud) and hud.has_method("request_focus_skill"):
+		return hud.call("request_focus_skill", event) as Dictionary
+	return {"ok": false, "reason": "hud_unavailable"}
+
+
+func _r36_is_q(k: InputEventKey) -> bool:
+	return k.physical_keycode == KEY_Q or k.keycode == KEY_Q
+
+
+func _r36_is_r(k: InputEventKey) -> bool:
+	# 只认 press（过滤 release / echo），与 HUD._process_r32_keys 同口径。
+	# R36B 真跑实证：Q 分支靠「成功后冷却」兜底使 release 转发被 cooldown 拒绝，
+	# 但切换没有冷却保护；若 ENC 把松开事件也转发 request_art_switch，同一帧会
+	# 双切换（狮斩→魔砾），暖金斩击弧便不出现。故此处显式过滤，从源头只接 press。
+	return k.pressed and not k.echo \
+			and (k.physical_keycode == KEY_R or k.keycode == KEY_R)
+
+
+## R36B [ROUND=R36B] · 真实 R 输入：本导演层接 R，转发到 HUD 唯一权威切换入口
+## request_art_switch()（与 Q 的 _r36_request_focus_skill 同口径）。HUD 侧
+## _r36b_last_r_event_id 对同一 event 实例幂等去重，绝不重复切换；切换只读 A54 唯一
+## focus_service 的 arts 列表，不自建第二实例、不改 .tres 数值、不重置 FP / 冷却。
+func _r36_request_art_switch(event: InputEventKey) -> Dictionary:
+	var ml: MainLoop = Engine.get_main_loop()
+	var courtyard: Node = null
+	if ml is SceneTree:
+		courtyard = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+	if courtyard == null:
+		courtyard = get_parent()
+	var hud: Node = null
+	if courtyard != null:
+		hud = courtyard.get_node_or_null(NodePath(R36_HUD_REL_PATH))
+		if hud == null:
+			hud = _r36_find_hud(courtyard)
+	if hud != null and is_instance_valid(hud) and hud.has_method("request_art_switch"):
+		return hud.call("request_art_switch", event) as Dictionary
+	return {"ok": false, "reason": "hud_unavailable"}
+
+
+## A54 唯一实例注入口（验证进程注入契约替身 / 集成层预注入；生产仍以 wave 复用为准）。
+## 绝不 new 第二个生产实例；与 HUD.bind_focus_service 注入同一个 Object 时满足 A54 单一事实源。
+func bind_focus_service(svc: Object) -> void:
+	_r36_focus = svc
+
+
+func get_focus_service() -> Object:
+	return _r36_focus
+
+
+## 只读快照（验证 / 运行日志读回，不写盘、不含数值口径）。
+func get_focus_production_snapshot() -> Dictionary:
+	return {
+		"focus_available": _r36_focus != null and is_instance_valid(_r36_focus),
+		"focus_signal_connected": _r36_focus_connected,
+		"parry_negate_count": _r36_parry_negate_count,
+		"skill_events": _r36_skill_events.duplicate(true),
+		"skill_poise_applied_count": _r36_skill_poise_applied_count,
+		"skill_damage_applied_count": _r36_skill_damage_applied_count,
+		"reject_events": _r36_reject_events.duplicate(true),
+	}
+
+
+## 信号 connect 的释放路径（_exit_tree → _r34_release → 本函数）。
+func _r36_release() -> void:
+	var ml: MainLoop = Engine.get_main_loop()
+	var courtyard: Node = null
+	if ml is SceneTree:
+		courtyard = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+	if courtyard == null:
+		courtyard = get_parent()
+	if courtyard != null:
+		var hud: Node = courtyard.get_node_or_null(NodePath(R36_HUD_REL_PATH))
+		if hud == null:
+			hud = _r36_find_hud(courtyard)
+		if hud != null and is_instance_valid(hud):
+			var pairs: Dictionary = {
+				"focus_skill_performed": "_on_focus_skill_performed",
+				"focus_skill_rejected": "_on_focus_skill_rejected"}
+			for sig: String in pairs.keys():
+				if hud.has_signal(sig):
+					var cb: Callable = Callable(self, String(pairs[sig]))
+					if hud.is_connected(sig, cb):
+						hud.disconnect(sig, cb)
+	_r36_focus_connected = false

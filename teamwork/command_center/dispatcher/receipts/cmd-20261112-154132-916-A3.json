@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-154132-916-A3",
+  "ai": 3,
+  "status": "done",
+  "result": "R36/v0.13.0 交付完成，实际结论见 teamwork/Rank-3/DONE-R36.md：① A66 专注值 FP 落盘与赐福点数分离落地（PointsCommitOrchestrator autoload 作为 A48① 生产订阅者订阅 FocusService 三信号 focus_spent/focus_restored/focus_rejected，登记 7 个三段式 combat.focus.* flag；SaveDelta 十字段/schema_version=3 冻结、不写 removals、commit(reason) 原子写、先落盘再改运行时实例、重启读回一致、重复释放不二次扣费、FP 上限不突破、A54 唯一实例）；② 新写 verify_v130_save_commit.gd 70 PASS（三进程三态 write23+load11+assert50=84 PASS，三 pid 互不相同）与 verify_focus_production_v130.gd 49 PASS（A48③ 真实可达：不加载 presentation.gd、不在验证脚本内模拟编排、真实输入→生产链路→磁盘），合计 203 PASS/0 FAIL 全 RESULT=ALL_MATCH；③ 三段门禁 G1/G2a/G2b/G3 全 EXIT=0、11 份 R36-*.log 逐份 SCRIPT ERROR=0/PARSE_ERROR=0/ERROR前缀=0、G3 回读 node_count=41、A66 生产订阅者真实主场景自动绑定、生产 slot_01 md5 前后一致；④ 文档口径同步（R35 遗留 P0：存档与flag规范.md §3.3 补 10 行 + verify_fx_mobile.gd 头部「移动四项全关」同步为 A63「轻量降级绘制」只改注释）+ 契约 §3.3 只追加 R36 段（7 flag + 裁决 A65/A66/A67/A68）+ 迭代文档 + README §七 状态段。FP 与赐福点数分离实证：points=500==500 / spent=15==15 全链逐字不变、7 个 FP flag 全为 combat.focus.* 前缀、不混用 points/spent_points。未完成/待裁决：定稿录屏目视(A67)、[PLACEHOLDER] 试玩校准、HD-2D 全绿(A68 按 A41/A52/A61 未达)、focus_rejected 落盘策略、多战技切换等零付费 backlog，如实登记不冒充。"
+}

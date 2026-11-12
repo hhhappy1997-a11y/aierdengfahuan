@@ -161,6 +161,8 @@ func _initialize() -> void:
 	_test_real_tab_mutex()
 	_test_r34c_real_rects()
 	_test_r35_parry_rects()
+	_test_r36_focus_rects()          # R36：「专注值 FP」条真实节点 rect 避让（既有 24 条不删不放宽）
+	_test_r36b_art_rects()           # R36B：「当前战技」名真实节点 rect 避让（既有 40 条不删不放宽）
 	_finish()
 
 
@@ -649,6 +651,134 @@ func _test_r35_parry_rects() -> void:
 			"node_rect=%s anchor_rect=%s" % [str(pr2), str(anchor)])
 	# 恢复干净态（关窗，不影响 _finish 释放）
 	hud.call("_r35_close_parry_window")
+
+
+# ---------------------------------------------------------------------------
+# K) R36 · 「专注值 FP」条【真实节点 rect】避让断言（既有 24 条不删不放宽）
+#   ProdFocusLabel 按独立归一化锚点 ANCHOR_FOCUS 定位；断言与 6 分区 / 赐福成长标题行 /
+#   连击评级条 / 弹反预兆带 / 右上韧性·卡片区等所有其它文字包围盒不相交，四档降级
+#   不出界 / 不遮中央角色 / 不与任一文字块相交，且真实节点 rect 与 get_focus_rect() 一致。
+# ---------------------------------------------------------------------------
+func _k_blocks(hud: Node, layer: Node) -> Array:
+	var blocks: Array = _j_blocks(hud, layer)     # 6 分区 + shop_title + combo 锚点 + 3 个 Prod Label
+	blocks.append(hud.call("get_parry_telegraph_rect") as Rect2)   # 弹反独立分区锚点
+	if layer != null and is_instance_valid(layer):
+		var pl: Label = layer.get_node_or_null(NodePath("ProdParryLabel")) as Label
+		if pl != null and is_instance_valid(pl):
+			blocks.append(pl.get_global_rect())
+	return blocks
+
+
+func _test_r36_focus_rects() -> void:
+	var hud: Node = _hud
+	print("[V100HUD] ==== K 组 R36 专注值 FP 条真实节点 rect 避让断言 ====")
+	hud.call("set_layout_viewport", Vector2(1280.0, 720.0))
+	var layer: Node = hud.get_node_or_null(NodePath("ProductionMechanismsLayer"))
+	var fl: Label = layer.get_node_or_null(NodePath("ProdFocusLabel")) as Label if layer != null else null
+	var fl_ok: bool = fl != null and is_instance_valid(fl)
+	if hud.has_method("_r34_refresh_visible"):
+		hud.call("_r34_refresh_visible")     # 按状态刷新真实节点（含 FP 条常驻）
+	_ck("K1 生产常驻可见层含 R36「专注值 FP」条真实节点 ProdFocusLabel（hud.gd 自建，非演示构造）",
+			fl_ok, "node=%s" % str(fl_ok))
+	# K2 基准：FP 条 vs 所有其它文字块两两不相交
+	var fr: Rect2 = fl.get_global_rect() if fl_ok else Rect2()
+	var blocks: Array = _k_blocks(hud, layer)
+	var worst: float = _j_worst(fr, blocks)
+	_ck("K2 ★ FP 条不与其它文字包围盒相交（6 分区 + 赐福成长标题行 + 连击评级条 + 弹反预兆带 + 右上韧性/卡片区）",
+			fl_ok and fr.get_area() > 0.0 and worst == 0.0,
+			"focus_rect=%s blocks=%d worst_overlap=%.4f px²" % [str(fr), blocks.size(), worst])
+	# K3 四档降级：不出界 / 不遮中央角色 / 不与任一文字块相交
+	var all_ok: bool = true
+	var details: Array[String] = []
+	for vp: Vector2 in VIEWPORTS:
+		hud.call("set_layout_viewport", vp)
+		var r2: Rect2 = fl.get_global_rect() if fl_ok else Rect2()
+		var chr: Rect2 = hud.call("get_center_char_rect") as Rect2
+		var blocks2: Array = _k_blocks(hud, layer)
+		var bounded: bool = r2.position.x >= -0.001 and r2.position.y >= -0.001 \
+				and r2.end.x <= vp.x + 0.001 and r2.end.y <= vp.y + 0.001 \
+				and r2.get_area() > 0.0
+		var ov: float = _j_worst(r2, blocks2)
+		var ok: bool = bounded and r2.intersection(chr).get_area() == 0.0 and ov == 0.0
+		if not ok:
+			all_ok = false
+		details.append("%dx%d:rect=%s bounded=%s char_ov=%.2f text_ov=%.2f" % [
+				int(vp.x), int(vp.y), str(r2), str(bounded),
+				r2.intersection(chr).get_area(), ov])
+	_ck("K3 1280x720 + 三档降级：FP 条节点不出界 / 不遮中央角色 / 不与任一文字包围盒相交",
+			all_ok, str(details))
+	hud.call("set_layout_viewport", Vector2(1280.0, 720.0))
+	# K4 按独立分区锚点定位（非硬编码像素堆叠）
+	var anchor: Rect2 = hud.call("get_focus_rect") as Rect2
+	var fr2: Rect2 = fl.get_global_rect() if fl_ok else Rect2()
+	_ck("K4 FP 条真实节点 rect 与独立分区锚点 get_focus_rect() 一致（按锚点定位）",
+			fl_ok and fr2.is_equal_approx(anchor),
+			"node_rect=%s anchor_rect=%s" % [str(fr2), str(anchor)])
+
+
+# ---------------------------------------------------------------------------
+# L) R36B · 「当前战技」文字【真实节点 rect】避让断言（既有 40 条不删不放宽）
+#   ProdArtLabel 按独立归一化锚点 ANCHOR_ART 定位；断言与 6 分区 / 赐福成长标题行 /
+#   连击评级条 / 弹反预兆带 / 专注值 FP 条 / 右上韧性·卡片区等所有其它文字包围盒
+#   不相交，四档降级不出界 / 不遮中央角色 / 不与任一文字块相交，且真实节点 rect
+#   与 get_current_art_rect() 一致。
+# ---------------------------------------------------------------------------
+func _l_blocks(hud: Node, layer: Node) -> Array:
+	var blocks: Array = _k_blocks(hud, layer)   # 6 分区 + shop_title + combo 锚点 + 3 Prod Label + parry 锚点/节点
+	blocks.append(hud.call("get_focus_rect") as Rect2)   # FP 条独立分区锚点
+	if layer != null and is_instance_valid(layer):
+		var fl: Label = layer.get_node_or_null(NodePath("ProdFocusLabel")) as Label
+		if fl != null and is_instance_valid(fl):
+			blocks.append(fl.get_global_rect())          # FP 条真实节点
+	return blocks
+
+
+func _test_r36b_art_rects() -> void:
+	var hud: Node = _hud
+	print("[V100HUD] ==== L 组 R36B 当前战技名真实节点 rect 避让断言 ====")
+	hud.call("set_layout_viewport", Vector2(1280.0, 720.0))
+	var layer: Node = hud.get_node_or_null(NodePath("ProductionMechanismsLayer"))
+	var al: Label = layer.get_node_or_null(NodePath("ProdArtLabel")) as Label if layer != null else null
+	var al_ok: bool = al != null and is_instance_valid(al)
+	if hud.has_method("_r34_refresh_visible"):
+		hud.call("_r34_refresh_visible")
+	_ck("L1 生产常驻可见层含 R36B「当前战技」真实节点 ProdArtLabel（hud.gd 自建，非演示构造）",
+			al_ok and al.visible and al.text.contains("当前战技"),
+			"node=%s text=[%s]" % [str(al_ok), al.text if al_ok else ""])
+	# L2 基准：战技名 vs 所有其它文字块（含新增 FP 条与连击评价带）两两不相交
+	var ar: Rect2 = al.get_global_rect() if al_ok else Rect2()
+	var blocks: Array = _l_blocks(hud, layer)
+	var worst: float = _j_worst(ar, blocks)
+	_ck("L2 ★ HUD 战技名包围盒不与 FP 条 / 连击评价带 / 弹反预兆带 / 其它文字相交",
+			al_ok and ar.get_area() > 0.0 and worst == 0.0,
+			"art_rect=%s blocks=%d worst_overlap=%.4f px²" % [str(ar), blocks.size(), worst])
+	# L3 四档降级：不出界 / 不遮中央角色 / 不与任一文字块相交
+	var all_ok: bool = true
+	var details: Array[String] = []
+	for vp: Vector2 in VIEWPORTS:
+		hud.call("set_layout_viewport", vp)
+		var r2: Rect2 = al.get_global_rect() if al_ok else Rect2()
+		var chr: Rect2 = hud.call("get_center_char_rect") as Rect2
+		var blocks2: Array = _l_blocks(hud, layer)
+		var bounded: bool = r2.position.x >= -0.001 and r2.position.y >= -0.001 \
+				and r2.end.x <= vp.x + 0.001 and r2.end.y <= vp.y + 0.001 \
+				and r2.get_area() > 0.0
+		var ov: float = _j_worst(r2, blocks2)
+		var ok: bool = bounded and r2.intersection(chr).get_area() == 0.0 and ov == 0.0
+		if not ok:
+			all_ok = false
+		details.append("%dx%d:rect=%s bounded=%s char_ov=%.2f text_ov=%.2f" % [
+				int(vp.x), int(vp.y), str(r2), str(bounded),
+				r2.intersection(chr).get_area(), ov])
+	_ck("L3 1280x720 + 三档降级：战技名节点不出界 / 不遮中央角色 / 不与任一文字包围盒相交",
+			all_ok, str(details))
+	hud.call("set_layout_viewport", Vector2(1280.0, 720.0))
+	# L4 按独立分区锚点定位（非硬编码像素堆叠）
+	var anchor: Rect2 = hud.call("get_current_art_rect") as Rect2
+	var ar2: Rect2 = al.get_global_rect() if al_ok else Rect2()
+	_ck("L4 战技名真实节点 rect 与独立分区锚点 get_current_art_rect() 一致（按锚点定位）",
+			al_ok and ar2.is_equal_approx(anchor),
+			"node_rect=%s anchor_rect=%s" % [str(ar2), str(anchor)])
 
 
 func _finish() -> void:

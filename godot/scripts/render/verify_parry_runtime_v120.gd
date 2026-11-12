@@ -194,6 +194,7 @@ func _initialize() -> void:
 	_t_p_assembly()
 	_t_w_window_and_input()
 	_t_c_production_chain()
+	_t_a65_parry_negate()            # R36：A65 弹反成功免伤追加组（既有 27 条断言不删不放宽）
 	_finish(false)
 
 
@@ -622,6 +623,74 @@ func _t_c_production_chain() -> void:
 			hud_r35.length() > 0 and enc_r35.length() > 0 and no_write,
 			"hud_r35_len=%d enc_r35_len=%d no_write=%s" % [
 					hud_r35.length(), enc_r35.length(), str(no_write)])
+
+
+# ---------------------------------------------------------------------------
+# A65 [ROUND=R36 / HOST 裁决] · 弹反窗口内成功免伤（既有 27 条断言逐字不删不放宽）
+#   窗口内成功弹反 → 免除【该次】Boss 招式伤害（玩家 HP 不变）+ HUD「弹反·免伤」反馈；
+#   窗口外 / 超时（guard=false）→ 既有正常扣血路径，不改其它伤害路径。
+#   真实输入：_press_k()（Input.parse_input_event + process_key_event，与 _unhandled_input 同路径）。
+# ---------------------------------------------------------------------------
+func _t_a65_parry_negate() -> void:
+	print("[V120P] ==== A65 组：弹反成功免伤 / 窗口外·超时正常扣血 ====")
+	if _hud == null or _enc == null:
+		_ck("A65-0 关键节点可用", false, "hud/enc null")
+		return
+	# 状态隔离（同 W 组口径）
+	if _hud.has_method("close_boon_draft"):
+		_hud.call("close_boon_draft")
+	_hud.set("shop_open", false)
+	if _hud.has_method("set_codex_open"):
+		_hud.call("set_codex_open", false)
+	_advance(3.0)
+	# 消费 W/C 组可能残留的 parry_guard，确保干净起点（消费后 guard=false）。
+	var guard_clean: bool = false
+	for _i: int in range(5):
+		var gs: Dictionary = _enc.call("get_parry_production_snapshot") as Dictionary
+		if not bool(gs.get("parry_guard", false)):
+			guard_clean = true
+			break
+		_enc.call("debug_boss_hit")       # 消费残留 guard（若该次免伤，HP 不变，不影响后续基线）
+	_ck("A65-0 起点干净：parry_guard 已复位为 false（窗口外 / 超时态）",
+			guard_clean, "guard_clean=%s" % str(guard_clean))
+
+	# ---- A65-1 ★ 窗口外 / 超时 → 正常扣血 ----
+	var hp0: float = float((_enc.call("get_snapshot") as Dictionary).get("player_hp", -1.0))
+	var neg0: int = int((_enc.call("get_focus_production_snapshot") as Dictionary).get("parry_negate_count", 0))
+	_enc.call("debug_boss_hit")
+	var hp1: float = float((_enc.call("get_snapshot") as Dictionary).get("player_hp", -1.0))
+	var neg1: int = int((_enc.call("get_focus_production_snapshot") as Dictionary).get("parry_negate_count", 0))
+	_ck("A65-1 ★ 窗口外 / 超时（guard=false）→ Boss 招式正常扣血（player_hp 下降）、不发免伤",
+			hp1 < hp0 and neg1 == neg0,
+			"hp %.1f -> %.1f negate_count %d -> %d" % [hp0, hp1, neg0, neg1])
+
+	# ---- A65-2 ★ 窗口内成功弹反 → 该次免伤（HP 不变）----
+	_advance(3.0)                          # 清冷却，保证可开窗
+	_open_window()
+	_press_k()                             # 真实 K 成功 → parry_performed → ENC parry_guard=true
+	var attempt: Dictionary = _last_attempt()
+	var guard2: bool = bool((_enc.call("get_parry_production_snapshot") as Dictionary).get("parry_guard", false))
+	var hp2: float = float((_enc.call("get_snapshot") as Dictionary).get("player_hp", -1.0))
+	var neg2: int = int((_enc.call("get_focus_production_snapshot") as Dictionary).get("parry_negate_count", 0))
+	_enc.call("debug_boss_hit")            # 该次招式落地 → 消费 guard → A65 免伤
+	var hp3: float = float((_enc.call("get_snapshot") as Dictionary).get("player_hp", -1.0))
+	var neg3: int = int((_enc.call("get_focus_production_snapshot") as Dictionary).get("parry_negate_count", 0))
+	var fv: Dictionary = _hud.call("get_focus_hud_view") as Dictionary
+	_ck("A65-2 ★ 窗口内真实 K 成功弹反 → 免除该次 Boss 招式伤害：玩家 HP 不变、negate_count +1、HUD「弹反·免伤」",
+			bool(attempt.get("ok", false)) and guard2 and hp3 == hp2 \
+					and neg3 == neg2 + 1 \
+					and String(fv.get("parry_negate_text", "")) == "弹反·免伤",
+			"attempt_ok=%s guard=%s hp %.1f -> %.1f negate %d -> %d hint=[%s]" % [
+					str(attempt.get("ok", "?")), str(guard2), hp2, hp3, neg2, neg3,
+					str(fv.get("parry_negate_text", "?"))])
+
+	# ---- A65-3 ★ 免伤只作用本次窗口：guard 一次性消费后，下一次招式正常扣血 ----
+	_enc.call("debug_boss_hit")
+	var hp4: float = float((_enc.call("get_snapshot") as Dictionary).get("player_hp", -1.0))
+	var neg4: int = int((_enc.call("get_focus_production_snapshot") as Dictionary).get("parry_negate_count", 0))
+	_ck("A65-3 ★ A65 免伤只作用本次窗口（guard 一次性消费）：下一次 Boss 招式正常扣血、不重复免伤",
+			hp4 < hp3 and neg4 == neg3,
+			"hp %.1f -> %.1f negate_count %d -> %d" % [hp3, hp4, neg3, neg4])
 
 
 func _finish(early: bool) -> void:

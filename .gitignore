@@ -48,6 +48,8 @@ capture/v100_key_*.png
 capture/r32_ground_tile_2x2.png
 capture/v110_final[0-9]*.png
 capture/v120_final[0-9]*.png
+capture/v130_final[0-9]*.png
+capture/r36_a67_before[0-9]*.png
 capture/v120_final_r35b*.png
 capture/r34_host_*.png
 capture/r34_review_*.png

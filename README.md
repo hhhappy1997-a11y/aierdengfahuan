@@ -19,6 +19,7 @@
 > **R32 · cmd-20261112-074023-412-A3（Rank-3，v0.10.0「赐福抉择 · 韧性处决」：新机制存档口径 + 玩法拆解与收口）** ① `00-协作契约.md` §3.3 **只追加 R32 说明段**（不改历史条款 / I-1~I-6 / §3.1·§3.2 缺号），登记 4 个新三段式 flag：`grace.boon_draft.selected`（String / 非单调·局内翻转）、`grace.boon_draft.cost_applied`（bool / 非单调·局内翻转）、`combat.boss_01.stagger_window`（bool / 非单调·局内翻转）、`grace.execution.performed`（int / 单调只增），严格匹配 `^(world|quest|combat|grace|dungeon)\.[a-z0-9_]+\.[a-z0-9_]+$`；只作 `flags` 字典新 key，`SaveDelta` 十字段与 `schema_version=3` 冻结、不写 `removals`、不新增顶层字段；`存档与flag规范.md` §3.3 全局登记表同步追加 4 行 + R32 注记。追加段**同时登记总指挥裁决 A39~A45**（A39 命中信号接线归属与 Rank-1 越界授权范围 / A40 项目级色库 ≥256 色由 Rank-4 程序化扩充清零、单帧 ≤16 色不变 / A41 HD-2D 全绿以 `HD2D-STYLE-ANCHOR-v2.md` 三判据为准、如实记「未达全绿」/ A42 录屏目视以总指挥亲自回看首中尾三帧为准 / A43 `128bit` 歧义保留不消歧 / A44 `encounter_director.gd` 唯一写入方 = Rank-1 其余只读 / A45 三类新数值全部 `[PLACEHOLDER]` 待人工试玩校准）。② 新写 **`godot/scripts/rpg/verify_v100_save_readback.gd`**（只读验证脚本）：三进程三态（write → 新进程 load → 断言读回）验证抉择/处决 4 flag 与买齐三项成长后余额一致、`points − spent_points ≥ 0`、旧档缺 key 回落基线、生产 `slot_01` md5 前后一致；独立 `user://saves/verify_v100_<RUN>/` 临时槽（与生产物理隔离、三 PID 互不相同），不改 `world_state.gd` / `save_system.gd` 生产逻辑、不碰生产存档。③ 新写 **`teamwork/迭代-v0.10.0-赐福抉择与韧性处决.md`**（游戏拆解表「需求→机制→数值→状态→验收」+ P0/P1/P2 漏洞识别 + GDD 六项 + 三栏清单 + 节点与信号链架构 + 真跑数字 + 验收三态 + 风险回滚 + 零付费零外部依赖 backlog）。④ 本 README 追加 v0.10.0 状态段 / 资产表增量 /「已做了什么」/「还差什么」（见文末 §四，历史行一律保留未动）。**真跑结论（Rank-3 实测）**：三进程三态 `write 9 / load 6 / assert 42 PASS`、三份 `0 FAIL` / `RESULT=PASS`、合计 **57 PASS / 0 FAIL**，三 pid `22080 / 26888 / 26012` 互不相同（A02 机器判定）；单进程 `all` 自检 **55 PASS / 0 FAIL**；三段门禁 G1 `--headless --import` / G2 `--check-only --script` / G3 `--headless --quit` 与 7 份自有日志逐份 `SCRIPT ERROR=0` / `Parse Error=0` / `ERROR:` 前缀 = 0（`R32-G3-quit.log` 回读 `courtyard.tscn node_count=41`，A38 断言保持；生产 `slot_01` md5 前后一致 `ea30335b3d1fd6c5a846e04a704d91dc`）；全部引擎调用 `EXIT=0`，既有 3 条退出 WARNING（`[SaveSystem] --script 跳过自动读回` / `[ChunkManager] 未找到 ChunkRoot` / `2 ObjectDB instances were leaked`）如实保留、非 ERROR。日志留档 `teamwork/Rank-3/R32-*.log`（7 份，均为实际 stdout）。**引用 R32 派单反馈数字（非 Rank-3 本轮真跑，如与最终实测不符以各自 Rank 真跑为准）**：Rank-1 反馈 42 PASS / HUD 布局 19 PASS / 处决运行时 16 PASS；Rank-2 赐福抉择 97 PASS / 韧性 62 PASS / 词条运行时 41 PASS / 既有 `.tres` md5 前后一致；全工程 `SCRIPT ERROR=0`、A38 节点数 41。**本段即 R32 / v0.10.0 状态段**：「一、已做了什么」/「二、还差什么」/「三、资产清单表」历史行按「只追加、不改历史条款」保留未动，v0.10.0 增量以本段、文末 §四 与 `teamwork/Rank-3/DONE-R32.md` 为准；§3.1~§3.4 资产表实测字节数、「中枢 done 轮次」表（仍 R22 快照）与其余历史结论未改。**本轮 Rank-3 未写任何 `godot/` 工程业务代码**（新写的验证脚本只读加载生产脚本、不修改其逻辑）、未自行 git（总指挥收尾）。
 
 > **R34 · cmd-20261112-091304-455-A3（Rank-3，v0.11.0「玩法闭合 · 连击评价」：点数落盘接线 + A55 唯一权威通道 + 迭代收口）** ① `00-协作契约.md` §3.3 **只追加 R34 说明段**：登记 2 个新三段式 flag（`combat.combo.rank` String 非单调 / `combat.combo.count` int 非单调·每波覆盖）+ **R32 四 flag 的 I-1 落盘接线口径**（信号订阅 → 事件键配对去重 → `set_flag` → `commit(reason)` 原子落盘 → 先落盘后改实例）+ **总指挥裁决 A49~A55**，其中 **A55 = `points_awarded(reason, points, source)` 点数落盘唯一权威通道**（`wave_cleared` 只作 HUD 展示基础值、`combo_settled` 只作对账与展示、三条通道职责边界写清），解决 R34B §4.4 登记的「点数落盘口径分叉」；`teamwork/Rank-3/存档与flag规范.md` §3.3 全局表同步追加 2 行 + R34 注记。② 新写 **`godot/scripts/rpg/verify_v110_save_commit.gd`**（只读三进程三态验证）：`write 11 + load 6 + assert 49 = 66 PASS / 0 FAIL`、三 pid `11728 / 30352 / 26900` 互不相同、单进程 `all` `64 PASS / 0 FAIL`、生产 `slot_01` md5 `5e900b2b47df9e2a9b36c4100282bc25` 前后一致；覆盖 A55 三通道边界 / A51 防通胀（反例 `410 / 336 / 370 / 420 != 落盘 210`）/ 防重复领取（同 execution / 清波 / 抉择不二次加点或扣费）/ 旧档缺 key 回落基线 / 十字段与 `schema_version=3` 冻结 / `commit(reason)` 原子写。③ 新写 **`teamwork/迭代-v0.11.0-玩法闭合与连击评价.md`**（玩法拆解表 / P0~P2 / GDD 六项 / 三栏清单 / 节点与信号链架构 / 自测与真跑数字 / 验收三态 / 风险回滚 / 零付费零外部依赖 backlog）。④ 本 README 追加 v0.11.0 状态表 / 资产表 / 已做与还差（文末 §五）。⑤ 三段门禁 G1 `--headless --import` / G2 `--check-only --script` / G3 `--headless --quit` 全 `EXIT=0`，7 份 `R34-*.log` 逐份 `SCRIPT ERROR=0` / `Parse Error=0` / `ERROR:` 前缀 = 0，G3 回读 `courtyard.tscn node_count=41`（A38 断言保持）。**真源结论见 `teamwork/Rank-3/DONE-R34.md`。本轮 Rank-3 未写任何 `godot/` 业务代码（仅新增只读验证脚本）、未改其它 Rank 产出、未改契约历史条款 / I-1~I-6 / §3.1·§3.2 缺号、未自行 git（总指挥收尾）**；§3.1~§3.4 资产表实测字节数与「中枢 done 轮次」表（仍 R22 快照）一律未改。
+> **R36 · cmd-20261112-154132-916-A3（Rank-3，v0.13.0「专注值与战技 · 画面补齐」：FP 落盘 + 文档口径同步 + 迭代收口）** ① `points_commit_orchestrator.gd` 作为 A48① 生产订阅者订阅 FocusService 三信号，把专注值登记为 7 个三段式 `combat.focus.*` flag（A66，**与赐福点数 `grace.trial.points` / `spent_points` 完全分离**），遵守十字段 / `schema_version=3` / 不写 `removals` / `commit(reason)` 原子写 / 先落盘再改运行时实例 / 重启读回一致 / 重复释放不二次扣费 / FP 上限不突破；② 新写 `verify_v130_save_commit.gd`（三进程三态 `70 PASS` all / `84 PASS` 拆分）与 `verify_focus_production_v130.gd`（A48③ 真实可达、不加载 `presentation.gd`、不模拟编排，`49 PASS`），全 `RESULT=ALL_MATCH`；③ 文档口径同步（R35 遗留 P0）：`存档与flag规范.md` §3.3 全局表补 10 行（R35 `combat.parry.*` / `grace.boon_draft.unlocked` + R36 7 个 `combat.focus.*`）、`verify_fx_mobile.gd` 头部「移动四项全关」旧表述同步为 A63「轻量降级绘制」（只改注释、断言逻辑零改动）；④ 契约 §3.3 **只追加 R36 段**（7 flag + 裁决 A65/A66/A67/A68），历史条款 / I-1~I-6 / §3.1·§3.2 缺号未动；⑤ 新写 `teamwork/迭代-v0.13.0-专注值与战技.md` + 本 README 文末 §七 状态段；⑥ 三段门禁 G1 / G2a×4 / G2b×5 / G3 全 `EXIT=0`、11 份 `R36-*.log` 逐份 `SCRIPT ERROR=0 / Parse Error=0 / ERROR 前缀=0`，G3 回读 `node_count=41`、生产 `slot_01` 零改动。**本段即 R36 / v0.13.0 状态段**：「一、已做了什么」/「二、还差什么」/「三、资产清单表」/「四~六」历史行按「只追加、不改历史条款」保留未动，v0.13.0 增量以本段、文末 §七 与 `teamwork/Rank-3/DONE-R36.md` 为准；§3.1~§3.4 资产表实测字节数与「中枢 done 轮次」表（仍 R22 快照）一律未改。**本轮 Rank-3 未写任何其它 `godot/` 业务代码、未改其它 Rank 产出、未自行 git（总指挥收尾）**；HD-2D 全绿（A68）未达、定稿录屏目视（A67）/`[PLACEHOLDER]` 校准需用户确认，如实登记不冒充。
 
 ---
 
@@ -396,3 +397,65 @@
 - 总指挥亲自重跑 `capture/v120_final.mp4`：450 帧 / 15.000s / 1,475,275 B；目视 7 帧确认半透明大矩形消除、弹反 HUD 文字清晰、HUD 无重叠、连击 D→C 递进可见、340 帧余额 106 证扣费生效、尾帧胜利·已落盘。
 - 双产物重导：exe 109,178,880 B / pck 1,958,864 B / apk 30,505,105 B / idsig 247,218 B；apksigner v2/v3 true、icon_error=0。
 - **HD-2D 全绿仍未达成**；程序化光环 / 闪光实机不易辨识，连击 D→A / S 级未覆盖；`[PLACEHOLDER]` 待人工试玩校准；定稿录屏禁止加 `--headless`（A47）。
+
+## 七、R36 / v0.13.0 状态表（追加段，历史行一律保留未动）
+
+> 本段为 **R36 / cmd-20261112-154132-916-A3（Rank-3）** 追加；「一、已做了什么」/「二、还差什么」/「三、资产清单表」/「四、R32 / v0.10.0 状态表」/「五、R34 / v0.11.0 状态表」/「六、R35 / v0.12.0 状态表」及全部「总指挥定稿」历史行按「只追加、不改历史条款」保留未动，v0.13.0 增量以本段 + `teamwork/迭代-v0.13.0-专注值与战技.md` + `teamwork/Rank-3/DONE-R36.md` 为准。零付费、零外部依赖、不启 GPU job。
+
+### 7.1 v0.13.0 状态表
+
+| 域 | 状态 | 说明 |
+|---|---|---|
+| A66 专注值 FP 落盘 + 与赐福点数分离 | ✅ 已落地（生产链路） | `PointsCommitOrchestrator` autoload 订阅 FocusService `focus_spent` / `focus_restored` / `focus_rejected` 三信号，把 FP 登记为 7 个三段式 `combat.focus.*` flag；`_commit_focus()` 显式隔离，磁盘 `grace.trial.points` / `spent_points` 全链逐字不变（实证 `points=500==500` / `spent=15==15`）；先落盘再改运行时实例 / 重启读回一致 / 重复释放不二次扣费 / FP 上限封顶 |
+| 7 个新三段式 flag | ✅ 已登记 | `combat.focus.current` int / `.max` int / `.art_id` String / `.spend_count` int 单调 / `.restore_count` int 单调 / `.policy` String / `.last_reject` String；只作 `flags` 字典新 key、十字段冻结、`schema_version=3`、不写 `removals`、不回退 `points` |
+| A65 / A66 / A67 / A68 裁决登记 | ✅ 已登记 | 契约 §3.3 只追加 R36 段：A65 弹反免伤只作用本次窗口 / A66 FP 唯一实例 + 落盘归属编排层 + 与赐福点数分离 / A67 光环闪光必须总指挥定稿录屏目视（代码断言不算画面验收）/ A68 HD-2D 全绿仍按 A41/A52/A61、`128bit` 保留 A53 |
+| `verify_v130_save_commit.gd` | ✅ 通过 | 新写三进程三态存档验证件：`all` **70 PASS / 0 FAIL**，三进程 `write 23 + load 11 + assert 50 = 84 PASS / 0 FAIL`（三 pid 互不相同）、生产 `slot_01` md5 前后一致、`RESULT=ALL_MATCH` |
+| `verify_focus_production_v130.gd` | ✅ 通过（A48③ 真实可达） | 新写：不加载 `presentation.gd`（B00 运行时树零 presentation 节点）、不在验证脚本内模拟编排；实例化主场景 → 复用 A54 唯一真实 FocusService → 生产真实驱动口 → 生产编排层 autoload 订阅 → 读磁盘断言「战技扣 FP → 落盘 → 重启读回一致 → 赐福休息回满 → FP 上限不被突破 → 重复释放不二次扣费」；**49 PASS / 0 FAIL / RESULT=ALL_MATCH** |
+| 文档口径同步（R35 遗留 P0） | ✅ 已落地 | `存档与flag规范.md` §3.3 全局表补 10 行（R35 `combat.parry.success_count` / `combat.parry.window_id` / `grace.boon_draft.unlocked` + R36 7 个 `combat.focus.*`）+ R35 补登 / R36 注记；`verify_fx_mobile.gd` 头部「移动四项全关」旧表述同步为 A63「轻量降级绘制」口径（**只改注释、断言逻辑零改动**、`check-only EXIT=0`） |
+| 契约 §3.3 + 迭代收口文档 | ✅ 已落地 | 契约 §3.3 **只追加** R36 说明段（历史条款 / I-1~I-6 / §3.1 §3.2 缺号未动）；`teamwork/迭代-v0.13.0-专注值与战技.md`：拆解表 / P0~P2 / GDD 六项 / 三栏 / 节点信号链 / 真跑数字 / 验收三态 / 风险回滚 / 零付费 backlog |
+| 三段门禁 `grep SCRIPT ERROR=0` | ✅ 通过 | G1 `--import` / G2a `--check-only --script` ×4 / G2b `--headless --script` ×5（两份 verify + 三进程三态）/ G3 `--headless --quit` 全 `EXIT=0`；11 份 `R36-*.log` 统计 `SCRIPT_ERROR=0 / PARSE_ERROR=0 / ERROR_PREFIX=0`；G3 回读 `node_count=41`、A66 生产订阅者在真实主场景自动绑定（无输入不写盘） |
+| 既有回归 / 生产存档 | ✅ 全绿 | 两份新脚本 `70 + 49 = 119 PASS / 0 FAIL`、三进程三态 `84 PASS / 0 FAIL`，合计 **203 PASS / 0 FAIL**；生产 `slot_01` md5 前后一致、`courtyard.tscn` 节点 41 / uv `2/1/1` 保持 |
+| `[PLACEHOLDER]` 校准（FP / 冷却 / rest_refill / cost→points） | ⚠️ 需用户确认 | 用户侧人工试玩，Rank-3 不代做；调参唯一入口 `focus_rules.tres`（只改表不改代码）+ 编排层常量段，见迭代文档 §1.2 |
+| 15~20 秒实机录屏目视（A67 / A42） | ⚠️ 需用户确认 | 程序化光环 / 闪光可辨识度必须总指挥定稿录屏关键帧目视，代码断言不算画面验收；headless 无帧缓冲，Rank-3 不代做手感 / 审美判断 |
+| HD-2D 全绿（A68 按 A41/A52/A61） | ❌ 未达 | 光效仍 2D `_draw()` / screen-reading shader 近似、地面 2D tile、角色 billboard 像素精灵；不得据单路自评宣称全绿，A30 不切后端 |
+| `128bit` 歧义（A53 继续保留） | ⚠️ 保留待用户确认 | A15 / A43 / A61 保留口径、不消歧、不编码进任何期望值 |
+
+### 7.2 资产表增量（R36 新增 / 改动文件，字节数为 `os.path.getsize` 实测，非编造）
+
+| 文件（相对工程根） | 字节 | 类型 / 归属 |
+|---|--:|---|
+| `godot/scripts/rpg/points_commit_orchestrator.gd` | **42,072** | 修改（A56 生产编排层 autoload，Rank-3 唯一写入）：A66 订阅三信号 + 7 个 `combat.focus.*` flag + `_commit_focus` 隔离封装；既有 A55/A57/A59 逻辑逐字未改 |
+| `godot/scripts/rpg/verify_v130_save_commit.gd` | **37,278** | 新写三进程三态存档验证件（70 PASS / 三态 84 PASS） |
+| `godot/scripts/rpg/verify_focus_production_v130.gd` | **31,399** | 新写 A48③ 真实可达回归（不加载 `presentation.gd`、不模拟编排，49 PASS） |
+| `teamwork/迭代-v0.13.0-专注值与战技.md` | **25,091** | 新写迭代收口文档（§9 backlog 零付费零外部依赖增量） |
+| `teamwork/00-协作契约.md`（§3.3 追加 R36 段） | **92,683** | 只追加、历史条款 / I-1~I-6 / §3.1 §3.2 缺号未动 |
+| `teamwork/Rank-3/存档与flag规范.md`（§3.3 补 10 行 + 注记） | **44,116** | R35 遗留 P0 补登 + R36 登记，历史行未删 |
+| `godot/scripts/verify_fx_mobile.gd`（头部注释） | **14,003** | 只改 `##` 注释为 A63 口径、断言逻辑零改动 |
+| `teamwork/Rank-3/R36-*.log`（11 份真跑 stdout：G1 / G2a×4 / G2b×5 / G3） | **52,618** | 真跑日志留档；逐份 `SCRIPT ERROR=0 / Parse Error=0 / ERROR 前缀=0` |
+| `README.md` / `teamwork/Rank-3/DONE-R36.md` / 回执 | —（不登记自指静态字节数） | 运行时状态文档 / 交付报告 / 回执：内容按「只追加」维护，字节数随段落追加变动，不做自指静态登记以免失真 |
+
+> §3.1~§3.4 既有 I-5 素材 / 场景 / 脚本 / 产物实测字节数与「中枢 done 轮次」表（仍 R22 快照）一律未改；R36 未新增任何 I-5 素材 / 场景节点 / 导出产物，`courtyard.tscn` 节点 41 / uv `2/1/1`、`presentation.gd`、`project.godot`（既有 autoload）、既有 `.tres` 数值一律只读未改；生产 `slot_01` 全程不 open WRITE、md5 前后一致。
+
+### 7.3 「一、已做了什么」v0.13.0 增量（追加）
+
+| 域 | 已落地 |
+|---|---|
+| **v0.13.0 专注值与战技 · 画面补齐**（R36 派单 · Rank-3 FP 落盘 / 文档口径同步 / 迭代收口） | ① `points_commit_orchestrator.gd` 作为 A48① 生产订阅者订阅 FocusService 三信号，7 个 `combat.focus.*` 三段式 flag 落盘（A66 **与赐福点数分离**、十字段冻结 / `schema_version=3` / 不写 `removals` / `commit(reason)` 原子写 / 先落盘再改实例 / 重启读回一致 / 重复释放不二次扣费 / FP 上限不突破）；② 新写 `verify_v130_save_commit.gd`（三进程三态 70/84 PASS）与 `verify_focus_production_v130.gd`（A48③ 真实可达 49 PASS：战技扣 FP → 落盘 → 重启读回一致 → 赐福休息回满 → FP 上限不被突破 → 重复释放不二次扣费）；③ 文档口径同步（R35 遗留 P0）：规范 §3.3 补 10 行 + `verify_fx_mobile.gd` 头部 A63 口径（只改注释）；④ 契约 §3.3 只追加 R36 段（7 flag + A65/A66/A67/A68）；⑤ 迭代文档 + 本 README §七 状态段；⑥ 三段门禁全 `EXIT=0`、`SCRIPT ERROR=0 / Parse Error=0 / ERROR 前缀=0`（11 份日志）、A38 节点 41 / uv `2/1/1`、生产 `slot_01` 零改动；⑦ `DONE-R36.md` + 回执。**所有新数值标 `[PLACEHOLDER]` + rationale + 调参唯一入口（只改表 / 常量不改逻辑），Rank-3 未写任何其它 `godot/` 业务代码、未改其它 Rank 产出、未自行 git（总指挥收尾）** |
+| **R36 回归真跑**（Rank-3） | 两份新脚本 `70 + 49 = 119 PASS / 0 FAIL`；三进程三态 `write 23 + load 11 + assert 50 = 84 PASS / 0 FAIL`、三 pid 互不相同；合计 **203 PASS / 0 FAIL**，全 `RESULT=ALL_MATCH`。生产实证：FP `100→88→53`、回满 `53→100`（恰等于 max）、重复释放 `100→88→88` / `spend 2→3→3`、`points=500==500` / `spent=15==15` 全链不变、`commit_count=7`、重启读回 12 项逐项一致、生产 `slot_01` md5 前后一致；G3 回读 `node_count=41`、A66 生产订阅者自动绑定。既有 3 条退出 WARNING 如实保留、非 ERROR |
+
+### 7.4 「二、还差什么」v0.13.0 增量（追加）
+
+| # | 项 | 状态 | 说明 |
+|---|---|---|---|
+| 21 | **v0.13.0：FP / 冷却 / `rest_refill` / cost→points `[PLACEHOLDER]` 校准、定稿录屏关键帧目视（A67 代码断言不算画面验收）、HD-2D 全绿（A68 按 A41/A52/A61）、`128bit` 歧义（A53）继续保留、`focus_rejected` 是否只做运行时观测不落盘、多战技切换键位 / FP 条 `ProgressBar`、既有 WARNING 清理、连击 D→A / S 级演示目视覆盖** | **未达 · 待用户侧试玩 + 其它 Rank 裁决 / 运行时接线 + 总指挥目视** | 全部 `[PLACEHOLDER]` 待人工试玩校准、rationale 与调参唯一入口见迭代文档 §1.2（A45/A17）；A67 光环 / 闪光可辨识度必须总指挥定稿录屏关键帧目视、headless 无帧缓冲、Rank-3 不代做手感 / 审美判断（A42）；A68 以 `HD2D-STYLE-ANCHOR-v2.md` 三判据为准、如实记「未达全绿」，A30 不切后端；`128bit` 歧义（A53）继续保留待用户确认、不消歧；`focus_rejected` 落盘策略 / 每波是否回满 FP / 多战技切换归总指挥裁决（迭代文档 §7 / §9 backlog，均零付费零外部依赖增量） |
+
+> **v0.13.0（R36）复核「还差什么」**：第 **10 项**（人工试玩，A17）/ **11 项**（`128bit` 歧义，A53 保留）/ **12 项**（HD-2D 全绿未达，A68 按 A41/A52/A61）/ **2 项**（真 HDR bloom / 3D 体积光 / SSR）在 v0.13.0 **仍未达**；第 **13~20 项**（各版 `[PLACEHOLDER]` 校准 / 并发表落地校对 / 运行时接线 / 录屏目视）仍未达且本版第 21 项新增同类缺口；Rank-3 均未代做、未宣称完成。
+
+### R36 系列 / v0.13.0 专注值与战技 · 画面补齐（2026-11-12 总指挥定稿）
+
+- 新增机制：**专注值 FP 与战技** —— `focus_rules.tres` + `focus_config.gd` / `focus_service.gd`，两战技「辉石魔砾」（冷蓝低耗）与「狮子斩」（暖金高耗高削韧），**R 切换 / Q 释放**（A69），HUD FP 条与当前战技名，赐福休息回满 FP、不足 / 冷却拒绝。
+- 完善功能：A65 弹反成功免除该次招式伤害、A67 弹反金色粗环可辨识度（总指挥目视通过）、A66 FP 落盘与赐福点数分离、R35 遗留文档口径同步、连击推进到 B 级 1.35。
+- 总指挥真跑：15 个验证脚本 37/110/58/80/92/85/47/44/66/31/39/28/70/49/47 PASS、FAIL 全 0；全工程门禁 `SCRIPT ERROR=0`；A38 节点 41 / uv 2/1/1 保持。
+- 总指挥亲自重跑 `capture/v130_final.mp4`：450 帧 / 15.000s / 1,556,941 B；目视确认 A67 金色粗环明显可辨、R 战技切换文字真实可见、FP 条状态齐全、HUD 无重叠、尾帧胜利·已落盘。
+- 双产物重导：exe 109,178,880 B / pck 2,118,556 B / apk 30,666,393 B / idsig 247,218 B；apksigner v2/v3 true、icon_error=0。
+- **如实登记**：HD-2D 全绿仍未达成；狮子斩暖金斩击弧日志实证 3 次生产消费但精准抽帧未见大范围弧（视觉可辨识度未过验收）；连击 D→A / S 级未覆盖；`[PLACEHOLDER]` 待人工试玩校准；定稿录屏禁止加 `--headless`（A47）。

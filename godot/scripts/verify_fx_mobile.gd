@@ -1,6 +1,10 @@
 extends SceneTree
 ## R19 · 移动档降级实跑验证（hd2d_fx.tscn 切 mobile + desktop 对比回读）
 ## 派单：cmd-20261109-102334-091-A4 · [ROUND=R19] · 工位 Rank-4
+## 【R36 口径同步 / 裁决 A63】：历史头部注释的「移动四项全关」表述按 A63 更正为
+##   「轻量降级绘制」—— mobile 档关掉四项重 FX 绘制门，但保留轻量环 + HUD 文字
+##   （FXBloom 保持 visible=true 走轻量绘制），「不劣化 ≠ 完全不绘制」；本轮只改头部
+##   注释口径，断言逻辑（A63 已于 R35C 同步期望值、不删不放宽）逐字不动。
 ## 真跑：godot --headless --path F:/Game/aierdengfahuan/godot --script res://scripts/verify_fx_mobile.gd
 ## 三段门禁（独立 CLI 真跑，脚本内不嵌套启动第二个引擎进程）：
 ##   G1 ... --headless --path <root> --import
@@ -12,11 +16,15 @@ extends SceneTree
 ##   ① CACHE_MODE_IGNORE 从磁盘加载 hd2d_fx.tscn → instantiate() → root.add_child + await
 ##      process_frame（触发 4 个 FX 节点 _ready()：_build_motes / texture_filter=Nearest /
 ##      set_fx_profile 默认 desktop 真实执行）；
-##   ② 4 节点逐一切到 mobile，回读 visible=false / _all_on=false / texture_filter=Nearest /
-##      fx_profile=mobile，并回读四项绘制门 _on_reflection/_on_godrays/_on_motes/_on_bloom 全 false；
-##   ③ 再逐一切回 desktop 做对比回读，打印两档实际值 + 差异对照表（桌面四项全开 / 移动四项全关）；
+##   ② 4 节点逐一切到 mobile（A63 轻量降级绘制口径），回读 texture_filter=Nearest /
+##      fx_profile=mobile，并回读四项重 FX 绘制门 _on_reflection/_on_godrays/_on_motes/_on_bloom 全 false；
+##      其中 FXBloom 按 A63 保持 visible=true 走「轻量环 + HUD 文字」轻量绘制（不劣化 ≠ 不绘制），
+##      其余 3 个 FX 节点 visible=false / _all_on=false；
+##   ③ 再逐一切回 desktop 做对比回读，打印两档实际值 + 差异对照表
+##      （桌面四项全开 / 移动四项重 FX 绘制门全关 + FXBloom 轻量降级绘制可见）；
 ##   ④ 真跑核实结构：整棵树仅 CanvasLayer(根) + 4 个 Node2D FX 子节点，是纯叠加光效层，
-##      不含背景 / 角色 / 地面 / HUD 等画面主体节点 → 支撑「关掉四项光效后画面主体仍可读」。
+##      不含背景 / 角色 / 地面 / HUD 等画面主体节点 → 支撑「移动档轻量降级绘制
+##      （关掉四项重光效、保留轻量环 / HUD 文字）后画面主体仍可读」。
 ##   所有打印均为运行期实际回读值，不伪造、不硬编码 PASS。
 ##
 ## 边界：只读 hd2d_fx.tscn（load + instantiate，不 pack / 不保存）；不加载 / 不修改 /

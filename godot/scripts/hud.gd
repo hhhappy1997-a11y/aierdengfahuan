@@ -38,6 +38,13 @@ signal production_wave_modifier(wave_index: int, effect_key: String, effect_valu
 #   A48①：生产运行时订阅者 = EncounterDirector（_r35_bootstrap 里 connect），
 #          成功时由导演层真实削韧并保护连击不断；绝不只是验证脚本订阅。
 signal parry_performed(window_id: String, bonus_points: int, poise_bonus: float)
+# ---- R36 [ROUND=R36] 新增信号（既有 10 信号逐字不动）----
+#   战技 Q：真实 Q 输入 → A54 唯一 focus_service 判定 FP / 冷却 → 成功扣 FP 广播、
+#   失败（专注不足 / 冷却中）广播。A48①：两信号的生产运行时订阅者 =
+#   EncounterDirector（_r36_bootstrap connect，真实施加战技伤害 / 削韧），
+#   绝不只是验证脚本订阅；HUD 自身同时订阅刷新「专注值 FP」条与提示文本。
+signal focus_skill_performed(skill_id: String, fp_before: int, fp_after: int, fp_cost: int, damage: int, poise: float, multiplier: float)
+signal focus_skill_rejected(reason: String, fp: int, fp_max: int)
 
 # ==========================================================================
 # 常量
@@ -1233,6 +1240,32 @@ const ANCHOR_COMBO: Rect2 = Rect2(0.01875, 0.85556, 0.60000, 0.05000)    # 左�
 #   （rationale：与上方 guide 下沿 0.37222 留 0.03056 垂直安全缝、与下方 combo 留 ≥0.36 缝；
 #   与中央角色左沿 0.31250 留 0.01562 水平缝；长文本 autowrap 不越界；调参只改本节常量）。
 const ANCHOR_PARRY: Rect2 = Rect2(0.01875, 0.40278, 0.27813, 0.08333)    # 左中·精准弹反金色预兆带（独立分区）
+# ---- R36 [ROUND=R36] · 「专注值 FP」条【独立分区】----
+#   落在精准弹反带下沿(0.48611)之下、连击评级条上沿(0.85556)之上；x 0.01875~0.29688
+#   严格在中央角色保护区(ANCHOR_CHAR x≥0.31250)之左，与右侧面板 / 兑换 / 右上韧性条
+#   (x≥0.578/0.703)、波次/引导带(y≤0.37222)、底部状态条(y≥0.92222) 天然不相交。
+#   归一化锚点随 _layout_viewport 等比缩放 → 四档降级均不出界 / 不与任一文字包围盒相交。
+#   【不并入 get_layout_rects() 的 6 分区数组】（保护既有 A1「size()==6」断言不放宽），
+#   只经 get_focus_rect() 暴露，供真实节点定位与 HUD 布局断言读取。
+# [PLACEHOLDER] 锚点为布局初值，待试玩目视校准
+#   （rationale：与上方 parry 下沿 0.48611 留 0.02778 垂直安全缝、与下方 combo 留 ≥0.30 缝；
+#   与中央角色左沿 0.31250 留 0.01562 水平缝；调参只改本节常量）。
+const ANCHOR_FOCUS: Rect2 = Rect2(0.01875, 0.51389, 0.27813, 0.04167)   # 左中·专注值 FP 条（独立分区）
+# ---- R36B [ROUND=R36B] · 「当前战技」文字【独立分区】（A69 裁决 R 切换）----
+#   落在 FP 条下沿(0.55556)之下、连击评级条上沿(0.85556)之上；x 0.01875~0.29688
+#   严格在中央角色保护区(ANCHOR_CHAR x≥0.31250)之左，与右侧面板/兑换(x≥0.578)、
+#   波次/引导带(y≤0.37222)、弹反预兆带(y≤0.48611)、FP 条(y≤0.55556)、
+#   底部状态条(y≥0.92222)全部不相交。归一化锚点随 _layout_viewport 等比缩放，
+#   四档降级均不出界 / 不与任一文字包围盒相交。不并入 get_layout_rects() 的 6 分区
+#   （保护既有 A1「size()==6」断言不放宽），只经 get_current_art_rect() 暴露。
+# [PLACEHOLDER] 锚点为布局初值，待试玩目视校准。
+#   rationale（y=0.63 的由来）：真实 Label 有约 23px 最小内容高度，480x270 降级档
+#   FP 条节点被撑到 y≈138.75~161.75（锚点仅 0.04167*270≈11.25 高），故初版
+#   y=0.58333(≈157.5) 会与 FP 条交叠 567px²（L3 真跑实证）。下移到 0.63(≈170.1)
+#   后与 FP 条下沿留 ≥8px 缝、与 combo 上沿(≈231)留 ≥37px 缝；1280x720 下
+#   y=453.6~483.6 与 FP 条(370~400)/combo(616~652) 均不相交。与中央角色左沿
+#   0.31250 留 0.01562 水平缝；长文本 autowrap 不越界；调参只改本节常量。
+const ANCHOR_ART: Rect2 = Rect2(0.01875, 0.63000, 0.27813, 0.04167)     # 左中·当前战技名（独立分区）
 
 var _layout_viewport: Vector2 = LAYOUT_BASE
 
@@ -1248,6 +1281,10 @@ func set_layout_viewport(size: Vector2) -> void:
 	_r34_apply_combo_rect()
 	# R35：精准弹反金色预兆真实节点随视口重定位（独立分区，四档降级不与文字相交）。
 	_r35_apply_parry_rect()
+	# R36：专注值 FP 条真实节点随视口重定位（独立分区，四档降级不与文字相交）。
+	_r36_apply_focus_rect()
+	# R36B：当前战技名真实节点随视口重定位（独立分区，四档降级不与文字相交）。
+	_r36b_apply_art_rect()
 
 
 func _scaled_rect(anchor: Rect2) -> Rect2:
@@ -1291,6 +1328,20 @@ func get_shop_title_rect() -> Rect2:
 ##   不并入 6 分区数组（A1 不回退）。
 func get_parry_telegraph_rect() -> Rect2:
 	return _scaled_rect(ANCHOR_PARRY)
+
+
+## R36 · 「专注值 FP」条【独立分区】的实际包围盒（归一化锚点 → 当前视口线性缩放）。
+##   供 ProdFocusLabel 真实节点定位与「FP 条不与其它文字包围盒相交」断言读取；
+##   不并入 6 分区数组（A1 不回退）。
+func get_focus_rect() -> Rect2:
+	return _scaled_rect(ANCHOR_FOCUS)
+
+
+## R36B · 「当前战技」文字【独立分区】的实际包围盒（归一化锚点 → 当前视口线性缩放）。
+##   供 ProdArtLabel 真实节点定位与「战技名不与 FP 条 / 其它文字包围盒相交」断言读取；
+##   不并入 6 分区数组（A1 不回退）。
+func get_current_art_rect() -> Rect2:
+	return _scaled_rect(ANCHOR_ART)
 
 
 func get_hud_layout() -> Dictionary:
@@ -1735,6 +1786,20 @@ func _process_r32_keys(event: InputEvent) -> bool:
 	if pc == KEY_K or kc == KEY_K:
 		_try_parry_input()
 		return true
+	# R36：战技 Q 真实输入（与 F / Tab / K 同走 HUD 单一 _unhandled_input → R32 键路径）。
+	#   权威判定 = request_focus_skill()（复用 A54 唯一 focus_service）；ENC 侧同接 Q 并转发
+	#   到本入口，靠 event 实例幂等去重，绝不重复扣 FP / 不重复发信号。
+	if pc == KEY_Q or kc == KEY_Q:
+		_try_focus_skill_input(event)
+		return true
+	# R36B [ROUND=R36B / A69 裁决]：战技切换 R 真实输入（与 F / Tab / K / Q 同走 HUD
+	#   单一 _unhandled_input → _process_r32_keys 仲裁者路径）。权威判定 = request_art_switch()
+	#   （只读 A54 唯一 focus_service 的 arts 列表循环切换，不自建第二实例、不改表数值）。
+	#   ENC 侧同接 R 并转发本入口，靠 event 实例幂等去重；切换不改 FP / 冷却，消费事件后
+	#   return true，绝不落到既有 interact / 数字键逻辑（R 不误触其它键）。
+	if pc == KEY_R or kc == KEY_R:
+		_try_art_switch_input(event)
+		return true
 	return false
 
 
@@ -2014,6 +2079,7 @@ func _r34_bootstrap() -> void:
 					bind_parry_service(parry)
 					print("[R35][HUD] A54 唯一 ParryService 已复用 wave.get_parry_service()（不自建第二实例）")
 	_r34_build_visible()
+	_r36_bootstrap()                     # R36：A54 唯一 focus_service + A65 免伤 / 赐福回满 生产订阅
 	set_process(true)
 	_r34_refresh_visible()
 	print("[R34][HUD] 生产链装配完成 | stagger_bound=%s boon_bound=%s combo_bound=%s combo_signals=%s wave_cleared=%s wave_started=%s visible=%s" % [
@@ -2240,10 +2306,26 @@ func _r34_build_visible() -> void:
 		pl.add_theme_color_override("font_color", Color(1.0, 0.84, 0.30, 1.0))
 		layer.add_child(pl)
 	_r35_parry_label = pl
+	# R36：专注值 FP 条真实节点（生产常驻可见层，独立分区锚点，不与其它文字相交）。
+	var fl: Label = layer.get_node_or_null(NodePath("ProdFocusLabel")) as Label
+	if fl == null:
+		fl = _r34_make_label("ProdFocusLabel")
+		fl.add_theme_color_override("font_color", Color(0.55, 0.80, 1.0, 1.0))
+		layer.add_child(fl)
+	_r36_focus_label = fl
+	# R36B：「当前战技：XXX」真实节点（生产常驻可见层，独立分区锚点，不与任一文字相交）。
+	var al: Label = layer.get_node_or_null(NodePath(R36B_ART_LABEL_NAME)) as Label
+	if al == null:
+		al = _r34_make_label(R36B_ART_LABEL_NAME)
+		al.add_theme_color_override("font_color", Color(1.0, 0.84, 0.30, 1.0))
+		layer.add_child(al)
+	_r36b_art_label = al
 	# R34C：连击评级 / 倍率 / 命中数文本按【独立分区锚点】定位，不再用
 	#   R34_RECT_BOTTOM+8/+36 硬编码像素堆叠压在赐福成长标题行上。
 	_r34_apply_combo_rect()
 	_r35_apply_parry_rect()
+	_r36_apply_focus_rect()
+	_r36b_apply_art_rect()
 	_r34_hide_all()
 	print("[R34][HUD] f 链：生产常驻可见层 %s 入树 is_inside_tree=%s（按状态显示，非 presentation.gd 构造）" % [
 			R34_LAYER_NAME, str(layer.is_inside_tree())])
@@ -2317,6 +2399,9 @@ func _r34_refresh_visible() -> void:
 	if not combo_text.is_empty() and _r34_combo_label != null:
 		_r34_combo_label.text = combo_text
 		_r34_combo_label.visible = true
+	# R36：专注值 FP 条常驻可见 + A65「弹反·免伤」/ 战技失败提示文本（按本地状态镜像刷新，
+	#   不每帧读服务快照；FP 权威值由 request / bind / 赐福事件后显式 poll_focus_service 同步）。
+	_r36_refresh_focus()
 
 
 func _r34_combo_text() -> String:
@@ -2346,6 +2431,7 @@ func _process(delta: float) -> void:
 	# R35：可弹反窗口读秒镜像由生产帧驱动（ParryService 真实 tick 亦由导演层帧链转发）。
 	if _r35_parry_window_open or _r35_parry_cooldown > 0.0:
 		tick_parry(delta)
+	tick_focus(delta)                     # R36：FP 冷却 / 提示显示镜像递减（生产帧驱动）
 	_r34_refresh_visible()
 
 
@@ -2377,6 +2463,10 @@ func get_production_status() -> Dictionary:
 		"parry_success_count": _r35_parry_success_count,
 		"parry_attempt_count": _r35_parry_attempt_count,
 		"parry_signal_connected": _r35_parry_connected,
+		# ---- R36 追加（既有键名与取值口径逐字不变）----
+		"focus_bound": _r36_focus != null and is_instance_valid(_r36_focus),
+		"focus_hud": get_focus_hud_view(),
+		"focus_parry_negate_count": _r36_parry_negate_count,
 	}
 
 
@@ -2389,6 +2479,7 @@ func get_active_wave_modifier() -> Dictionary:
 
 
 func _r34_release() -> void:
+	_r36_release()                       # R36：ENC.parry_damage_negated 订阅的释放路径
 	_r35_release()                       # R35：ParryService 信号 connect 的释放路径
 	_r34_disconnect_combo_signals()      # R34B：4 个 combo 信号 connect 的释放路径
 	if _r34_wave != null and is_instance_valid(_r34_wave):
@@ -2756,3 +2847,578 @@ func _r35_release() -> void:
 			if svc.is_connected(sig, cb_close):
 				svc.disconnect(sig, cb_close)
 	_r35_parry_connected = false
+
+
+# ==========================================================================
+# 18) R36 [ROUND=R36] · v0.13.0 专注值 FP / 战技 Q（运行时侧，Rank-1 唯一写入方）
+#   A48①：HUD 新信号 focus_skill_performed / focus_skill_rejected 的【生产运行时订阅者】
+#          = EncounterDirector（_r36_bootstrap connect，真实削韧 / 伤害）；ENC 新信号
+#          parry_damage_negated（A65）的生产订阅者 = 本 HUD（显示「弹反·免伤」）。
+#          绝不只是验证脚本订阅。
+#   A54：focus_service 唯一实例从 wave_trial_director.get_focus_service() 复用，绝不自建
+#        第二个实例；Rank-2 本轮并发新增件尚未落盘时判空降级、不崩、不产生 SCRIPT ERROR、
+#        如实登记「真实判定逻辑待 Rank-2 落盘联调」（同 R35 FakeParry 先例）。
+#   A57：战技伤害携带【倍率后最终值】（基础伤害 × 唯一 ComboService 有效倍率），
+#        ENC 生产订阅者原样采信、不二次结算；无有效倍率回落基础值。
+#   A46：Q 与 F / Tab / K 同走 HUD._unhandled_input → _process_r32_keys 单一仲裁者路径，
+#        不回退到多监听者吞键；ENC 同接 Q 转发本权威入口，event 实例幂等去重。
+#   不改既有普通攻击判定 / 帧数据 / 输出格式：Q 为新增输入分支，战技效果走生产订阅链，
+#     HUD 既有文本 / 四套 HUD / 6 分区布局逐字不动；FP 条用独立归一化锚点 ANCHOR_FOCUS，
+#     不与任何既有文字包围盒相交（不并入 get_layout_rects() 的 6 分区，保护 A1 断言）。
+# ==========================================================================
+
+# ---- Rank-2 focus_service 鸭子类型契约（不静态引用 class_name，命名差异不崩）----
+#   R36 真实接口（Rank-2 focus_service.gd）：spend_fp(art_id) 判定 / get_snapshot() 快照 /
+#   on_grace_rest() 回满 / tick(delta) 冷却；成功返回键 damage / poise_damage /
+#   fp_cost / fp_remaining / art_id / cooldown_remaining。下列候选同时兼容契约替身。
+const R36_FOCUS_METHOD_SPEND: String = "spend_fp"       # 真实服务主入口（需 art_id 实参）
+const R36_FOCUS_METHOD_ART_IDS: Array[String] = ["get_art_ids"]  # 取默认战技 id
+const R36_FOCUS_METHOD_TRY: Array[String] = [
+	"try_focus_skill", "cast_skill", "try_skill", "consume_focus", "spend_focus"]
+const R36_FOCUS_METHOD_SNAPSHOT: Array[String] = [
+	"get_snapshot", "get_status", "get_focus_view", "get_view"]
+const R36_FOCUS_METHOD_REST: Array[String] = [
+	"on_grace_rest", "rest_at_grace", "rest", "refill", "reset"]
+const R36_FOCUS_METHOD_TICK: Array[String] = ["tick", "advance", "step"]
+const R36_KEY_OK: Array[String] = ["ok", "success", "accepted", "cast"]
+const R36_KEY_REASON: Array[String] = ["reason", "result", "reject_reason"]
+const R36_KEY_FP: Array[String] = ["fp", "fp_after", "fp_remaining", "current_fp", "focus"]
+const R36_KEY_FP_BEFORE: Array[String] = ["fp_before", "fp_prev"]
+const R36_KEY_FP_MAX: Array[String] = ["fp_max", "max_fp", "focus_max"]
+const R36_KEY_FP_COST: Array[String] = ["fp_cost", "cost", "fp_spent"]
+const R36_KEY_DAMAGE: Array[String] = ["damage", "skill_damage", "base_damage"]
+const R36_KEY_POISE: Array[String] = ["poise_damage", "poise", "skill_poise"]
+const R36_KEY_COOLDOWN: Array[String] = ["cooldown_remaining", "cooldown", "cooldown_sec"]
+const R36_KEY_WID: Array[String] = ["art_id", "window_id", "skill_id", "wid"]
+# [PLACEHOLDER] 服务未落盘时的显示降级初值（非玩法数值）：仅用于 FP 条文本占位，
+#   rationale：Rank-2 focus_service 未装配时 HUD 仍可显示一个稳定的「当前/上限」条，
+#   权威值恒以服务 get_snapshot() 为准；调参唯一入口 = 本常量表（只改表不改算法）。
+const R36_FP_FALLBACK: int = 60
+const R36_FP_MAX_FALLBACK: int = 60
+# [PLACEHOLDER] 战技提示 / A65「弹反·免伤」反馈显示时长（秒），待试玩校准；
+#   rationale：给短暂的可见反馈窗口，不常驻遮挡；调参唯一入口 = 本常量表。
+const R36_HINT_SHOW_SEC: float = 1.2
+const R36_NEGATE_SHOW_SEC: float = 1.5
+
+const R36_FOCUS_LABEL_NAME: String = "ProdFocusLabel"
+const R36_ENC_REL_PATH: String = "EncounterRoot"
+const R36_WAVE_REL_PATH: String = "WaveTrialDirector"
+# R36B [ROUND=R36B] · 「当前战技：XXX」真实节点名（A69 裁决 R 切换，独立分区锚点）。
+const R36B_ART_LABEL_NAME: String = "ProdArtLabel"
+
+var _r36_focus: Object = null               # A54 唯一 focus_service（wave 复用，不自建）
+var _r36_focus_label: Label = null          # 「专注值 FP」条真实节点
+var _r36_fp: int = R36_FP_FALLBACK          # 当前 FP 镜像（权威来自服务快照）
+var _r36_fp_max: int = R36_FP_MAX_FALLBACK  # FP 上限镜像
+var _r36_cooldown: float = 0.0             # 冷却镜像（服务为权威，本地仅显示递减）
+var _r36_last_q_event_id: int = 0          # 同一 InputEvent 实例幂等去重（ENC+HUD 双接 Q 不重复结算）
+var _r36_last_q_result: Dictionary = {}
+var _r36_attempt_count: int = 0
+var _r36_success_count: int = 0
+var _r36_reject_count: int = 0
+var _r36_skill_seq: int = 0                # 非空唯一 skill window id 序号
+var _r36_attempt_log: Array[Dictionary] = []
+var _r36_hint_text: String = ""            # 「专注不足 / 冷却中 / 战技命中」提示
+var _r36_hint_remaining: float = 0.0
+var _r36_parry_negate_text: String = ""    # A65「弹反·免伤」反馈
+var _r36_parry_negate_remaining: float = 0.0
+var _r36_parry_negate_count: int = 0
+var _r36_focus_signal_connected: bool = false
+var _r36_bootstrapped: bool = false
+
+# ---- R36B [ROUND=R36B] · 战技切换（A69 裁决：R 键在 focus_rules.tres 的 arts 间循环）----
+var _r36b_art_index: int = 0                # 当前战技索引（默认 0 = arts[0]，既有 Q 行为不回退）
+var _r36b_art_ids: PackedStringArray = []   # 从 A54 唯一实例 get_art_ids() 只读同步，不自建服务
+var _r36b_art_label: Label = null           # 「当前战技：XXX」真实节点 ProdArtLabel
+var _r36b_last_r_event_id: int = 0          # 同一 event 实例幂等去重（ENC+HUD 双接 R 不重复切换）
+var _r36b_last_r_result: Dictionary = {}
+var _r36b_switch_count: int = 0             # 切换次数（只读快照 / 运行日志用）
+
+
+## 多候选键读取（Rank-2 快照字段命名差异不改本层代码即可兼容，同 R35 _r35_pick）。
+func _r36_pick(d: Dictionary, keys: Array[String], default_value: Variant) -> Variant:
+	for k: String in keys:
+		if d.has(k):
+			return d[k]
+	return default_value
+
+
+## 默认战技 id：优先真实 FocusService.get_art_ids() 首个 id（数值来自 focus_rules.tres，
+## 本层不硬编码具体战技）；契约替身 / 无该方法时回落空串由服务按自身契约判定（不崩）。
+func _r36_default_art_id(svc: Object) -> String:
+	for m: String in R36_FOCUS_METHOD_ART_IDS:
+		if svc.has_method(m):
+			var ids: Variant = svc.call(m)
+			if ids is PackedStringArray and not (ids as PackedStringArray).is_empty():
+				return String((ids as PackedStringArray)[0])
+			if ids is Array and not (ids as Array).is_empty():
+				return str((ids as Array)[0])
+	return ""
+
+
+## A54 唯一实例注入口（生产由 _r36_bootstrap 经 wave.get_focus_service() 复用；
+## 验证进程注入契约替身）。绝不 new 第二个生产实例。
+func bind_focus_service(svc: Object) -> void:
+	_r36_focus = svc
+	_r36_last_q_event_id = 0
+	_r36_last_q_result = {}
+	_r36b_last_r_event_id = 0
+	_r36b_last_r_result = {}
+	poll_focus_service()
+	_r36_refresh_focus()                  # 内部同步 R36B「当前战技」真实节点文本
+
+
+func get_focus_service() -> Object:
+	return _r36_focus
+
+
+## 从权威服务快照同步 FP 当前 / 上限 / 冷却（事件后显式调用，不每帧轮询）。
+func poll_focus_service() -> void:
+	var svc: Object = _r36_focus
+	if svc == null or not is_instance_valid(svc):
+		return
+	var snap: Dictionary = {}
+	for m: String in R36_FOCUS_METHOD_SNAPSHOT:
+		if svc.has_method(m):
+			var v: Variant = svc.call(m)
+			if typeof(v) == TYPE_DICTIONARY:
+				snap = v as Dictionary
+				break
+	if snap.is_empty():
+		return
+	_r36_fp = int(_r36_pick(snap, R36_KEY_FP, _r36_fp))
+	_r36_fp_max = int(_r36_pick(snap, R36_KEY_FP_MAX, _r36_fp_max))
+	_r36_cooldown = maxf(0.0, float(_r36_pick(snap, R36_KEY_COOLDOWN, _r36_cooldown)))
+
+
+## A57 倍率后值口径：取 A54 唯一 ComboService 的有效结算倍率；无有效倍率回落 1.0。
+## 调参唯一入口 = res://data/rpg/combo_rules.tres 的 multiplier（只改表不改代码）。
+func _r36_effective_multiplier() -> float:
+	var combo: Object = get_combo_service()
+	if combo == null or not is_instance_valid(combo):
+		return 1.0
+	var mult: float = -1.0
+	if combo.has_method("get_last_settlement"):
+		var last: Dictionary = combo.call("get_last_settlement") as Dictionary
+		if bool(last.get("ok", false)) and bool(last.get("settled", false)):
+			mult = float(last.get("multiplier", 1.0))
+	if mult <= 0.0 and combo.has_method("get_multiplier"):
+		mult = float(combo.call("get_multiplier"))
+	if mult <= 0.0 or is_nan(mult) or is_inf(mult):
+		return 1.0
+	return mult
+
+
+func _r36_make_skill_id() -> String:
+	_r36_skill_seq += 1
+	return "skill_%d" % _r36_skill_seq
+
+
+## 失败原因归一为 HUD 中文提示「专注不足 / 冷却中」（不改服务 reason 原值，随信号带出）。
+func _r36_reason_hint(reason: String) -> String:
+	var r: String = reason.to_lower()
+	if r.contains("cooldown") or r.contains("cool") or r.contains("冷却") or r == "cd":
+		return "冷却中"
+	if r.contains("fp") or r.contains("focus") or r.contains("insufficient") \
+			or r.contains("not_enough") or r.contains("不足"):
+		return "专注不足"
+	if r.contains("unavailable") or r.contains("no_service"):
+		return "战技服务未就绪"
+	return "战技未释放"
+
+
+## 真实 Q 输入唯一权威判定（HUD._process_r32_keys / ENC._r36_request_focus_skill 同调本入口）。
+## 成功 → 扣 FP（服务权威）+ 发 focus_skill_performed（A57 倍率后值）；失败 → 不扣 FP +
+## 发 focus_skill_rejected + HUD「专注不足 / 冷却中」提示。同一 event 实例幂等去重。
+func request_focus_skill(event: InputEvent = null) -> Dictionary:
+	if event != null:
+		var eid: int = event.get_instance_id()
+		if eid == _r36_last_q_event_id and not _r36_last_q_result.is_empty():
+			return _r36_last_q_result.duplicate()
+		_r36_last_q_event_id = eid
+	_r36_attempt_count += 1
+	var svc: Object = _r36_focus
+	if svc == null or not is_instance_valid(svc):
+		var r_unavail: Dictionary = {"ok": false, "reason": "focus_service_unavailable",
+				"fp": _r36_fp, "fp_max": _r36_fp_max}
+		_r36_reject_count += 1
+		_r36_hint_text = "战技服务未就绪"
+		_r36_hint_remaining = R36_HINT_SHOW_SEC
+		focus_skill_rejected.emit("focus_service_unavailable", _r36_fp, _r36_fp_max)
+		_r36_log("focus_service_unavailable", false, "", 0, _r36_fp, _r36_fp_max)
+		_r36_refresh_focus()
+		_r36_last_q_result = r_unavail
+		return r_unavail.duplicate()
+	var result: Dictionary = {}
+	var art_id: String = ""              # R36B：本次 Q 释放的【当前选中】战技 id
+	# 真实 Rank-2 FocusService 主入口 spend_fp(art_id)：R36B 起取【当前选中】战技 id
+	# （默认 arts[0]，与既有行为逐字等价；arts 列表 / title 全来自 focus_rules.tres，
+	#  HUD 不硬编码具体 id / 数值，只读 A54 唯一实例）。
+	if svc.has_method(R36_FOCUS_METHOD_SPEND):
+		art_id = get_current_art_id()
+		if art_id.is_empty():
+			art_id = _r36_default_art_id(svc)   # 空列表 / 服务降级时回落既有默认，不回退
+		var vs: Variant = svc.call(R36_FOCUS_METHOD_SPEND, art_id)
+		if typeof(vs) == TYPE_DICTIONARY:
+			result = vs as Dictionary
+		elif typeof(vs) == TYPE_BOOL:
+			result = {"ok": bool(vs)}
+	else:
+		# 契约替身 / 其它命名（无参入口，判空降级不崩）。
+		for m: String in R36_FOCUS_METHOD_TRY:
+			if svc.has_method(m):
+				var v: Variant = svc.call(m)
+				if typeof(v) == TYPE_DICTIONARY:
+					result = v as Dictionary
+				elif typeof(v) == TYPE_BOOL:
+					result = {"ok": bool(v)}
+				break
+	var ok: bool = bool(_r36_pick(result, R36_KEY_OK, false))
+	var reason: String = String(_r36_pick(result, R36_KEY_REASON, ""))
+	poll_focus_service()
+	if not ok:
+		_r36_reject_count += 1
+		_r36_hint_text = _r36_reason_hint(reason)
+		_r36_hint_remaining = R36_HINT_SHOW_SEC
+		focus_skill_rejected.emit(reason, _r36_fp, _r36_fp_max)
+		_r36_log(reason, false, "", 0, _r36_fp, _r36_fp_max)
+		_r36_refresh_focus()
+		_r36_last_q_result = result
+		return result.duplicate()
+	# 成功：A57 倍率后值（基础伤害 × 有效连击倍率，ENC 原样采信不二次结算）。
+	var fp_before: int = int(_r36_pick(result, R36_KEY_FP_BEFORE, _r36_fp))
+	var fp_after: int = int(_r36_pick(result, R36_KEY_FP, _r36_fp))
+	var fp_cost: int = int(_r36_pick(result, R36_KEY_FP_COST, 0))
+	var base_damage: int = int(_r36_pick(result, R36_KEY_DAMAGE, 0))
+	var poise: float = float(_r36_pick(result, R36_KEY_POISE, 0.0))
+	var wid: String = String(_r36_pick(result, R36_KEY_WID, ""))
+	if wid.is_empty():
+		wid = _r36_make_skill_id()
+	var mult: float = _r36_effective_multiplier()
+	var final_damage: int = int(roundf(float(base_damage) * mult))
+	_r36_success_count += 1
+	_r36_hint_text = "战技命中 · -%d FP" % fp_cost
+	_r36_hint_remaining = R36_HINT_SHOW_SEC
+	# A48①：生产运行时订阅者（EncounterDirector）收此信号 → 真实削韧 + 真实伤害。
+	focus_skill_performed.emit(wid, fp_before, fp_after, fp_cost, final_damage, poise, mult)
+	_r36_log("ok", true, wid, final_damage, fp_after, _r36_fp_max)
+	_r36_refresh_focus()
+	_r36_last_q_result = result
+	print("[R36][HUD] 真实 Q → 战技命中 | art=%s wid=%s fp %d->%d cost=%d base=%d final=%d(×%.2f) poise=%.1f → focus_skill_performed 已发（A57 倍率后值）" % [
+			art_id, wid, fp_before, fp_after, fp_cost, base_damage, final_damage, mult, poise])
+	return result.duplicate()
+
+
+func _r36_log(reason: String, ok: bool, wid: String, damage: int, fp: int, fp_max: int) -> void:
+	_r36_attempt_log.append({"reason": reason, "ok": ok, "window_id": wid,
+			"damage": damage, "fp": fp, "fp_max": fp_max})
+
+
+func get_focus_attempt_log() -> Array[Dictionary]:
+	return _r36_attempt_log.duplicate(true)
+
+
+## 战技 HUD 视图（FP 当前 / 上限 / 提示 / 独立分区 rect / 计数，供可见层与验证读取）。
+func get_focus_hud_view() -> Dictionary:
+	var av: Dictionary = get_current_art_view()   # R36B 只读追加（既有 key 逐字不动）
+	return {
+		"fp": _r36_fp,
+		"fp_max": _r36_fp_max,
+		"fp_text": "专注值 FP %d/%d" % [_r36_fp, _r36_fp_max],
+		"cooldown_sec": _r36_cooldown,
+		"hint_text": _r36_hint_text,
+		"parry_negate_text": _r36_parry_negate_text,
+		"parry_negate_count": _r36_parry_negate_count,
+		"service_available": _r36_focus != null and is_instance_valid(_r36_focus),
+		"attempt_count": _r36_attempt_count,
+		"success_count": _r36_success_count,
+		"reject_count": _r36_reject_count,
+		"rect": get_focus_rect(),
+		"focus_signal_connected": _r36_focus_signal_connected,
+		# ---- R36B 追加只读 key（既有 14 个 key 逐字不动）----
+		"current_art_id": String(av.get("art_id", "")),
+		"current_art_title": String(av.get("title", "")),
+		"current_art_index": int(av.get("art_index", 0)),
+		"current_art_count": int(av.get("art_count", 0)),
+		"current_art_rect": get_current_art_rect(),
+	}
+
+
+## 「专注值 FP」条真实节点按独立分区锚点定位（视口变化由 set_layout_viewport 联动重算）。
+func _r36_apply_focus_rect() -> void:
+	if _r36_focus_label == null or not is_instance_valid(_r36_focus_label):
+		return
+	var r: Rect2 = get_focus_rect()
+	_r36_focus_label.offset_left = r.position.x
+	_r36_focus_label.offset_top = r.position.y
+	_r36_focus_label.offset_right = r.end.x
+	_r36_focus_label.offset_bottom = r.end.y
+
+
+## FP 条常驻可见刷新（本地镜像 + 提示 / A65 免伤反馈，不读服务快照、不写既有 Label.text）。
+func _r36_refresh_focus() -> void:
+	if _r36_focus_label == null or not is_instance_valid(_r36_focus_label):
+		return
+	var line: String = "专注值 FP %d/%d  ｜  Q 战技" % [_r36_fp, _r36_fp_max]
+	if not _r36_parry_negate_text.is_empty():
+		line += "  ｜  %s" % _r36_parry_negate_text
+	elif not _r36_hint_text.is_empty():
+		line += "  ｜  %s" % _r36_hint_text
+	_r36_focus_label.text = line
+	_r36_focus_label.visible = true        # 常驻显示「当前 / 上限」，不按窗口隐藏
+	_r36b_refresh_art()                    # R36B：同步「当前战技：XXX」真实节点（常驻，与 FP 条同源刷新）
+
+
+## 生产帧驱动：提示 / A65 反馈显示时长 + 冷却镜像递减（服务真实 tick 由导演层帧链转发）。
+func tick_focus(delta: float) -> void:
+	var dt: float = maxf(0.0, delta)
+	if _r36_hint_remaining > 0.0:
+		_r36_hint_remaining = maxf(0.0, _r36_hint_remaining - dt)
+		if _r36_hint_remaining <= 0.0:
+			_r36_hint_text = ""
+	if _r36_parry_negate_remaining > 0.0:
+		_r36_parry_negate_remaining = maxf(0.0, _r36_parry_negate_remaining - dt)
+		if _r36_parry_negate_remaining <= 0.0:
+			_r36_parry_negate_text = ""
+	if _r36_cooldown > 0.0:
+		_r36_cooldown = maxf(0.0, _r36_cooldown - dt)
+
+
+func _try_focus_skill_input(event: InputEvent) -> Dictionary:
+	return request_focus_skill(event)
+
+
+## A65 [HOST 裁决] · 弹反成功免伤 HUD 反馈：ENC.parry_damage_negated 的【生产运行时订阅者】
+##   （_r36_bootstrap connect，非验证脚本）。本次窗口内成功 → 显示「弹反·免伤」。
+func _r36_on_parry_damage_negated(_window_id: String) -> void:
+	_r36_parry_negate_count += 1
+	_r36_parry_negate_text = "弹反·免伤"
+	_r36_parry_negate_remaining = R36_NEGATE_SHOW_SEC
+	_r36_refresh_focus()
+	print("[R36][HUD] A65 弹反·免伤反馈 | wid=%s count=%d（生产订阅者，非验证脚本）" % [
+			_window_id, _r36_parry_negate_count])
+
+
+## 赐福休息回满 FP：ENC.grace_rested 生产订阅者回调 → 唯一 focus_service.rest() → poll 回读。
+func _r36_on_grace_rested(_rest_count: int) -> void:
+	var svc: Object = _r36_focus
+	if svc != null and is_instance_valid(svc):
+		for m: String in R36_FOCUS_METHOD_REST:
+			if svc.has_method(m):
+				svc.call(m)
+				break
+	poll_focus_service()
+	_r36_hint_text = "赐福休息 · FP 回满"
+	_r36_hint_remaining = R36_HINT_SHOW_SEC
+	_r36_parry_negate_text = ""
+	_r36_refresh_focus()
+	print("[R36][HUD] 赐福休息 → focus_service.rest() → FP 回满 | fp=%d/%d" % [_r36_fp, _r36_fp_max])
+
+
+func _r36_dedup_connect(obj: Object, sig: String, method: String) -> void:
+	if obj == null or not obj.has_signal(sig):
+		return
+	var cb: Callable = Callable(self, method)
+	for conn in obj.get_signal_connection_list(sig):
+		var c: Callable = conn.get("callable", Callable())
+		if c.get_object() == self and String(c.get_method()) == method:
+			return
+	if not obj.is_connected(sig, cb):
+		obj.connect(sig, cb)
+
+
+## 生产装配（_r34_bootstrap 末尾调用 / --script 验证显式调用同一入口）：
+##   ① A54 唯一 focus_service 从 wave_trial_director.get_focus_service() 复用（绝不自建）；
+##   ② A48① HUD 成为 ENC.parry_damage_negated（A65）/ grace_rested（回满）的生产订阅者。
+func _r36_bootstrap() -> void:
+	if _r36_bootstrapped:
+		return
+	_r36_bootstrapped = true
+	var ml: MainLoop = Engine.get_main_loop()
+	var courtyard: Node = null
+	if ml is SceneTree:
+		courtyard = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+	if courtyard == null:
+		courtyard = _r34_find_mount_root()
+	if courtyard != null:
+		var wave: Node = courtyard.get_node_or_null(NodePath(R36_WAVE_REL_PATH))
+		if wave != null and wave.has_method("get_focus_service"):
+			var svc: Object = wave.call("get_focus_service") as Object
+			if svc != null and is_instance_valid(svc):
+				bind_focus_service(svc)       # A54：复用唯一实例，不自建第二个
+		var enc: Node = courtyard.get_node_or_null(NodePath(R36_ENC_REL_PATH))
+		if enc != null and is_instance_valid(enc):
+			_r36_dedup_connect(enc, "parry_damage_negated", "_r36_on_parry_damage_negated")
+			_r36_dedup_connect(enc, "grace_rested", "_r36_on_grace_rested")
+			_r36_focus_signal_connected = true
+	print("[R36][HUD] 生产装配 | focus_unique_instance=%s A65/回满生产订阅=%s（A48①/A54，不自建第二实例）" % [
+			str(_r36_focus != null and is_instance_valid(_r36_focus)), str(_r36_focus_signal_connected)])
+
+
+## 信号 connect 的释放路径（_exit_tree → _r34_release → 本函数）。
+func _r36_release() -> void:
+	var ml: MainLoop = Engine.get_main_loop()
+	var courtyard: Node = null
+	if ml is SceneTree:
+		courtyard = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+	if courtyard == null:
+		courtyard = _r34_find_mount_root()
+	if courtyard != null:
+		var enc: Node = courtyard.get_node_or_null(NodePath(R36_ENC_REL_PATH))
+		if enc != null and is_instance_valid(enc):
+			var pairs: Dictionary = {
+				"parry_damage_negated": "_r36_on_parry_damage_negated",
+				"grace_rested": "_r36_on_grace_rested"}
+			for sig: String in pairs.keys():
+				if enc.has_signal(sig):
+					var cb: Callable = Callable(self, String(pairs[sig]))
+					if enc.is_connected(sig, cb):
+						enc.disconnect(sig, cb)
+	_r36_focus_signal_connected = false
+
+
+# ==========================================================================
+# 18B) R36B [ROUND=R36B] · 战技切换（HOST 裁决 A69：R 键循环切换当前战技）
+#   【只读数据表】：arts 列表 / title / 各战技数值全部来自 res://data/combat/focus_rules.tres，
+#     经 A54 唯一 FocusService 的公开只读接口 get_art_ids() / get_config() 读取；
+#     本层绝不 new 第二个 FocusService、绝不写 .tres、绝不硬编码任何战技 id / 数值。
+#   【单一事实源】：当前选中战技索引 _r36b_art_index 只存在 HUD（Q 释放的权威判定者）；
+#     HUD._process_r32_keys(R) 与 ENC._unhandled_input(R) 都转发到本段唯一入口
+#     request_art_switch()，靠同一 event 实例幂等去重，绝不重复切换。
+#   【不重置 FP / 冷却】：切换全程只读服务、不调 spend_fp / tick / on_grace_rest / reset，
+#     不改 _r36_fp / _r36_cooldown 镜像，故切换不重置 FP、不触发冷却重置。
+#   【不改既有】：既有 18 节 R36 的 14 个 get_focus_hud_view key / 6 信号 / Q 判定分支 /
+#     普通攻击判定 / 输出格式逐字不动；仅新增只读 getter 与独立分区真实节点。
+# ==========================================================================
+
+## 从 A54 唯一 focus_service 只读 arts 列表，同步本地镜像。
+## 只读 get_art_ids() 公开接口；服务缺失 / 命名差异 → 空列表降级、不崩、不产生 SCRIPT ERROR。
+func _r36b_sync_art_ids(svc: Object) -> PackedStringArray:
+	var ids: PackedStringArray = PackedStringArray()
+	if svc != null and is_instance_valid(svc) and svc.has_method("get_art_ids"):
+		var v: Variant = svc.call("get_art_ids")
+		if v is PackedStringArray:
+			ids = (v as PackedStringArray).duplicate()
+		elif v is Array:
+			for s: Variant in (v as Array):
+				ids.append(str(s))
+	_r36b_art_ids = ids
+	return ids
+
+
+## 只读数据表 title（FocusConfig.get_art_by_id(id) 的 title 字段）；
+## 缺失 / 契约替身无 get_config → 回落 art_id 显示，不崩、不改表、不伪造中文名。
+func _r36b_art_title(svc: Object, art_id: String) -> String:
+	if svc != null and is_instance_valid(svc) and svc.has_method("get_config"):
+		var cfg: Object = svc.call("get_config") as Object
+		if cfg != null:
+			if cfg.has_method("get_art_by_id"):
+				var d: Variant = cfg.call("get_art_by_id", art_id)
+				if typeof(d) == TYPE_DICTIONARY:
+					var t: String = str((d as Dictionary).get("title", ""))
+					if not t.is_empty():
+						return t
+			var raw: Variant = cfg.get("arts")
+			if typeof(raw) == TYPE_ARRAY:
+				for row: Variant in (raw as Array):
+					if typeof(row) == TYPE_DICTIONARY \
+							and str((row as Dictionary).get("id", "")) == art_id:
+						var t2: String = str((row as Dictionary).get("title", ""))
+						if not t2.is_empty():
+							return t2
+	return art_id
+
+
+## 当前选中战技 id：默认 arts[0]（既有 Q 行为不回退），R 切换后取 index 对应 id。
+## 只读 A54 唯一实例 arts 列表；索引越界自动归 0（表变更 / 服务替换安全降级）。
+func get_current_art_id() -> String:
+	var ids: PackedStringArray = _r36b_sync_art_ids(_r36_focus)
+	if ids.is_empty():
+		return ""
+	if _r36b_art_index < 0 or _r36b_art_index >= ids.size():
+		_r36b_art_index = 0
+	return String(ids[_r36b_art_index])
+
+
+## 当前战技只读视图（供 HUD 显示 / 验证读回 / 运行日志；既有 get_focus_hud_view key 逐字不动）。
+func get_current_art_view() -> Dictionary:
+	var svc: Object = _r36_focus
+	var ids: PackedStringArray = _r36b_sync_art_ids(svc)
+	var idx: int = _r36b_art_index
+	if not ids.is_empty() and (idx < 0 or idx >= ids.size()):
+		idx = 0
+	var art_id: String = String(ids[idx]) if not ids.is_empty() else ""
+	var title: String = _r36b_art_title(svc, art_id) if not art_id.is_empty() else ""
+	return {
+		"art_id": art_id,
+		"title": title,
+		"art_index": idx,
+		"art_count": ids.size(),
+		"art_ids": ids,
+		"switch_count": _r36b_switch_count,
+		"rect": get_current_art_rect(),
+		"text": ("当前战技：%s" % title) if not art_id.is_empty() else "当前战技：—",
+	}
+
+
+## R36B · R 键循环切换当前战技【唯一权威入口】（A69 裁决）。
+##   a) 从 A54 唯一 get_focus_service() 读 arts 列表；b) 索引循环 +1 取模；
+##   c) 刷新 HUD「当前战技：辉石魔砾 / 狮子斩」真实节点；
+##   e) 全程只读数据表，不调 spend_fp/tick/on_grace_rest/reset，不改 FP 余额 / 冷却镜像
+##      → 切换不重置 FP、不触发冷却重置。
+##   同一 event 实例幂等去重（ENC + HUD 双接 R，绝不重复切换）；不写 .tres、不自建服务。
+func request_art_switch(event: InputEvent = null) -> Dictionary:
+	if event != null:
+		# 松开 / echo 事件不触发切换（防御 ENC 转发 / 重复投递），且不改幂等缓存。
+		if event is InputEventKey:
+			var k: InputEventKey = event as InputEventKey
+			if not k.pressed or k.echo:
+				return {"ok": false, "reason": "not_pressed"}
+		var eid: int = event.get_instance_id()
+		if eid == _r36b_last_r_event_id and not _r36b_last_r_result.is_empty():
+			return _r36b_last_r_result.duplicate()
+		_r36b_last_r_event_id = eid
+	var svc: Object = _r36_focus
+	var ids: PackedStringArray = _r36b_sync_art_ids(svc)
+	if ids.is_empty():
+		var r_unavail: Dictionary = {"ok": false, "reason": "arts_unavailable",
+				"art_index": _r36b_art_index, "art_count": 0}
+		_r36b_last_r_result = r_unavail
+		return r_unavail.duplicate()
+	_r36b_art_index = (_r36b_art_index + 1) % ids.size()
+	_r36b_switch_count += 1
+	var art_id: String = String(ids[_r36b_art_index])
+	var title: String = _r36b_art_title(svc, art_id)
+	_r36b_refresh_art()
+	var r: Dictionary = {"ok": true, "reason": "ok", "art_id": art_id,
+			"title": title, "art_index": _r36b_art_index, "art_count": ids.size(),
+			"switch_count": _r36b_switch_count}
+	_r36b_last_r_result = r
+	print("[R36B][HUD] R 切换战技 | index=%d/%d art=%s 当前战技：%s（只读数据表、不重置 FP/冷却）" % [
+			_r36b_art_index, ids.size(), art_id, title])
+	return r.duplicate()
+
+
+## 真实 R 输入落点（与 _unhandled_input 同走 R32 键路径）。
+func _try_art_switch_input(event: InputEvent) -> Dictionary:
+	return request_art_switch(event)
+
+
+## 「当前战技」真实节点按独立分区锚点定位（视口变化由 set_layout_viewport 联动重算）。
+func _r36b_apply_art_rect() -> void:
+	if _r36b_art_label == null or not is_instance_valid(_r36b_art_label):
+		return
+	var r: Rect2 = get_current_art_rect()
+	_r36b_art_label.offset_left = r.position.x
+	_r36b_art_label.offset_top = r.position.y
+	_r36b_art_label.offset_right = r.end.x
+	_r36b_art_label.offset_bottom = r.end.y
+
+
+## 「当前战技：XXX」真实节点常驻可见刷新（文本只读数据表 title，不写既有 Label.text）。
+func _r36b_refresh_art() -> void:
+	if _r36b_art_label == null or not is_instance_valid(_r36b_art_label):
+		return
+	var v: Dictionary = get_current_art_view()
+	_r36b_art_label.text = String(v.get("text", "当前战技：—"))
+	_r36b_art_label.visible = true

@@ -129,6 +129,45 @@ extends SceneTree
 ## [PLACEHOLDER] R35_* 为演示节奏（非战斗数值，待试玩校准，调参只改本节常量）；
 ##   rationale：450 帧 / 4 = 约 100 次额外真实 J 注入、/5 = 约 83 次额外真实 K 注入，
 ##   在既有注入之上提高真实链路自然触发概率，不改任何战斗数值表。
+##
+## R36 [ROUND=R36] · 【演示覆盖 · 只追加真实按键注入节奏】（本文件唯一写入方 = Rank-1）：
+##   任务③ 要求「只改 Input.parse_input_event 注入节奏、绝不改 [PLACEHOLDER] 数值、
+##   绝不回退演示驱动」。本轮仅【追加】三段真实 InputEventKey 注入（既有节奏常量数值逐字不动）：
+##    ⑪ R36 战技 Q 注入：周期 Q(KEY_Q=81) → 引擎分发到 HUD._unhandled_input →
+##       request_focus_skill → A54 唯一 focus_service 判定（真实生产链，非演示驱动），
+##       给「战技释放 / FP 扣减」在 450 帧内自然出现机会；
+##    ⑫ R36 连击收束爆发：尾段（330~445）叠加更密的 J(light_attack) 注入，
+##       在 R35 全片 J 密度之上给「D→A 递进 / S 级收束爆发」更多真实命中机会
+##       （评级阈值 / 倍率全来自 combo_rules.tres [PLACEHOLDER]，不动数值、不直接调服务）；
+##    ⑬ R36 弹反免伤密度：尾段叠加更密的 K 注入，让「窗口内成功 → A65 免伤」更多命中
+##       生产弹反窗口的机会（免伤由 HUD/ENC 生产链判定，不构造窗口、不改伤害路径）。
+##   绝不写 Label.text、不调 debug_*、不显式 apply_hit / on_wave_cleared / tick / poll、
+##   不建动态可见层、不回退 R34 已移除的演示驱动；Q / J / K 全部经既有 _inject_key() →
+##   Input.parse_input_event(InputEventKey) 真实输入路由交引擎分发。
+##   如实登记：本轮只调整注入节奏（给机会），不含新录屏 / 目视帧；D→A→S 递进、S 级
+##   收束爆发、战技释放、弹反免伤是否在该 450 帧录屏中自然出现，由总指挥定稿录屏目视
+##   确认，若未自然出现按任务单如实登记「链路已接线但演示未覆盖」，不冒充。
+## [PLACEHOLDER] R36_* 为演示节奏（非战斗数值，待试玩校准，调参只改本节常量）；
+##   rationale：Q 周期 30 帧（--fixed-fps 30 ≈ 1s）覆盖辉石魔砾短冷却(0.6s [PLACEHOLDER])，
+##   450/30 ≈ 14 次战技机会；尾段 J 间隔 2 / K 间隔 3 在 R35 密度之上再提高真实命中概率，
+##   不改任何战斗数值表 / 既有常量值。
+##
+## R36B [ROUND=R36B] · 【只追加真实 R 切换按键注入，让狮子斩暖金斩击弧 450 帧内自然出现】：
+##   总指挥 A67 目视发现「Q 固定释放首战技辉石魔砾（冷蓝），第二战技狮子斩（暖金斩击弧）
+##   代码已实现但录屏未触发」。A69 裁决 R 键在 focus_rules.tres 的 arts 间循环切换当前战技，
+##   Q 释放当前选中；hd2d_fx.gd（挂 courtyard.tscn 的生产节点）订阅 FocusService.focus_spent
+##   且 warm=(art_id=="lion_slash") 时程序化 draw_arc 画暖金大弧，故只要
+##   spend_fp("lion_slash") 真实成功，暖金斩击弧即自然出现，无需任何演示驱动。
+##   本轮【只改 Input.parse_input_event 注入节奏】：在 Q 周期帧之间追加 4 个 R 切换帧点，
+##   R 切换后的下一个 Q 周期帧即释放【当前选中】战技（既有 R36 ⑪ Q 注入逐字不动）。
+##   推演（--fixed-fps 30，FP 100 起）：f30 Q→辉石魔砾(100→88) / f45 R→切狮子斩 /
+##   f60 Q→狮子斩(88→53，暖金大弧出现) / f120 Q→狮子斩(53→18，暖金大弧再现) /
+##   f165 R→切回辉石魔砾 / f180 Q→辉石魔砾(18→6，冷蓝弹道) —— 两战技各自真实可达。
+##   绝不改任何 [PLACEHOLDER] 数值、不写 Label.text、不调 debug_*、不显式 apply_hit /
+##   on_wave_cleared / tick / poll、不建动态可见层、不回退 R34 已移除的演示驱动。
+##   如实登记：本轮不含新录屏 / 目视帧；暖金斩击弧是否在该 450 帧录屏中可见由总指挥
+##   定稿录屏目视确认，逻辑真跑只证明「真实 R+Q 按键 → 生产链路 → lion_slash 释放」。
+## [PLACEHOLDER] R36B_* 为演示节奏（非战斗数值，待试玩校准，调参只改本节常量）。
 
 const TOTAL_FRAMES: int = 450
 
@@ -184,6 +223,26 @@ const R35_COMBO_KEY_INTERVAL: int = 4
 const R35_PARRY_SCAN_FROM: int = 30
 const R35_PARRY_SCAN_TO: int = 445
 const R35_PARRY_KEY_INTERVAL: int = 5
+
+# ---- R36 [ROUND=R36] · 演示按键密度补齐（只新增，R28/R34/R35 既有常量数值逐字不动）----
+const KEY_Q_CODE: int = 81             # KEY_Q（战技；HUD._unhandled_input → request_focus_skill）
+# [PLACEHOLDER] R36 演示节奏，待试玩校准；rationale 见头部 R36 注释（只改本节常量）。
+const R36_SKILL_SCAN_FROM: int = 30
+const R36_SKILL_SCAN_TO: int = 445
+const R36_SKILL_KEY_INTERVAL: int = 30
+const R36_COMBO_BURST_FROM: int = 330
+const R36_COMBO_BURST_TO: int = 445
+const R36_COMBO_BURST_INTERVAL: int = 2
+const R36_PARRY_BURST_FROM: int = 320
+const R36_PARRY_BURST_TO: int = 445
+const R36_PARRY_BURST_INTERVAL: int = 3
+
+# ---- R36B [ROUND=R36B] · 战技切换 R 注入（只新增，R28/R34/R35/R36 既有常量数值逐字不动）----
+const KEY_R_CODE: int = 82             # KEY_R（战技切换；A69 裁决，不与 J/Space/K/F/Q/E/1-2-3/Tab 冲突）
+# [PLACEHOLDER] R36B 演示节奏，待试玩校准；rationale 见头部 R36B 注释（只改本节常量）。
+#   4 个 R 帧点均落在相邻两个 Q 周期帧（f=30,60,90,...,420）之间，保证 R 先生效、
+#   紧随的 Q 释放【当前选中】战技：魔砾→狮斩→魔砾→狮斩 循环，两战技各自真实可达。
+const R36B_SWITCH_FRAMES: Array = [45, 165, 285, 405]
 
 # R28 既有输入路由节点路径（只读引用）
 const HUD_PATH: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
@@ -744,6 +803,36 @@ func _drive_real_input(f: int) -> void:
 			and (f - R35_PARRY_SCAN_FROM) % R35_PARRY_KEY_INTERVAL == 0:
 		_inject_key(KEY_K_CODE)
 		print("[R35][INPUT] frame=%d 真实按键 K(KEY_K=%d) -> Input.parse_input_event(InputEventKey) → HUD._unhandled_input → request_parry()（窗口由生产链路决定）" % [f, KEY_K_CODE])
+	# ⑪ R36：战技 Q 注入 —— 只追加真实 Input.parse_input_event 的 Q 注入密度。
+	#   战技是否释放由 A54 唯一 focus_service 真实判定（FP / 冷却），不由演示构造；
+	#   窗口外 / 冷却 / FP 不足由生产链幂等拒绝，不改既有判定 / 帧数据 / [PLACEHOLDER] 数值。
+	if f >= R36_SKILL_SCAN_FROM and f <= R36_SKILL_SCAN_TO \
+			and (f - R36_SKILL_SCAN_FROM) % R36_SKILL_KEY_INTERVAL == 0:
+		_inject_key(KEY_Q_CODE)
+		print("[R36][INPUT] frame=%d 真实按键 Q(KEY_Q=%d) -> Input.parse_input_event(InputEventKey) → HUD._unhandled_input → request_focus_skill() → focus_service（战技释放 / FP 扣减机会）" % [f, KEY_Q_CODE])
+	# ⑫ R36：连击收束爆发 —— 尾段叠加更密 J(light_attack) 真实注入，
+	#   给 D→A 递进 / S 级收束爆发更多真实命中机会（评级阈值全来自 combo_rules.tres，不调服务 / 不写数值）。
+	if f >= R36_COMBO_BURST_FROM and f <= R36_COMBO_BURST_TO \
+			and (f - R36_COMBO_BURST_FROM) % R36_COMBO_BURST_INTERVAL == 0:
+		_inject_key(KEY_J)
+		print("[R36][INPUT] frame=%d 真实按键 light_attack(J) 收束爆发 -> Input.parse_input_event(InputEventKey)（D→A→S 递进 / S 级爆发机会）" % f)
+	# ⑬ R36：弹反免伤密度 —— 尾段叠加更密 K 真实注入，让「窗口内成功 → A65 免伤」更多命中生产窗口机会。
+	#   免伤由 HUD/ENC 生产链判定，不构造窗口、不改伤害路径、不冒充覆盖。
+	if f >= R36_PARRY_BURST_FROM and f <= R36_PARRY_BURST_TO \
+			and (f - R36_PARRY_BURST_FROM) % R36_PARRY_BURST_INTERVAL == 0:
+		_inject_key(KEY_K_CODE)
+		print("[R36][INPUT] frame=%d 真实按键 K(KEY_K=%d) 收束爆发 -> Input.parse_input_event(InputEventKey) → request_parry()（弹反成功 / A65 免伤机会，由生产窗口决定）" % [f, KEY_K_CODE])
+	# ⑭ R36B [ROUND=R36B / A69 裁决]：战技切换 R 注入 —— 只追加真实
+	#   Input.parse_input_event 的 R 注入节奏。R → 引擎分发到 HUD._unhandled_input
+	#   → request_art_switch()（只读 A54 唯一 focus_service 的 focus_rules.tres arts 列表
+	#   循环切换【当前选中】战技），让紧随其后的下一个 Q 周期帧（R36 ⑪，逐字不动）
+	#   释放当前选中战技 → 切到 lion_slash 后 focus_spent(lion_slash) 由 hd2d_fx 生产
+	#   订阅者绘制暖金大斩击弧，在 450 帧内自然出现。
+	#   绝不改任何 [PLACEHOLDER] 数值、不写 Label.text、不调 debug_*、不构造服务状态、
+	#   不回退 R34 已移除的演示驱动。
+	if R36B_SWITCH_FRAMES.has(f):
+		_inject_key(KEY_R_CODE)
+		print("[R36B][INPUT] frame=%d 真实按键 R(KEY_R=%d) -> Input.parse_input_event(InputEventKey) → HUD._unhandled_input → request_art_switch()（切换当前战技，下一个 Q 周期释放当前选中；狮子斩暖金斩击弧机会）" % [f, KEY_R_CODE])
 
 
 ## 教学闭环监测：读 tutorial_director 既有只读快照 + is_tutorial_active()；

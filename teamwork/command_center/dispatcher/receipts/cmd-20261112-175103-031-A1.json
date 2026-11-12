@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-175103-031-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "R36B 四块任务全部真跑完成，实际结论见 teamwork/Rank-1/DONE-R36B.md：① A69 裁决落地——hud.gd / encounter_director.gd 接真实 _unhandled_input(R) 循环切换 focus_rules.tres 两个战技（只读 A54 唯一 FocusService.get_art_ids()/get_config()，不自建第二实例、不改 [PLACEHOLDER] 数值），HUD 新增 ProdArtLabel 独立分区 ANCHOR_ART 显示「当前战技：辉石魔砾 / 狮子斩」，Q 释放当前选中 art_id；切换不改 FP 余额 / 不重置冷却 / 不误触其它键。② presentation.gd 只追加 4 个真实 R 注入帧点（45/165/285/405）+ 既有 Q 节奏逐字不动，450 帧 headless 逻辑真跑：R 单切 4 次（无双切）、狮子斩 lion_slash 成功释放 3 次（fp_cost=35/damage=45/poise=40）、辉石魔砾 6 次、ENC 生产消费 9 次、hd2d_fx [FocusFX] 生产订阅 focus_spent(signals=4)，暖金斩击弧链路真实触发。③ V130 保留既有 28 条扩展至 39/39、V100HUD 保留 40 条扩展至 44/44，V110 66/66、V120P 31/31，四份全 RESULT=ALL_MATCH。④ 三段门禁 G1/G2a(7)/G2b(4)/G3 全 EXIT=0，全工程 16 段日志 SCRIPT ERROR=0 / PARSE_ERROR=0；A38 节点 41 / uv 2/1/1 不变；9 份既有 .tres + focus_rules.tres md5 与 DONE-R36 逐字一致。未完成：定稿录屏由总指挥本轮亲自重跑并目视（本轮不含新 MP4 / 目视帧）；HD-2D 全绿沿用未达（2D 近似）。"
+}
