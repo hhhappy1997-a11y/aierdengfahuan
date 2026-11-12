@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-122524-297-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "引用 DONE-R34D.md 实际结论：裁决 A57 落地——hud.gd 的 wave_cleared 分支从 A54 唯一 ComboService 实例取 get_last_settlement()/settle() 的最终结算值作为 points_awarded 的 points，无有效结算回落基础值并告警、每条事件只发一次；wave_cleared 保留基础值只作 HUD 展示/事件键、combo_settled 绝不二次入账、Rank-3 PointsCommitOrchestrator 继续原样采信（A55 不变、文件未改）。真实回归实证 100×A级1.6=160 落在 points_awarded 与磁盘 grace.trial.points（verify_combo_runtime_v110 第1波）、150×1.6=240 落在 points_awarded 与磁盘（verify_production_chains_v110 第2波），R34C 既有 150 口径 28 PASS 不回退。三段门禁全 EXIT=0、全工程 SCRIPT ERROR=0/Parse Error=0/ERROR=0、51+39=90 PASS/0 FAIL 两份 RESULT=ALL_MATCH、A38 节点 41/uv 2/1/1 不变、5 份既有 .tres md5 零改动。首轮真跑 6 FAIL 已定位根因修复后全绿，如实登记不冒充一次通过。详见 teamwork/Rank-1/DONE-R34D.md。"
+}

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ComboConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/combo_config.gd" id="1_cc"]
+
+[resource]
+script = ExtResource("1_cc")
+rank_thresholds = {
+"D": 0,
+"C": 4,
+"B": 8,
+"A": 14,
+"S": 22
+}
+multiplier = {
+"D": 1.0,
+"C": 1.15,
+"B": 1.35,
+"A": 1.6,
+"S": 2.0
+}
+timeout_sec = 2.5
+reset_on_hit_taken = true

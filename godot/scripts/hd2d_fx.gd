@@ -40,6 +40,16 @@ extends Node2D
 ## 约束：ComfyUI 仍是主美术路线，本脚本是零外部依赖的 2D 程序化兜底，不取代主路线、
 ##       不宣称已能出图 / 已实现 3D 后处理；中文 UTF-8；Godot 4 合法语法。
 ##       实体坐标 round() 到整数、禁亚像素；Nearest 过滤；不改运行中 hd2d_placeholder.gd。
+##
+## R34 / v0.11.0 追加（派单 cmd-20261112-091304-459-A4 ① · Rank-4）：
+##   ⑧ 连击评级反馈层：D/C/B/A/S 五档暖金强度 + 光尘密度递进、S 级一次短促暖金
+##      收束爆发（无过曝）、受击/超时/manual 重置冷却到冷夜雾；全部落在既有
+##      FXBloom 分派节点的 _draw() 内（最上层叠加），零新增节点 / 零 GPU job / 零付费。
+##      【A54】经 wave_trial_director.gd 公开 get_combo_service() 订阅「唯一」ComboService
+##      的 4 个公开信号，绝不自建第二个、不读其私有实现；未接线则静默降级（既有四项
+##      光效 + impact_fx 照常）。单帧 ≤16 色受控 / 项目级 ≥256 色两层口径不变：
+##      连击层零新增色号（复用既有 PALETTE_HEX / 既有 _draw 已用 hex）。
+##      完整 [PLACEHOLDER] 数值表 / rationale / 口径差异登记见下方「R34 连击评级反馈层」块。
 
 # ---------------------------------------------------------------------------
 # 冻结口径常量（引用 hd2d_placeholder.gd / HD2D-FX-PLAN.md §3 / ART-SPEC-FINAL.md §2.2）
@@ -188,6 +198,236 @@ var _palette: Array[Color] = []
 var _motes_far: Array[Dictionary] = []    # 远景冷白光尘（确定性 seed）
 var _motes_near: Array[Dictionary] = []   # 近景暖金光尘
 
+# ---------------------------------------------------------------------------
+# R34 / v0.11.0 · 连击评级反馈层（派单 cmd-20261112-091304-459-A4 ① · Rank-4）
+# ---------------------------------------------------------------------------
+# 目标：D/C/B/A/S 五档按「暖金强度 + 光尘密度」递进；S 级升档加一次短促暖金收束
+#   爆发（无过曝）；受击 / 超时 / manual 重置时冷却到冷夜雾。零 GPU job、零付费、
+#   零外部素材，全部落在 CanvasItem._draw() 内（draw_rect / draw_circle / draw_arc /
+#   draw_string），与既有四项 2D 程序化光效同层叠加（FXBloom 分派最上层）。
+#
+# 【A54 裁决 · 唯一实例】订阅 Rank-2 ComboService 的 4 个公开信号，但绝不 new()
+#   第二个 ComboService：经 wave_trial_director.gd 公开 get_combo_service() 取同一实例。
+#   本层用 has_method("get_combo_service") 遍历场景树找导演节点（不依赖 /root 绝对路径、
+#   不依赖 group、不读其私有实现），deferred 等导演 _ready() 装配完成后绑定，最多重试
+#   COMBO_BIND_MAX_ATTEMPTS 帧；找不到 / 未接线 → 连击反馈层零绘制、静默降级，
+#   既有 FXReflection / FXGodRays / FXMotes / FXBloom / impact_fx 照常（降级层保留）。
+#
+# 【口径登记（如实，不冒充）】00-协作契约.md §9.3 把程序化 _draw() 定位为「M0 占位与
+#   显存不足时的降级、不是正式素材路线」；本层是【运行时视觉反馈层】（非替代正式像素
+#   素材），按 R34 任务单「以任务单为准」特批用 _draw() 实现。ComfyUI / 本地程序化素材
+#   仍是主美术路线，本层不宣称已能出图、不宣称真 3D 光效、不把 2D 近似包装成
+#   「HD-2D 全绿已达成」（A30 / HD2D-STYLE-ANCHOR-v2 §0）。§9.3 口径差异列为待裁决项。
+#
+# 【色数口径不变】连击反馈层所有色号逐字复用本脚本既有 PALETTE_HEX 与既有 _draw()
+#   已用 hex：暖金 #FFD27A / #F0A94C / #FFF0C2、冷夜雾 #2B3A5C / #4A6089 / #16233F、
+#   冷亮 #BFD0EA —— 【零新增色号】，故单帧 ≤16 色受控口径与项目级色库 ≥256 色两层
+#   口径（A15）均不变。暖金主光 #F0A94C / 冷夜雾 #2B3A5C 即 HD2D-STYLE-ANCHOR-v2 §8
+#   登记的历史显示色（32 色板 L7 / L3），与 depth_profile.tres 显示口径一致、
+#   不引入 v2 受控板新色、不冒充新色板（A32）。
+#
+# 【移动端不劣化】连击反馈绘制只在 _draw() 的 FXBloom 分派内、受既有 _all_on 门控：
+#   mobile 四项全关时 _draw() 开头即 return → 连击层零绘制、零额外加载；计时器更新
+#   亦只在 _all_on 且 FXBloom 节点执行。信号订阅为一次性（仅 FXBloom 节点），开销可忽略。
+#   impact_fx 懒加载 / R20 强制档位覆盖 / HUD 避让矩形 / 四项降级层开关全部逐字保留。
+#
+# 【调参唯一入口 = 本节 [PLACEHOLDER] 常量表（只改表、不改算法）】；全部数值待人工
+#   试玩校准，校准只改下表，不碰 _draw_combo_rank_fx / 信号回调 / 绑定逻辑。
+#
+# [PLACEHOLDER] 各档暖金强度 COMBO_RANK_GLOW {D:0 C:.10 B:.20 A:.32 S:.46}
+#   rationale：D 级零额外暖金（0 连击不惩罚、不与既有 FXBloom 叠加）；逐档 +.10/.12/.14
+#   把「暖金越浓 = 连击越高」做成单调可读梯度；S 封顶 .46 且所有暖金绘制 alpha 峰值
+#   ≤.46、不画纯白核心、不叠乘既有 bloom 核心(#FFF0C2 a=.85)，防过曝（A41 目视项）。
+# [PLACEHOLDER] 各档光尘密度 COMBO_RANK_MOTES {D:0 C:6 B:14 A:24 S:36}
+#   rationale：与 ComboService 门槛 {0,4,8,14,22} 同量级递增（D 零粒子、S 36 ≤ 既有
+#   MOTES_NEAR_COUNT=48 量级），确定性公式分布、硬边 1~2px 圆点，非随机噪点；
+#   HUD 逐粒避让沿用既有 _is_hud_avoid。
+# [PLACEHOLDER] S 收束爆发时长 COMBO_BURST_SEC=0.45（秒）
+#   rationale：短促「收束」而非持续泛光；仅低 alpha 扩散环（峰值 .18）、无纯白核心，
+#   不与升档闪光叠乘，避免 S 级过曝；由 rank_changed(to=="S") 触发一次。
+# [PLACEHOLDER] 冷夜雾冷却时长 COMBO_COOLDOWN_SEC=0.90（秒）
+#   rationale：受击 / 超时 / manual 重置后暖金退场、冷雾泛起的可辨窗口；底部冷雾横带
+#   避开 HUD(x<365,y<110 逻辑) 与角色判定区(y<270)，与「暖金 × 冷夜雾」对冲一致。
+# [PLACEHOLDER] COMBO_GLOW_LERP=8.0 / COMBO_MOTE_RISE=10.0 / COMBO_BIND_MAX_ATTEMPTS=90
+#   rationale：暖金强度平滑趋近避免突变闪烁；光尘上飘速度与既有 FXMotes(2~6px/s)
+#   同量级略快；绑定自愈窗口 = 3s@30fps，兼容导演装配时序，失败静默降级。
+# ---------------------------------------------------------------------------
+const COMBO_RANK_ORDER = ["D", "C", "B", "A", "S"]
+const COMBO_RANK_GLOW = {"D": 0.0, "C": 0.10, "B": 0.20, "A": 0.32, "S": 0.46}
+const COMBO_RANK_MOTES = {"D": 0, "C": 6, "B": 14, "A": 24, "S": 36}
+const COMBO_BURST_SEC: float = 0.45
+const COMBO_COOLDOWN_SEC: float = 0.90
+const COMBO_GLOW_LERP: float = 8.0
+const COMBO_MOTE_RISE: float = 10.0
+const COMBO_BIND_MAX_ATTEMPTS: int = 90
+
+# 连击反馈层运行期状态（仅 FXBloom 分派节点订阅 / 绘制；_combo_service 是只读引用）
+var _combo_service: Object = null
+var _combo_bind_attempts: int = 0
+var _combo_rank: String = "D"
+var _combo_count: int = 0
+var _combo_mult: float = 1.0
+var _combo_glow: float = 0.0
+var _combo_burst: float = 0.0
+var _combo_cooling: float = 0.0
+var _combo_last_reset_reason: String = ""
+var _combo_last_settle: Dictionary = {}
+
+
+## R34 · 绑定唯一 ComboService（A54 复用 get_combo_service，绝不自建第二个实例）。
+## 仅 FXBloom 节点在 _ready() 里 call_deferred 触发；装配时序未就绪时由 _process 自愈重试。
+func _try_bind_combo() -> void:
+	if _combo_service != null:
+		return
+	if _combo_bind_attempts >= COMBO_BIND_MAX_ATTEMPTS:
+		return
+	_combo_bind_attempts += 1
+	var tree := get_tree()
+	if tree == null:
+		return
+	var director := _find_node_with_method(tree.root, "get_combo_service")
+	if director == null:
+		return
+	var svc: Object = director.call("get_combo_service")
+	if svc == null:
+		return
+	_combo_service = svc
+	var sigs := ["combo_changed", "rank_changed", "combo_reset", "combo_settled"]
+	var cbs := ["_on_combo_changed", "_on_rank_changed", "_on_combo_reset", "_on_combo_settled"]
+	for i in range(sigs.size()):
+		if not svc.is_connected(sigs[i], Callable(self, cbs[i])):
+			svc.connect(sigs[i], Callable(self, cbs[i]))
+	print("[R34][ComboFX] 绑定唯一 ComboService 成功 node=%s signals=%d（A54 复用 get_combo_service，不自建）" % [
+			str(name), sigs.size()])
+
+
+## 只读遍历场景树找带公开方法的节点（不依赖绝对路径 / group / 私有实现）。
+func _find_node_with_method(n: Node, m: String) -> Node:
+	if n.has_method(m):
+		return n
+	for c in n.get_children():
+		var r := _find_node_with_method(c, m)
+		if r != null:
+			return r
+	return null
+
+
+# ---- 4 个公开信号回调（签名真源：teamwork/Rank-2/DONE-R34.md §3.1）----
+func _on_combo_changed(count: int, rank: String) -> void:
+	_combo_count = count
+	if COMBO_RANK_ORDER.has(rank):
+		_combo_rank = rank
+
+
+func _on_rank_changed(from_rank: String, to_rank: String, multiplier: float) -> void:
+	if COMBO_RANK_ORDER.has(to_rank):
+		_combo_rank = to_rank
+	_combo_mult = multiplier
+	# 升到 S：触发一次短促暖金收束爆发（无过曝：峰值 alpha 受控、不画纯白核心）
+	if to_rank == "S" and from_rank != "S":
+		_combo_burst = COMBO_BURST_SEC
+
+
+func _on_combo_reset(reason: String) -> void:
+	# 受击 / 超时 / Boss 定格 / manual 重置：冷却到冷夜雾（暖金归零）
+	_combo_last_reset_reason = reason
+	_combo_cooling = COMBO_COOLDOWN_SEC
+	_combo_burst = 0.0
+	_combo_count = 0
+	_combo_rank = "D"
+	_combo_mult = 1.0
+
+
+func _on_combo_settled(total_points: int, base_points: int, rank: String, multiplier: float) -> void:
+	# 结算定格评级（只读登记，不额外爆发，避免与 S 升档爆发叠加过曝）
+	if COMBO_RANK_ORDER.has(rank):
+		_combo_rank = rank
+	_combo_mult = multiplier
+	_combo_last_settle = {"total": total_points, "base": base_points,
+			"rank": rank, "mult": multiplier}
+
+
+## 计时器推进（只在 _all_on 且 FXBloom 节点执行；mobile 四项全关时零开销）。
+func _update_combo_timers(delta: float) -> void:
+	if _combo_cooling > 0.0:
+		_combo_cooling = maxf(0.0, _combo_cooling - delta)
+	if _combo_burst > 0.0:
+		_combo_burst = maxf(0.0, _combo_burst - delta)
+	var target: float = float(COMBO_RANK_GLOW.get(_combo_rank, 0.0))
+	if _combo_cooling > 0.0:
+		target = 0.0
+	_combo_glow = lerpf(_combo_glow, target, clampf(COMBO_GLOW_LERP * delta, 0.0, 1.0))
+
+
+## R34 · 连击评级反馈层绘制（仅由 _draw() 的 FXBloom 分派调用，最上层）。
+## 未绑定 ComboService → 静默 return（既有四项光效 + impact_fx 照常，降级层保留）。
+func _draw_combo_rank_fx(t: float) -> void:
+	if _combo_service == null:
+		return
+	var font: Font = ThemeDB.fallback_font
+	var rank_idx: int = maxi(0, COMBO_RANK_ORDER.find(_combo_rank))
+	var glow: float = _combo_glow
+	# ① 冷夜雾冷却（重置后）：底部低 alpha 冷雾横带，避开 HUD 与角色判定区
+	if _combo_cooling > 0.0:
+		var cold: float = clampf(_combo_cooling / COMBO_COOLDOWN_SEC, 0.0, 1.0)
+		draw_rect(Rect2(0.0, 286.0, BUFFER_W, 8.0), _c("#4A6089", 0.06 * cold))
+		for k in range(3):
+			var by: float = 300.0 + float(k) * 18.0
+			draw_rect(Rect2(0.0, by, BUFFER_W, 14.0),
+					_c("#2B3A5C", (0.05 + 0.07 * cold) * (1.0 - float(k) * 0.25)))
+	# ② 暖金光尘：密度按档递进，确定性硬边小圆点 + HUD 逐粒避让
+	var mote_count: int = int(COMBO_RANK_MOTES.get(_combo_rank, 0))
+	for i in range(mote_count):
+		var mx: float = 250.0 + float((i * 37) % 140)
+		var my: float = fposmod(170.0 + float((i * 53) % 100) - t * COMBO_MOTE_RISE, 130.0) + 150.0
+		if _is_hud_avoid(mx, my):
+			continue
+		var mcol: String = "#FFF0C2" if i % 3 == 0 else "#FFD27A"
+		draw_circle(Vector2(float(round(mx)), float(round(my))), 1.0 + float(i % 2),
+				_c(mcol, 0.20 + 0.30 * glow))
+	# ③ 评级条（右下空地，避开 HUD 面板 x<365,y<110 与角色判定区）
+	var bar_x: float = 462.0
+	var bar_y: float = 318.0
+	draw_rect(Rect2(bar_x, bar_y, 162.0, 28.0), _c("#16233F", 0.55))
+	draw_rect(Rect2(bar_x, bar_y, 162.0, 28.0), _c("#4A6089", 0.18), false, 1.0)
+	var cell_w: float = 26.0
+	for i in range(COMBO_RANK_ORDER.size()):
+		var r: String = String(COMBO_RANK_ORDER[i])
+		var cx: float = bar_x + 6.0 + float(i) * (cell_w + 4.0)
+		var reached: bool = i <= rank_idx
+		var is_current: bool = i == rank_idx
+		if is_current and glow > 0.0:
+			draw_rect(Rect2(cx - 2.0, bar_y + 2.0, cell_w + 4.0, 24.0),
+					_c("#F0A94C", 0.10 + 0.28 * glow))
+		var fill: Color
+		if is_current:
+			fill = _c("#FFD27A", 0.55 + 0.40 * glow)
+		elif reached:
+			fill = _c("#F0A94C", 0.45)
+		else:
+			fill = _c("#16233F", 0.85)
+		draw_rect(Rect2(cx, bar_y + 4.0, cell_w, 20.0), fill)
+		draw_rect(Rect2(cx, bar_y + 4.0, cell_w, 20.0), _c("#4A6089", 0.5), false, 1.0)
+		if font != null:
+			var lcol: Color = _c("#FFF0C2", 0.95) if is_current else _c("#BFD0EA", 0.7)
+			draw_string(font, Vector2(cx + 8.0, bar_y + 18.0), r,
+					HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, lcol)
+	if font != null:
+		var info: String = "%d HIT" % _combo_count
+		if _combo_mult > 1.0:
+			info += "  x%.2f" % _combo_mult
+		draw_string(font, Vector2(bar_x + 4.0, bar_y - 4.0), info,
+				HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10, _c("#FFD27A", 0.85))
+	# ④ S 级短促暖金收束爆发：仅低 alpha 扩散环，无纯白核心、无过曝
+	if _combo_burst > 0.0:
+		var p: float = 1.0 - clampf(_combo_burst / COMBO_BURST_SEC, 0.0, 1.0)
+		var br: float = 10.0 + 34.0 * p
+		var ba: float = 0.18 * (1.0 - p)
+		draw_arc(Vector2(BUFFER_W * 0.5, GROUND_Y), br, 0.0, TAU, 32,
+				_c("#F0A94C", ba), 2.0)
+		draw_arc(Vector2(BUFFER_W * 0.5, GROUND_Y), br * 0.6, 0.0, TAU, 32,
+				_c("#FFD27A", ba * 0.8), 1.0)
+
 
 func _ready() -> void:
 	_palette.clear()
@@ -209,6 +449,10 @@ func _ready() -> void:
 		set_fx_profile(fx_profile)
 		print("[R20][%s] 默认档位=%s（未请求覆盖，desktop 四项全开零回退）" % [
 				str(name), fx_profile])
+	# R34：连击评级反馈层 —— 仅 FXBloom 分派节点订阅唯一 ComboService（A54），
+	# deferred 排在 WaveTrialDirector._ready() 装配完成之后；装配时序未就绪由 _process 自愈重试。
+	if str(name) == "FXBloom":
+		call_deferred("_try_bind_combo")
 
 
 ## 档位开关的公共入口：改档位并立即重算四项门 / 可见性（供 build 脚本回读真跑验证）。
@@ -286,11 +530,16 @@ func _build_motes() -> void:
 		})
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# 逐帧重绘沿用 hd2d_placeholder.gd::_process 口径（光尘上飘 / 倒影波纹需逐帧）。
 	# §4.4「静态层（体积光/bloom）仅档位变化时重绘 + 移动档节流」是给 Rank-1 的
 	# 落地建议，本轮不擅自实现，如实登记为待接线项。
 	if _all_on:
+		# R34：连击反馈层计时器 + 绑定自愈（仅 FXBloom 节点；mobile 四项全关时零开销）
+		if str(name) == "FXBloom":
+			if _combo_service == null:
+				_try_bind_combo()
+			_update_combo_timers(delta)
 		queue_redraw()
 
 
@@ -314,6 +563,7 @@ func _draw() -> void:
 			if _on_bloom:
 				_draw_bloom(t)
 			_draw_impact_fx(t)   # R32：只读加载的 4 帧打击反馈（资源缺失则降级跳过）
+			_draw_combo_rank_fx(t)  # R34：连击评级反馈层（未绑定 ComboService 则静默跳过）
 		_:
 			pass
 

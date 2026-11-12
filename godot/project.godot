@@ -51,6 +51,8 @@ SceneRouter="*res://scripts/core/scene_router.gd"
 ; 兑现 HUD.travel_to「先 commit 后发信号」。既有 5 项 autoload 与
 ; [rendering] textures/vram_compression/import_etc2_astc=true 保持不变。
 SaveDeltaWriter="*res://scripts/save_delta_writer.gd"
+; R34C / 裁决 A56：生产落盘编排层 autoload（points_awarded 唯一权威通道订阅者），其余配置逐字不动。
+PointsCommitOrchestrator="*res://scripts/rpg/points_commit_orchestrator.gd"
 
 [display]
 

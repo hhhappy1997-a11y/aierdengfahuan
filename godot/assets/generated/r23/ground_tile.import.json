@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "round": "R34",
+  "task_id": "cmd-20261112-091304-459-A4",
+  "asset_id": "ground_tile_r34_v1",
+  "res_path": "res://assets/generated/r23/ground_tile.png",
+  "note": "R34 地面平铺精修的独立登记文件。r23/import.json 是 impact_fx.png 专用（hd2d_fx.gd R32 只读加载其帧参数），本轮逐字未动，避免破坏打击反馈；本文件单独登记 ground_tile 规格与实测。",
+  "spec": {
+    "canvas": "128x128（128px 基准画布不变）",
+    "mode": "RGBA",
+    "palette_layer": "6 色受控板（逐字沿用前版 ground_tile.png 实测 6 色，零新增色号）",
+    "colors_6": ["#2C4C8C", "#1B2A4A", "#3F6FC4", "#060A14", "#0A1020", "#79B4E8"],
+    "hard_edge": true,
+    "gradient": false,
+    "dithering": false,
+    "noise": false,
+    "seamless": "左右列逐像素相等 + 上下行逐像素相等（diff=0），沿用 R23 严格口径",
+    "uv_unchanged": "courtyard.tscn 的 ground_tile.png 引用路径与 3 处 uv1_scale (2,2,1)/(1,1,1)/(1,1,1) 逐字未动（保 A38 断言）"
+  },
+  "technique": {
+    "name": "deterministic_tileable_voronoi_flagstone",
+    "core_period_px": 127,
+    "seeds": 24,
+    "seed": 20261112,
+    "method": "24 个确定性种子 × 9 个 wrap 镜像（-127/0/+127）做最近距离分类 → 不规则多边形石板；1px 硬边深色缝；每块 2×2 硬边高光点；核心 127×127 按周期 127 tileable，扩充到 128×128 时第 127 列/行复制第 0 列/行 → col0==col127 / row0==row127 严格 diff=0，且 x=126 与 x=127(=x=0) 内部连续。删除旧图 4×4 规整网格与对角斜线纹装饰，降低平铺周期感。",
+    "placeholder": {
+      "seeds_24": "[PLACEHOLDER] 石板数，待试玩校准；rationale：块均 ~27px 与旧 32px 石板同量级，形状/排布不规则、无单一方向周期；调参只改生成参数与登记，不改算法/场景/uv。",
+      "seed_20261112": "[PLACEHOLDER] 确定性随机种子（本轮日期）；rationale：固定 seed 保证可复现、零随机噪点。",
+      "core_period_127": "[PLACEHOLDER] Voronoi 核心周期；rationale：127 核心 + 1 复制边界列/行满足严格 diff=0 无缝且内部连续。"
+    }
+  },
+  "measured": {
+    "size": [128, 128],
+    "unique_rgb": 6,
+    "hex_sorted": ["#060A14", "#0A1020", "#1B2A4A", "#2C4C8C", "#3F6FC4", "#79B4E8"],
+    "counts": {"#3F6FC4": 3199, "#0A1020": 1147, "#060A14": 292, "#2C4C8C": 10319, "#1B2A4A": 1381, "#79B4E8": 46},
+    "alpha_set": [255],
+    "alpha_bins": [0, 255],
+    "LR_col_mismatch_px": 0,
+    "TB_row_mismatch_px": 0,
+    "edge_diff": 0,
+    "within_6_colors": true,
+    "hard_alpha_only_255": true
+  },
+  "two_layer_color_policy": {
+    "per_frame_max_colors": 16,
+    "project_palette_min_colors": 256,
+    "note": "单帧 6 色 ≤16 受控上限；项目级色库 ≥256 沿用 palette_256.json（R32 已扩充至实测 256 色）。本件零新增色号，两层口径均不变。00-协作契约.md §9.3 把程序化管线定位为降级/占位；本件属本地零付费程序化素材管线，ComfyUI 仍是主美术路线，不宣称已能出图。"
+  },
+  "visual_review": {
+    "before": "capture/r34_ground_2x2_before.png — 4×4 规整网格 + 若干格对角斜线纹，2×2 平铺周期感明显",
+    "after": "capture/r34_ground_2x2_after.png — 不规则多边形石板、斜线纹/网格消除、平铺接缝不可见；整 tile 重复仍为平铺固有，个别长直边存在",
+    "conclusion": "大斜条纹的明显周期感已降低（如实登记，非『完全无周期』）"
+  },
+  "zero_gpu_job": true,
+  "zero_paid_service": true,
+  "zero_external_dependency": true,
+  "generated_by": "Python + Pillow 逐像素确定性生成（本地零付费管线，非素材生成服务）",
+  "generated_at": "2026-11-12",
+  "version": "v1"
+}

@@ -26,6 +26,13 @@ signal hud_refreshed()                             # 一次完整 refresh_all() 
 # R32 [ROUND=R32] 新增信号（既有 4 信号逐字未动、既有验证断言不回退）：
 signal execution_performed(window_id: String, bonus_points: int)   # 机制 B：处决窗口内按 F 完成处决
 signal boon_draft_selected(index: int, choice_id: String)         # 机制 A：赐福抉择三选一
+# R34 [ROUND=R34] 生产运行时触发链新增信号（既有 6 信号逐字不动）：
+#   e 链：点数只发信号 / 传参给 Rank-3 I-1 权威写入点，Rank-1 不写存档文件（A50）。
+signal points_awarded(reason: String, points: int, source: String)
+#   d 链：抉择选中 → apply() 结算生效，广播成对 effect/cost 供 Rank-2 wave_trial_director 消费。
+signal boon_draft_applied(index: int, choice_id: String, effect_key: String, effect_value: float, cost_key: String, cost_value: float)
+#   d 链：下一波开始时把上一波抉择的修正广播给下一波消费方（作用于下一波）。
+signal production_wave_modifier(wave_index: int, effect_key: String, effect_value: float, cost_key: String, cost_value: float)
 
 # ==========================================================================
 # 常量
@@ -206,6 +213,9 @@ func _ready() -> void:
 	_ensure_impact_feedback()
 	# R32：HUD 分区布局初始化（纯内存、不写场景节点；分区 / 互斥 / 新机制见 §11~§14）。
 	_init_r32_layout()
+	# R34 c/d/e/f：生产服务创建（同步）+ 帧末跨节点装配（call_deferred 避开 busy）。
+	_r34_create_boon_service()
+	call_deferred("_r34_bootstrap")
 
 
 ## 注入 WorldState 引用并连信号；重复绑定先断开旧连接，避免重复回调。
@@ -1194,6 +1204,18 @@ const ANCHOR_GUIDE: Rect2 = Rect2(0.01875, 0.33056, 0.27813, 0.04167)     # 左�
 const ANCHOR_STATUS: Rect2 = Rect2(0.01875, 0.92222, 0.96250, 0.05000)    # 左下状态条
 const ANCHOR_SIDE: Rect2 = Rect2(0.70313, 0.41667, 0.27813, 0.41667)      # 右侧面板（兑换/图鉴/抉择 互斥）
 const ANCHOR_CHAR: Rect2 = Rect2(0.31250, 0.31944, 0.37500, 0.47222)      # 中央角色保护区（非文字）
+# R34C [ROUND=R34C] · 生产机制「连击评级 / 倍率 / 命中数」文本【独立分区】（任务 1）。
+#   根因：R34B 的 ProdComboLabel 用 R34_RECT_BOTTOM+8 / +36 硬编码像素堆叠，落在
+#   赐福成长标题行 GraceShopLabel（SHOP_RECT_TOP 0.497）同一水平带 → 实机两行互压。
+#   修法：归一化锚点置于底部状态条（ANCHOR_STATUS y≥0.922）正上方，且整体在中央角色
+#   （ANCHOR_CHAR y≤0.792）/ 右侧面板（ANCHOR_SIDE y≤0.833）/ 兑换面板（SHOP_RECT
+#   y≤0.789）下沿之下；随 _layout_viewport 等比缩放，任意降级档都不出界 / 不重叠。
+#   本锚点【不并入 get_layout_rects() 的 6 分区数组】（保护既有 A1「rects.size()==6」
+#   断言不放宽），只经 get_production_mechanism_rect() 暴露，供真实节点定位与断言读取。
+# [PLACEHOLDER] 锚点为布局初值，待试玩目视校准（rationale：y 0.85556~0.90556 与
+#   status 0.92222 留 0.01666 安全缝、与 char/side/shop 下沿留 ≥0.06 垂直缝；
+#   左半宽 0.60 避开右下侧面板余量，长文本 autowrap 不越界；调参只改本节常量）。
+const ANCHOR_COMBO: Rect2 = Rect2(0.01875, 0.85556, 0.60000, 0.05000)    # 左下·生产机制评级条（独立分区）
 
 var _layout_viewport: Vector2 = LAYOUT_BASE
 
@@ -1205,6 +1227,8 @@ func _init_r32_layout() -> void:
 ## 降级分辨率入口：由 QualitySettings / 集成层按真实视口调用（不每帧轮询）。
 func set_layout_viewport(size: Vector2) -> void:
 	_layout_viewport = Vector2(maxf(1.0, size.x), maxf(1.0, size.y))
+	# R34C：生产机制连击文本真实节点随视口重定位（降级档不出界 / 不遮角色 / 不重叠）。
+	_r34_apply_combo_rect()
 
 
 func _scaled_rect(anchor: Rect2) -> Rect2:
@@ -1230,6 +1254,19 @@ func get_center_char_rect() -> Rect2:
 	return _scaled_rect(ANCHOR_CHAR)
 
 
+## R34C · 生产机制连击评级文本【独立分区】的实际包围盒（归一化锚点 → 当前视口线性缩放）。
+##   供 ProdComboLabel 真实节点定位与运行时 rect 断言读取；不并入 6 分区数组（A1 不回退）。
+func get_production_mechanism_rect() -> Rect2:
+	return _scaled_rect(ANCHOR_COMBO)
+
+
+## R34C · 赐福成长标题行（GraceShopLabel 真实节点，R29 独立 CanvasLayer）包围盒。
+##   与既有 SHOP_RECT_* 同源，供「生产机制文本 vs 赐福成长标题行」断言作几何事实源。
+func get_shop_title_rect() -> Rect2:
+	return Rect2(SHOP_RECT_LEFT, SHOP_RECT_TOP,
+			SHOP_RECT_RIGHT - SHOP_RECT_LEFT, SHOP_RECT_BOTTOM - SHOP_RECT_TOP)
+
+
 func get_hud_layout() -> Dictionary:
 	return {
 		"viewport": _layout_viewport,
@@ -1238,6 +1275,8 @@ func get_hud_layout() -> Dictionary:
 		"visible_side_panels": get_visible_side_panels(),
 		"codex_open": is_codex_open(),
 		"boon_draft_open": is_boon_draft_open(),
+		"production_mechanism_rect": get_production_mechanism_rect(),
+		"shop_title_rect": get_shop_title_rect(),
 	}
 
 
@@ -1503,6 +1542,9 @@ func request_execution() -> Dictionary:
 					bonus = int((r as Dictionary).get("bonus_points", 0))
 				break
 	execution_performed.emit(_stagger_window_id, bonus)
+	# R34 e 链：处决额外点数只发信号 / 传参给 Rank-3 I-1 权威写入点，Rank-1 不写存档文件（A50）。
+	points_awarded.emit("execution", bonus, "stagger_service.try_execute")
+	_r34_points_count += 1
 	# 处决消耗本窗口一次机会；窗口本身由 tick_stagger 超时 / Rank-2 closed 信号关闭。
 	# 窗口内重复 F 由 _stagger_execution_consumed 拒绝（契约「重复触发拒绝」）。
 	return {"ok": true, "reason": "ok",
@@ -1610,6 +1652,8 @@ func _select_boon_draft(index: int) -> Dictionary:
 		if typeof(c) == TYPE_DICTIONARY:
 			choice_id = String((c as Dictionary).get("id", ""))
 	boon_draft_selected.emit(index, choice_id)
+	# R34 d 链：抉择选中 → 真实 apply() 结算生效 + 广播成对 effect/cost 给下一波消费方。
+	_r34_settle_boon_draft(index, choice_id)
 	close_boon_draft()
 	return result
 
@@ -1669,3 +1713,622 @@ func process_key_event(event: InputEvent) -> bool:
 func _exit_tree() -> void:
 	_unbind_stagger_signals()
 	_codex_director = null
+	_r34_release()
+
+
+# ==========================================================================
+# 16) R34 [ROUND=R34] · 生产运行时触发链 c) / d) / e) / f)（HUD 单一 Tab 仲裁者口径不回退）
+#   把 R33「演示专用可见层 + 演示驱动显式服务调用」升级为生产常驻：
+#     c) 清波 → 卡片：订阅真实 WaveTrialDirector.wave_cleared(index, points)
+#        → _r34_on_wave_cleared → 既有 on_wave_cleared() 显示三选一卡片。
+#     d) apply/settle 消费方：_select_boon_draft() 后真实 BoonDraftService.apply()
+#        结算生效，emit boon_draft_applied(成对 effect/cost)；下一波 wave_started
+#        广播 production_wave_modifier 给 Rank-2 wave_trial_director 消费（不改其文件）。
+#     e) 点数落盘：points_awarded(reason, points, source) 只发信号 / 传参给
+#        Rank-3 I-1 权威写入点，Rank-1 不 set_flag / 不 commit / 不写存档（A50）。
+#     f) 生产 HUD 常驻可见节点：hud.gd 自身建 ProductionMechanismsLayer（韧性条 +
+#        读秒/F Label + 三选一卡片 Label + 连击 Label），按状态显示，不再由
+#        presentation.gd 动态构造；文本全部读 HUD 公开快照，不写既有 Label.text。
+#   既有 1~15 节逻辑 / 6 信号 / 19+5 条断言 / 1~14 关键方法签名逐字不动。
+#   --script 独立 hud.tscn 实例：无 SubViewportContainer 父链 → 可见层判空降级、不建节点，
+#   不影响既有 24 / 16 / 42 PASS；signal connect 用 get_signal_connection_list 去重、
+#   _exit_tree 有 disconnect 释放路径；资源回读 CACHE_MODE_IGNORE。
+# ==========================================================================
+
+const R34_BOON_SVC_PATH: String = "res://scripts/combat/boon_draft_service.gd"
+const R34_BOON_CFG_PATH: String = "res://data/rpg/boon_draft.tres"
+const R34_COMBO_SVC_PATH: String = "res://scripts/combat/combo_service.gd"
+const R34_COMBO_CFG_PATH: String = "res://data/rpg/combo_rules.tres"
+const R34_LAYER_NAME: String = "ProductionMechanismsLayer"
+const R34_LAYER_INDEX: int = 48
+# [PLACEHOLDER] 可见层位置沿用 R33 右上空白区，待试玩校准（rationale：避开 quality /
+#   shop / Boss+中央角色 / codex / 底部条，首帧隐藏不遮角色；调参只改本节常量）。
+const R34_RECT_LEFT: float = 900.0
+const R34_RECT_TOP: float = 190.0
+const R34_RECT_RIGHT: float = 1276.0
+const R34_RECT_BOTTOM: float = 352.0
+
+var _r34_combo: Object = null                 # 生产 ComboService（HUD 创建，注入导演层）
+var _r34_wave: Node = null                    # WaveTrialDirector 引用（订阅 wave_cleared/wave_started）
+var _r34_prod_layer: CanvasLayer = null       # f 链常驻可见层
+var _r34_poise_bar: ProgressBar = null
+var _r34_stagger_label: Label = null
+var _r34_draft_label: Label = null
+var _r34_combo_label: Label = null
+var _r34_bootstrapped: bool = false
+var _r34_wave_cleared_connected: bool = false
+var _r34_wave_started_connected: bool = false
+var _r34_points_count: int = 0                # points_awarded 发出次数（e 链可观测）
+var _r34_last_boon_apply: Dictionary = {}     # d 链最后一次 apply() 结算结果
+var _r34_boon_forward_ok: bool = false        # d 链抉择是否已注入 Rank-2 下游消费方
+var _r34_pending_wave_modifier: Dictionary = {}  # 待作用下一波的修正
+var _r34_active_wave_modifier: Dictionary = {}   # 已广播给下一波的修正
+var _r34_wave_modifier_broadcast_count: int = 0
+
+
+## A54 [ROUND=R34B] · 唯一实例收敛：
+##   ComboService / BoonDraftService 唯一实例归属 wave_trial_director.gd；
+##   本层【绝不另建第二个实例】。生产 _ready 不再 new 任何服务，
+##   由 _r34_bootstrap() 经 get_combo_service()/get_boon_service() 复用 Rank-2
+##   装配的唯一实例并 bind（消除 Rank-2 登记的「双实例归属」待裁决项）。
+##   修前根因：命中转发到 HUD 自建 combo、清波结算用 wave 自建 combo → combo 恒 0。
+func _r34_create_boon_service() -> void:
+	print("[R34B][HUD] A54 唯一实例：不自建 Combo/Boon 服务，由 _r34_bootstrap() 经 get_combo_service()/get_boon_service() 绑定 wave_trial_director 唯一实例")
+
+
+# ---- R34B [ROUND=R34B] · 4 信号订阅 / 连击 HUD 视图 / 任务2 作用链路（追加）----
+# 以下成员声明与函数均位于类体，顺序不影响 GDScript 解析（--check-only 实证）。
+
+## 连击 HUD 视图（4 个公开信号事件驱动；供 Rank-4 连击视觉反馈 / 验证读取，不写盘）。
+var _r34_combo_view: Dictionary = {
+	"count": 0, "rank": "D", "multiplier": 1.0,
+	"last_rank_from": "", "last_reset_reason": "", "last_settlement": {},
+	"changed_count": 0, "rank_changed_count": 0, "reset_count": 0, "settled_count": 0,
+}
+var _r34_combo_signals_connected: bool = false
+
+
+## 订阅 ComboService 唯一实例的 4 个公开信号（DONE-R34.md §3.1 签名）。
+## connect 前用 get_signal_connection_list 去重；_r34_release 有 disconnect 释放路径。
+func _r34_connect_combo_signals() -> void:
+	if _r34_combo == null or not is_instance_valid(_r34_combo):
+		return
+	_r34_dedup_connect(_r34_combo, "combo_changed", "_r34_on_combo_changed")
+	_r34_dedup_connect(_r34_combo, "rank_changed", "_r34_on_rank_changed")
+	_r34_dedup_connect(_r34_combo, "combo_reset", "_r34_on_combo_reset")
+	_r34_dedup_connect(_r34_combo, "combo_settled", "_r34_on_combo_settled")
+	_r34_combo_signals_connected = true
+	_r34_refresh_combo_view()
+
+
+func _r34_disconnect_combo_signals() -> void:
+	if _r34_combo == null or not is_instance_valid(_r34_combo):
+		return
+	var pairs: Array = [
+		["combo_changed", "_r34_on_combo_changed"],
+		["rank_changed", "_r34_on_rank_changed"],
+		["combo_reset", "_r34_on_combo_reset"],
+		["combo_settled", "_r34_on_combo_settled"],
+	]
+	for p: Array in pairs:
+		var sig: String = str(p[0])
+		var cb: Callable = Callable(self, str(p[1]))
+		if _r34_combo.has_signal(sig) and _r34_combo.is_connected(sig, cb):
+			_r34_combo.disconnect(sig, cb)
+	_r34_combo_signals_connected = false
+
+
+## 从唯一实例公开只读接口刷新视图（事件驱动，不轮询）。
+func _r34_refresh_combo_view() -> void:
+	if _r34_combo == null or not is_instance_valid(_r34_combo):
+		return
+	if _r34_combo.has_method("get_snapshot"):
+		var d: Dictionary = _r34_combo.call("get_snapshot") as Dictionary
+		_r34_combo_view["count"] = int(d.get("combo", d.get("count", _r34_combo_view["count"])))
+		_r34_combo_view["rank"] = str(d.get("rank", _r34_combo_view["rank"]))
+		_r34_combo_view["multiplier"] = float(d.get("multiplier", _r34_combo_view["multiplier"]))
+
+
+## 4 信号回调（签名逐字对齐 DONE-R34.md §3.1；Variant 形参兼容鸭子类型）。
+func _r34_on_combo_changed(count: Variant = null, rank: Variant = null) -> void:
+	if count != null:
+		_r34_combo_view["count"] = int(count)
+	if rank != null:
+		_r34_combo_view["rank"] = str(rank)
+	_r34_combo_view["changed_count"] = int(_r34_combo_view["changed_count"]) + 1
+	_r34_refresh_visible()
+
+
+func _r34_on_rank_changed(from_rank: Variant = null, to_rank: Variant = null, multiplier: Variant = null) -> void:
+	if to_rank != null:
+		_r34_combo_view["rank"] = str(to_rank)
+	if from_rank != null:
+		_r34_combo_view["last_rank_from"] = str(from_rank)
+	if multiplier != null:
+		_r34_combo_view["multiplier"] = float(multiplier)
+	_r34_combo_view["rank_changed_count"] = int(_r34_combo_view["rank_changed_count"]) + 1
+	_r34_refresh_visible()
+
+
+func _r34_on_combo_reset(reason: Variant = null) -> void:
+	_r34_combo_view["last_reset_reason"] = str(reason) if reason != null else ""
+	_r34_combo_view["reset_count"] = int(_r34_combo_view["reset_count"]) + 1
+	_r34_refresh_combo_view()
+	_r34_refresh_visible()
+
+
+func _r34_on_combo_settled(total_points: Variant = null, base_points: Variant = null,
+		rank: Variant = null, multiplier: Variant = null) -> void:
+	_r34_combo_view["last_settlement"] = {
+		"total_points": int(total_points) if total_points != null else 0,
+		"base_points": int(base_points) if base_points != null else 0,
+		"rank": str(rank) if rank != null else "",
+		"multiplier": float(multiplier) if multiplier != null else 1.0,
+	}
+	_r34_combo_view["settled_count"] = int(_r34_combo_view["settled_count"]) + 1
+	_r34_refresh_visible()
+
+
+## 生产 HUD 连击可见层视图（供 Rank-4 连击视觉反馈 / 验证读取）。
+func get_combo_hud_view() -> Dictionary:
+	return _r34_combo_view.duplicate()
+
+
+## 供 Rank-4 / 验证取 A54 唯一实例（同一 ComboService，不经场景树）。
+func get_combo_service() -> Object:
+	return _r34_combo
+
+
+## 任务 2 [R34B]：波次开始时把 boon_draft 的 cost_key/effect_key 从「导演层记录」
+##   推到 EncounterDirector 的运行时敌人参数（hp_scale / telegraph_scale / 削韧）。
+## 数据源：① Rank-2 wave_trial_director.get_snapshot() 的 boon_cost_key /
+##   boon_effect_key / boon_cost_value（导演层记录，R34 只到这一层）；
+##   ② HUD _r34_active_wave_modifier（BoonDraftConfig.apply 真实成对数据，字段齐全）。
+## 两者皆缺 / 非法 → 传空 key，由 enc 回落基础值并 push_warning 告警（失败降级）。
+## 不改 .tres / courtyard.tscn / 判定分支；不写存档（A50）。
+func _r34b_apply_wave_enemy_params(wave_index: int) -> void:
+	var ml: MainLoop = Engine.get_main_loop()
+	var courtyard: Node = null
+	if ml is SceneTree:
+		courtyard = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+	if courtyard == null:
+		courtyard = _r34_find_mount_root()
+	if courtyard == null:
+		return
+	var enc: Node = courtyard.get_node_or_null(NodePath("EncounterRoot"))
+	if enc == null or not enc.has_method("apply_wave_enemy_params"):
+		return
+	var m: Dictionary = _r34_active_wave_modifier.duplicate()
+	if m.is_empty():
+		m = _r34_pending_wave_modifier.duplicate()
+	# ① 导演层记录（Rank-2 get_snapshot 的 boon_* 只读 key）
+	if _r34_wave != null and is_instance_valid(_r34_wave) \
+			and _r34_wave.has_method("get_snapshot"):
+		var ws: Dictionary = _r34_wave.call("get_snapshot") as Dictionary
+		var wcost: String = str(ws.get("boon_cost_key", ""))
+		var weff: String = str(ws.get("boon_effect_key", ""))
+		var wval: float = float(ws.get("boon_cost_value", 0.0))
+		if not wcost.is_empty():
+			m["cost_key"] = wcost
+			m["cost_value"] = wval
+		if not weff.is_empty():
+			m["effect_key"] = weff
+	var r: Dictionary = enc.call("apply_wave_enemy_params", wave_index,
+			str(m.get("effect_key", "")), float(m.get("effect_value", 0.0)),
+			str(m.get("cost_key", "")), float(m.get("cost_value", 0.0))) as Dictionary
+	print("[R34B][HUD] 任务2 作用链路：wave_started(index=%d) → apply_wave_enemy_params → 运行时敌人参数 | cost=%s(%.2f) effect=%s(%.2f) applied=%s degraded=%s" % [
+			wave_index, str(m.get("cost_key", "")), float(m.get("cost_value", 0.0)),
+			str(m.get("effect_key", "")), float(m.get("effect_value", 0.0)),
+			str(r.get("applied", false)), str(r.get("degraded", false))])
+
+
+## ComboService 注入口：装配层（生产）/ 验证进程（契约替身）注入真实或替身实例，
+## 鸭子类型、不静态引用 Rank-2 class_name。同时转注入 EncounterDirector 的命中转发链。
+func bind_combo_service(svc: Object) -> void:
+	_r34_combo = svc
+	var ml: MainLoop = Engine.get_main_loop()
+	var enc: Node = null
+	if ml is SceneTree:
+		var courtyard: Node = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+		if courtyard == null:
+			courtyard = _r34_find_mount_root()
+		if courtyard != null:
+			enc = courtyard.get_node_or_null(NodePath("EncounterRoot"))
+	if enc != null and enc.has_method("bind_combo_service"):
+		enc.call("bind_combo_service", svc)
+
+
+## 跨节点装配（生产 call_deferred / 验证显式 call）：拉同一 StaggerService、
+## A54 复用 wave 唯一 Combo/Boon 实例、订阅 4 个 combo 信号 + 真实波次信号、
+## 建生产常驻可见层、启用显示层 _process。
+func _r34_bootstrap() -> void:
+	if _r34_bootstrapped:
+		return
+	_r34_bootstrapped = true
+	var ml: MainLoop = Engine.get_main_loop()
+	var courtyard: Node = null
+	if ml is SceneTree:
+		courtyard = (ml as SceneTree).root.get_node_or_null(NodePath("Courtyard"))
+	if courtyard == null:
+		courtyard = _r34_find_mount_root()
+	if courtyard != null:
+		var enc: Node = courtyard.get_node_or_null(NodePath("EncounterRoot"))
+		if enc != null and enc.has_method("get_stagger_service"):
+			var ss: Object = enc.call("get_stagger_service") as Object
+			if ss != null and _stagger_service != ss:
+				bind_stagger_service(ss)
+		var wave: Node = courtyard.get_node_or_null(NodePath("WaveTrialDirector"))
+		if wave != null:
+			_r34_wave = wave
+			# A54 [R34B]：唯一实例归属 wave_trial_director.gd，绝不另建第二个实例。
+			# 命中转发（enc）/ 清波结算（wave）/ HUD 显示 三方共用同一 ComboService。
+			if wave.has_method("get_combo_service"):
+				var combo: Object = wave.call("get_combo_service") as Object
+				if combo != null and is_instance_valid(combo):
+					bind_combo_service(combo)         # 存 HUD 引用 + 转注入 enc 命中/tick 转发链
+					_r34_connect_combo_signals()     # 任务1 e：订阅 4 个公开信号
+			if wave.has_method("get_boon_service"):
+				var boon: Object = wave.call("get_boon_service") as Object
+				if boon != null and is_instance_valid(boon):
+					bind_boon_draft_service(boon)    # HUD 卡片显示复用同一 BoonDraftService
+			_r34_dedup_connect(wave, "wave_cleared", "_r34_on_wave_cleared")
+			_r34_dedup_connect(wave, "wave_started", "_r34_on_wave_started")
+	_r34_build_visible()
+	set_process(true)
+	_r34_refresh_visible()
+	print("[R34][HUD] 生产链装配完成 | stagger_bound=%s boon_bound=%s combo_bound=%s combo_signals=%s wave_cleared=%s wave_started=%s visible=%s" % [
+			str(_stagger_service != null), str(_boon_draft_service != null), str(_r34_combo != null),
+			str(_r34_combo_signals_connected),
+			str(_r34_wave_cleared_connected), str(_r34_wave_started_connected),
+			str(_r34_prod_layer != null and is_instance_valid(_r34_prod_layer) and _r34_prod_layer.is_inside_tree())])
+
+
+func _r34_dedup_connect(obj: Object, sig: String, method: String) -> void:
+	if obj == null or not obj.has_signal(sig):
+		return
+	var cb: Callable = Callable(self, method)
+	for conn in obj.get_signal_connection_list(sig):
+		var c: Callable = conn.get("callable", Callable())
+		if c.get_object() == self and String(c.get_method()) == method:
+			_r34_mark_connected(sig)
+			return
+	obj.connect(sig, cb)
+	_r34_mark_connected(sig)
+
+
+func _r34_mark_connected(sig: String) -> void:
+	if sig == "wave_cleared":
+		_r34_wave_cleared_connected = true
+	elif sig == "wave_started":
+		_r34_wave_started_connected = true
+
+
+## c) 真实 wave_cleared → HUD 卡片；e) 清波点数只发信号给 Rank-3（不写盘）。
+## ---- A57 [ROUND=R34D] · 发射值修正（总指挥裁决 A57，最后一处玩法分叉）----
+##   points_awarded(reason, points, source) 的 points 必须携带【最终结算值（含连击倍率）】；
+##   wave_cleared(index, points) 第二参保留基础值，只作 HUD 展示与事件键（on_wave_cleared 用）；
+##   combo_settled(total, base, rank, mult) 只作对账 / 展示（HUD 订阅更新视图），绝不二次入账
+##   —— 本函数每条 wave_cleared 只发 1 次 points_awarded，Rank-3 编排层「原样采信」落盘（A55 不变）。
+##   取源：A54 唯一 ComboService 实例（get_combo_service() → _r34_combo，与 wave._combo 同一实例）。
+##   wave_trial_director._clear_wave() 先 settle() 再 emit wave_cleared，故 get_last_settlement()
+##   此时即本次清波的倍率后结算（ok / settled / total_points）。
+##   失败降级：无有效结算 → 回落基础值 + push_warning 告警（不静默吞掉）。
+func _r34_on_wave_cleared(index: Variant = null, points: Variant = null) -> void:
+	on_wave_cleared(index, points)
+	var base_pts: int = int(points) if points != null else 0
+	# A57：最终结算值（含连击倍率）默认回落基础值，取到有效结算后覆盖。
+	var final_pts: int = base_pts
+	var settled_ok: bool = false
+	var combo: Object = get_combo_service()
+	if combo != null and is_instance_valid(combo) and combo.has_method("get_last_settlement"):
+		var last: Dictionary = combo.call("get_last_settlement") as Dictionary
+		if bool(last.get("ok", false)) and bool(last.get("settled", false)) \
+				and int(last.get("total_points", 0)) > 0:
+			final_pts = int(last.get("total_points", base_pts))
+			settled_ok = true
+	# 回落：无有效结算 → 尝试一次 settle(base_pts)（幂等）；仍无 → 回落基础值并告警。
+	if not settled_ok and combo != null and is_instance_valid(combo) and combo.has_method("settle"):
+		var r: Dictionary = combo.call("settle", base_pts) as Dictionary
+		if bool(r.get("ok", false)) and int(r.get("total_points", 0)) > 0:
+			final_pts = int(r.get("total_points", base_pts))
+			settled_ok = true
+	if not settled_ok:
+		push_warning("[R34D][HUD] A57 降级：清波未取到有效倍率结算 → points_awarded 回落基础值 base=%d（失败降级，不静默吞掉）" % base_pts)
+	# ★ 每条 wave_cleared 事件只发一次 points_awarded（绝不重复入账）。
+	points_awarded.emit("wave_cleared", final_pts, "wave_trial_director.wave_cleared")
+	_r34_points_count += 1
+	_r34_refresh_visible()
+	print("[R34D][HUD] A57 c 链：真实 wave_cleared(index=%s base=%d final=%d settled=%s) → 抉择卡片 open=%s | points_awarded 已发一次（携带倍率后值）" % [
+			str(index), base_pts, final_pts, str(settled_ok), str(is_boon_draft_open())])
+
+
+## d) 下一波 wave_started → 把上一波抉择修正广播给 Rank-2 消费方（作用于下一波）。
+func _r34_on_wave_started(index: Variant = null, _total: Variant = null) -> void:
+	var wi: int = int(index) if index != null else 0
+	if not _r34_pending_wave_modifier.is_empty():
+		var m: Dictionary = _r34_pending_wave_modifier
+		_r34_active_wave_modifier = m.duplicate()
+		_r34_wave_modifier_broadcast_count += 1
+		production_wave_modifier.emit(wi,
+				String(m.get("effect_key", "")), float(m.get("effect_value", 0.0)),
+				String(m.get("cost_key", "")), float(m.get("cost_value", 0.0)))
+		print("[R34][HUD] d 链：下一波 wave_started(index=%d) → production_wave_modifier 广播 effect=%s cost=%s（供 Rank-2 消费）" % [
+				wi, String(m.get("effect_key", "")), String(m.get("cost_key", ""))])
+	# 任务 2 [R34B]：波次开始把抉择代价从「导演层记录」推到运行时敌人参数；
+	# 无抉择修正时也调用一次，由 enc 回落基础值并告警（失败降级实证）。
+	_r34b_apply_wave_enemy_params(wi)
+	_r34_refresh_visible()
+
+
+## d) 抉择选中 → 真实 apply() 结算生效 + emit boon_draft_applied（成对 effect/cost）。
+## 并把抉择注入 Rank-2 wave_trial_director 的 boon 服务（其 select_boon(index) 公开注入口），
+## 使 Rank-2 在下一波 _clear_wave() 的 apply()/settle() 真正消费「玩家所选」——
+## 只调用公开方法 / 鸭子类型判空降级，不改 wave_trial_director.gd 文件（Rank-2 唯一写入方）。
+func _r34_settle_boon_draft(index: int, choice_id: String) -> void:
+	var forwarded: bool = false
+	if _r34_wave != null and is_instance_valid(_r34_wave) \
+			and _r34_wave.has_method("select_boon"):
+		var fr: Variant = _r34_wave.call("select_boon", index)
+		var fr_ok: bool = (typeof(fr) == TYPE_DICTIONARY and bool((fr as Dictionary).get("ok", false)))
+		# A54 唯一实例：select_boon 与本层 select 命中【同一】BoonDraftService，
+		# 第二次 select 被幂等拒绝（duplicate/exclusive）→ 以 has_selection() 判定
+		# 「抉择已注入 Rank-2 下游消费方」，不依赖第二次 select 的 ok，语义不变。
+		var r2_sel: bool = false
+		if _r34_wave.has_method("get_boon_service"):
+			var r2boon: Object = _r34_wave.call("get_boon_service") as Object
+			if r2boon != null and is_instance_valid(r2boon) and r2boon.has_method("has_selection"):
+				r2_sel = bool(r2boon.call("has_selection"))
+		forwarded = fr_ok or r2_sel
+	_r34_boon_forward_ok = forwarded
+	var payload: Dictionary = {}
+	if _boon_draft_service != null and is_instance_valid(_boon_draft_service) \
+			and _boon_draft_service.has_method("apply"):
+		var av: Variant = _boon_draft_service.call("apply")
+		if typeof(av) == TYPE_DICTIONARY:
+			payload = av as Dictionary
+	_r34_last_boon_apply = payload.duplicate()
+	if not bool(payload.get("ok", false)):
+		return
+	var effect_key: String = String(payload.get("effect_key", ""))
+	var effect_value: float = float(payload.get("effect_value", 0.0))
+	var cost_key: String = String(payload.get("cost_key", ""))
+	var cost_value: float = float(payload.get("cost_value", 0.0))
+	_r34_pending_wave_modifier = {
+		"effect_key": effect_key, "effect_value": effect_value,
+		"cost_key": cost_key, "cost_value": cost_value,
+		"choice_id": choice_id, "index": index,
+		"paired": bool(payload.get("paired", false)),
+	}
+	boon_draft_applied.emit(index, choice_id, effect_key, effect_value, cost_key, cost_value)
+	print("[R34][HUD] d 链：抉择 apply() 结算生效 paired=%s effect=%s(%.2f) cost=%s(%.2f) | 已注入 Rank-2 下游消费方=%s → 下一波清波由 wave_trial_director.apply()/settle() 消费" % [
+			str(payload.get("paired", false)), effect_key, effect_value, cost_key, cost_value,
+			str(_r34_boon_forward_ok)])
+
+
+# ---- f) 生产 HUD 常驻可见层（hud.gd 自建，不再由 presentation.gd 动态构造）----
+
+func _r34_find_mount_root() -> Node:
+	var p: Node = get_parent()
+	while p != null:
+		if p is SubViewportContainer:
+			return p.get_parent()
+		p = p.get_parent()
+	return null
+
+
+func _r34_make_label(n: String) -> Label:
+	var l: Label = Label.new()
+	l.name = n
+	l.add_theme_font_size_override("font_size", 16)
+	l.add_theme_color_override("font_color", Color(1.0, 0.96, 0.82, 1.0))
+	l.add_theme_color_override("font_outline_color", Color(0.02, 0.03, 0.06, 1.0))
+	l.add_theme_constant_override("outline_size", 5)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var bg: StyleBoxFlat = StyleBoxFlat.new()
+	bg.bg_color = Color(0.04, 0.06, 0.12, 0.30)
+	bg.set_corner_radius_all(6)
+	bg.set_border_width_all(1)
+	bg.border_color = Color(0.83, 0.68, 0.3, 0.55)
+	bg.content_margin_left = 10.0
+	bg.content_margin_right = 10.0
+	bg.content_margin_top = 6.0
+	bg.content_margin_bottom = 6.0
+	l.add_theme_stylebox_override("normal", bg)
+	return l
+
+
+## 建常驻可见层并挂到 SubViewport 外的 Courtyard（与 R29/R30/R31 同口径，不受 stretch_shrink 影响）。
+## 独立 hud.tscn --script 实例无 SubViewportContainer 父链 → 判空降级、不建节点（保护既有断言）。
+func _r34_build_visible() -> void:
+	if _r34_prod_layer != null and is_instance_valid(_r34_prod_layer):
+		return
+	var mount: Node = _r34_find_mount_root()
+	if mount == null:
+		# R34C：独立 hud.tscn --script 实例无 SubViewportContainer / Courtyard 外部挂载点
+		#   → 降级挂到 HUD 自身（CanvasLayer 子节点），生产可见层真实节点仍建立并按锚点
+		#   定位，供运行时断言读真实 rect；实机有 mount 时挂载路径逐字不变。
+		mount = self
+	var layer: CanvasLayer = mount.get_node_or_null(NodePath(R34_LAYER_NAME)) as CanvasLayer
+	if layer == null:
+		layer = CanvasLayer.new()
+		layer.name = R34_LAYER_NAME
+		layer.layer = R34_LAYER_INDEX
+		mount.add_child(layer)
+	_r34_prod_layer = layer
+	var bar: ProgressBar = layer.get_node_or_null(NodePath("ProdPoiseBar")) as ProgressBar
+	if bar == null:
+		bar = ProgressBar.new()
+		bar.name = "ProdPoiseBar"
+		bar.min_value = 0.0
+		bar.max_value = 100.0
+		bar.value = 100.0
+		bar.show_percentage = false
+		bar.offset_left = R34_RECT_LEFT + 12.0
+		bar.offset_top = R34_RECT_TOP + 12.0
+		bar.offset_right = R34_RECT_RIGHT - 12.0
+		bar.offset_bottom = R34_RECT_TOP + 34.0
+		layer.add_child(bar)
+	_r34_poise_bar = bar
+	var sl: Label = layer.get_node_or_null(NodePath("ProdStaggerLabel")) as Label
+	if sl == null:
+		sl = _r34_make_label("ProdStaggerLabel")
+		sl.offset_left = R34_RECT_LEFT + 12.0
+		sl.offset_top = R34_RECT_TOP + 40.0
+		sl.offset_right = R34_RECT_RIGHT - 12.0
+		sl.offset_bottom = R34_RECT_BOTTOM - 12.0
+		layer.add_child(sl)
+	_r34_stagger_label = sl
+	var dl: Label = layer.get_node_or_null(NodePath("ProdDraftLabel")) as Label
+	if dl == null:
+		dl = _r34_make_label("ProdDraftLabel")
+		dl.offset_left = R34_RECT_LEFT + 12.0
+		dl.offset_top = R34_RECT_TOP + 12.0
+		dl.offset_right = R34_RECT_RIGHT - 12.0
+		dl.offset_bottom = R34_RECT_BOTTOM - 12.0
+		layer.add_child(dl)
+	_r34_draft_label = dl
+	var cl: Label = layer.get_node_or_null(NodePath("ProdComboLabel")) as Label
+	if cl == null:
+		cl = _r34_make_label("ProdComboLabel")
+		layer.add_child(cl)
+	_r34_combo_label = cl
+	# R34C：连击评级 / 倍率 / 命中数文本按【独立分区锚点】定位，不再用
+	#   R34_RECT_BOTTOM+8/+36 硬编码像素堆叠压在赐福成长标题行上。
+	_r34_apply_combo_rect()
+	_r34_hide_all()
+	print("[R34][HUD] f 链：生产常驻可见层 %s 入树 is_inside_tree=%s（按状态显示，非 presentation.gd 构造）" % [
+			R34_LAYER_NAME, str(layer.is_inside_tree())])
+
+
+## R34C：连击评级文本【真实节点】按独立分区锚点定位（不硬编码像素堆叠）。
+##   视口变化由 set_layout_viewport() 联动重算；锚点归一化 → 1280x720 与降级档
+##   都不出界 / 不遮中央角色 / 不与赐福成长标题行等任一包围盒相交。
+func _r34_apply_combo_rect() -> void:
+	if _r34_combo_label == null or not is_instance_valid(_r34_combo_label):
+		return
+	var r: Rect2 = get_production_mechanism_rect()
+	_r34_combo_label.offset_left = r.position.x
+	_r34_combo_label.offset_top = r.position.y
+	_r34_combo_label.offset_right = r.end.x
+	_r34_combo_label.offset_bottom = r.end.y
+
+
+## R34C：幂等确保生产可见层真实节点已建立（供 --script / 集成显式调用；实机由
+##   _r34_bootstrap() 经 call_deferred 走 _r34_build_visible() 同一入口，A48 口径不变）。
+func ensure_production_visible_layer() -> void:
+	_r34_build_visible()
+
+
+func _r34_hide_all() -> void:
+	for n: Node in [_r34_poise_bar, _r34_stagger_label, _r34_draft_label, _r34_combo_label]:
+		if n != null and is_instance_valid(n):
+			n.visible = false
+
+
+## 按状态显示常驻可见层：文本全部读 HUD 公开快照（get_*_view），不写既有 HUD 的 Label.text。
+func _r34_refresh_visible() -> void:
+	if _r34_prod_layer == null or not is_instance_valid(_r34_prod_layer):
+		return
+	var bv: Dictionary = get_boon_draft_view()
+	var sv: Dictionary = get_stagger_hud_view()
+	_r34_hide_all()
+	if bool(bv.get("open", false)):
+		var lines: Array[String] = ["赐福抉择 · 三选一（数字键 1 / 2 / 3 选择）"]
+		var choices: Array = bv.get("choices", []) as Array
+		for i: int in range(choices.size()):
+			var c: Variant = choices[i]
+			var title: String = ""
+			if typeof(c) == TYPE_DICTIONARY:
+				title = String((c as Dictionary).get("title", (c as Dictionary).get("id", "")))
+			lines.append("  %d. %s" % [i + 1, title])
+		if _r34_draft_label != null:
+			_r34_draft_label.text = "\n".join(PackedStringArray(lines))
+			_r34_draft_label.visible = true
+	elif bool(sv.get("window_open", false)) or float(sv.get("poise_ratio", 1.0)) < 0.999:
+		if _r34_poise_bar != null:
+			_r34_poise_bar.value = clampf(float(sv.get("poise_ratio", 1.0)) * 100.0, 0.0, 100.0)
+			_r34_poise_bar.visible = true
+		if _r34_stagger_label != null:
+			var slines: Array[String] = [String(sv.get("poise_text", ""))]
+			var wt: String = String(sv.get("window_text", ""))
+			if not wt.is_empty():
+				slines.append(wt)
+			_r34_stagger_label.text = "\n".join(PackedStringArray(slines))
+			_r34_stagger_label.visible = true
+	var combo_text: String = _r34_combo_text()
+	if not combo_text.is_empty() and _r34_combo_label != null:
+		_r34_combo_label.text = combo_text
+		_r34_combo_label.visible = true
+
+
+func _r34_combo_text() -> String:
+	# 4 信号事件驱动视图（A54 唯一实例，DONE-R34.md §3.1 签名）；count 取 combo 字段。
+	var count: int = int(_r34_combo_view.get("count", 0))
+	var rank: String = str(_r34_combo_view.get("rank", "D"))
+	var mult: float = float(_r34_combo_view.get("multiplier", 1.0))
+	if count <= 0 and _r34_combo != null and is_instance_valid(_r34_combo) \
+			and _r34_combo.has_method("get_snapshot"):
+		var cv: Variant = _r34_combo.call("get_snapshot")
+		if typeof(cv) == TYPE_DICTIONARY:
+			var d: Dictionary = cv as Dictionary
+			# 真实 ComboService.get_snapshot() 用 "combo"；兼容替身 count/combo_count。
+			count = int(d.get("combo", d.get("count", d.get("combo_count", 0))))
+			rank = str(d.get("rank", d.get("rank_name", rank)))
+			mult = float(d.get("multiplier", mult))
+	if count <= 0:
+		return ""
+	return "连击评价 · %d 连击 ｜ 评级 %s ｜ 倍率 %.2f" % [count, rank, mult]
+
+
+## 生产 HUD 渲染层每帧只做：递减本层显示读秒镜像（tick_stagger 既有）+ 按状态刷新常驻可见层。
+## 不轮询 get_flag、不调用服务方法构造状态（StaggerService 的真实 tick 在导演层 b 链驱动）。
+func _process(delta: float) -> void:
+	if _stagger_window_open:
+		tick_stagger(delta)
+	_r34_refresh_visible()
+
+
+# ---- 生产链只读状态（验证脚本 / 运行日志读回，不含数值口径、不写盘）----
+
+func get_production_status() -> Dictionary:
+	return {
+		"stagger_bound": _stagger_service != null and is_instance_valid(_stagger_service),
+		"boon_bound": _boon_draft_service != null and is_instance_valid(_boon_draft_service),
+		"combo_bound": _r34_combo != null and is_instance_valid(_r34_combo),
+		"wave_cleared_connected": _r34_wave_cleared_connected,
+		"wave_started_connected": _r34_wave_started_connected,
+		"visible_layer_in_tree": _r34_prod_layer != null and is_instance_valid(_r34_prod_layer) \
+				and _r34_prod_layer.is_inside_tree(),
+		"points_awarded_count": _r34_points_count,
+		"last_boon_apply": _r34_last_boon_apply.duplicate(),
+		"boon_forward_ok": _r34_boon_forward_ok,
+		"pending_wave_modifier": _r34_pending_wave_modifier.duplicate(),
+		"active_wave_modifier": _r34_active_wave_modifier.duplicate(),
+		"wave_modifier_broadcast_count": _r34_wave_modifier_broadcast_count,
+		"boon_draft_open": is_boon_draft_open(),
+		"stagger_hud": get_stagger_hud_view(),
+		"combo_signals_connected": _r34_combo_signals_connected,
+		"combo_hud": get_combo_hud_view(),
+	}
+
+
+func get_last_boon_apply() -> Dictionary:
+	return _r34_last_boon_apply.duplicate()
+
+
+func get_active_wave_modifier() -> Dictionary:
+	return _r34_active_wave_modifier.duplicate()
+
+
+func _r34_release() -> void:
+	_r34_disconnect_combo_signals()      # R34B：4 个 combo 信号 connect 的释放路径
+	if _r34_wave != null and is_instance_valid(_r34_wave):
+		var cb1: Callable = Callable(self, "_r34_on_wave_cleared")
+		if _r34_wave.has_signal("wave_cleared") and _r34_wave.is_connected("wave_cleared", cb1):
+			_r34_wave.disconnect("wave_cleared", cb1)
+		var cb2: Callable = Callable(self, "_r34_on_wave_started")
+		if _r34_wave.has_signal("wave_started") and _r34_wave.is_connected("wave_started", cb2):
+			_r34_wave.disconnect("wave_started", cb2)
+	_r34_wave = null
+	_r34_wave_cleared_connected = false
+	_r34_wave_started_connected = false

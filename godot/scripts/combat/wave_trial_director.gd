@@ -36,6 +36,10 @@ const STATE_NAMES: PackedStringArray = [
 ]
 
 const DEFAULT_TABLE_PATH: String = "res://data/rpg/wave_trial.tres"
+# ---- R34 / v0.11.0 最小接线 · 抉择消费方 + 连击评价倍率（Rank-2 唯一写入）----
+# 两张表只读（CACHE_MODE_IGNORE 回读真值）；既有 .tres 数值一律不改。
+const COMBO_RULES_PATH: String = "res://data/rpg/combo_rules.tres"     # 新增表（R34）
+const BOON_DRAFT_PATH: String = "res://data/rpg/boon_draft.tres"       # 既有表（R32），只读
 const REQUIRED_WAVE_FIELDS: PackedStringArray = [
 	"telegraph_sec", "time_limit_sec", "reward_points"
 ]
@@ -112,6 +116,25 @@ var _completed_flag: bool = false   # dungeon.wave_trial.completed 的运行时�
 var _persist_events: Array[String] = []   # 顺序证据：stage_flags → disk_write → runtime_update
 var _commit_count: int = 0
 
+# ---- R34 / v0.11.0 最小接线 · 抉择消费方 + 连击评价（Rank-2 唯一写入）----
+# 两个纯逻辑服务实例（RefCounted，装配时读表注入；表/服务未落盘一律降级、不崩）。
+# 本轮不接 encounter 命中信号（归 Rank-1），只消费清波 / 波次开始时刻的状态。
+var _combo: ComboService = null
+var _boon: BoonDraftService = null
+# 抉择代价「作用到下一波」：清波时挂起、下一波 _enter_telegraph 时转为生效记录。
+var _pending_cost_key: String = ""
+var _pending_effect_key: String = ""
+var _pending_cost_value: float = 0.0
+var _active_cost_key: String = ""
+var _active_effect_key: String = ""
+var _active_cost_value: float = 0.0
+# 最近一次清波结算记录（供 get_snapshot() / 验证脚本 / 后续 HUD 只读消费）。
+var _last_settled_points: int = 0
+var _last_combo_rank: String = "D"
+var _last_combo_multiplier: float = 1.0
+var _last_combo_count: int = 0
+var _settlement_count: int = 0
+
 
 func _ready() -> void:
 	_label = get_node_or_null(hud_label_path) as Label
@@ -124,6 +147,8 @@ func _ready() -> void:
 	_refresh_hud()
 	# R27B 裁决 A24：增益运行时挂载接线（在 _ready 之后经既有公开方法作用到运行时实例）。
 	_apply_grace_runtime()
+	# R34 / v0.11.0 最小接线：装配 ComboService / BoonDraftService（只读两张表，降级不崩）。
+	_init_combat_services()
 	if auto_start:
 		_auto_start_pending = true
 		_auto_start_frames = 0
@@ -478,6 +503,8 @@ func start_trial() -> bool:
 	_points_total = 0
 	_started_waves.clear()
 	_cleared_waves.clear()
+	# R34：新一局清空接线记录（逐字不改既有状态机分支 / 帧数据 / 输出格式）。
+	_reset_r34_records()
 	_enter_telegraph()
 	return true
 
@@ -487,6 +514,8 @@ func _enter_telegraph() -> void:
 	_remaining = float(_waves[_index]["telegraph"])
 	_started_waves.append(_index)
 	wave_started.emit(_index, _total)
+	# R34 最小接线（波次开始）：消费上一波抉择挂起的 cost_key / effect_key，并让连击从本波重算。
+	_consume_pending_boon()
 	_refresh_hud()
 
 
@@ -554,13 +583,39 @@ func _on_encounter_finished(won: bool) -> void:
 func _clear_wave() -> void:
 	var pts: int = int(_waves[_index]["points"])
 	var new_best: int = maxi(_best_wave, _index + 1)
-	var new_points: int = _grace_points + pts
+	# ---- R34 最小接线 ①（wave_cleared）：消费 BoonDraftService.apply()/settle() 的
+	#      cost_key / effect_key / points_bonus；抉择代价挂起到「下一波」再生效。
+	var base_for_combo: int = pts
+	if _boon != null and _boon.has_selection():
+		var applied: Dictionary = _boon.apply()
+		var boon_settled: Dictionary = _boon.settle(pts)
+		if bool(applied.get("ok", false)):
+			_pending_cost_key = str(applied.get("cost_key", ""))
+			_pending_effect_key = str(applied.get("effect_key", ""))
+			_pending_cost_value = float(applied.get("cost_value", 0.0))
+		if bool(boon_settled.get("ok", false)):
+			base_for_combo = maxi(0, int(boon_settled.get("total_points", pts)))
+		_boon.reset()   # 本波抉择已消费完，为下一轮抉择留干净态
+	# ---- R34 最小接线 ②：把 ComboService 评级倍率并入清波点数结算。
+	var settled_points: int = base_for_combo
+	if _combo != null:
+		if _index + 1 >= _total:
+			_combo.on_boss_defeated()   # 最后一波（Boss 波）→ 死亡结算、定格评级
+		var combo_result: Dictionary = _combo.settle(base_for_combo)
+		_last_combo_rank = str(combo_result.get("rank", _combo.get_rank()))
+		_last_combo_multiplier = float(combo_result.get("multiplier", _combo.get_multiplier()))
+		_last_combo_count = _combo.get_combo()
+		if bool(combo_result.get("ok", false)):
+			settled_points = maxi(0, int(combo_result.get("total_points", base_for_combo)))
+	var new_points: int = _grace_points + settled_points
+	_last_settled_points = settled_points
+	_settlement_count += 1
 	# ★ 先落盘（set_flag 入队 → commit 原子写），落盘成功后才改运行时实例。
 	if not _persist_settle(REASON_CLEARED, new_best, new_points, false):
 		# 降级：不写 flag、不落盘，进程内历史最佳仍按既有行为推进（如实、不崩）。
 		_best_wave = new_best
 	_state = State.WAVE_CLEARED
-	_points_total += pts
+	_points_total += settled_points
 	_cleared_waves.append(_index)
 	wave_cleared.emit(_index, pts)
 	_refresh_hud()
@@ -678,6 +733,93 @@ func _apply_grace_runtime() -> void:
 			str(row.get("after", "-")), str(row.get("via", row.get("reason", "")))])
 
 
+# ===========================================================================
+# R34 / v0.11.0 最小接线 · 抉择消费方 + 连击评价（Rank-2 唯一写入）
+#   - 只新增：装配 / 记录清零 / 「下一波」代价消费 / 只读 getter；
+#   - 既有判定分支 / 帧数据 / 输出格式（wave_cleared(index,pts) / HUD 文本 /
+#     get_snapshot() 既有 key）/ 既有 .tres 数值一律逐字不动。
+#   - 两服务均为 RefCounted 纯逻辑（I-1 不读写存档 / 不碰渲染）；本导演只在
+#     真实 wave_cleared / 波次开始两处消费其结算数据，绝不写生产存档。
+# ===========================================================================
+
+## 装配两个纯逻辑服务：只读两张表（CACHE_MODE_IGNORE 回读真值），
+## 表 / 服务未落盘一律 push_warning 降级、绝不产生 SCRIPT ERROR、不崩。
+func _init_combat_services() -> void:
+	var combo_cfg: ComboConfig = ResourceLoader.load(
+			COMBO_RULES_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as ComboConfig
+	var boon_cfg: BoonDraftConfig = ResourceLoader.load(
+			BOON_DRAFT_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as BoonDraftConfig
+	if combo_cfg != null:
+		_combo = ComboService.new(combo_cfg)
+	else:
+		push_warning("[WaveTrial] ComboService 规则表不可用：连击倍率降级为 1.0（不崩）")
+	if boon_cfg != null:
+		_boon = BoonDraftService.new(boon_cfg)
+	else:
+		push_warning("[WaveTrial] BoonDraftService 规则表不可用：抉择不作结算（不崩）")
+	if _combo != null:
+		_combo.reset()
+
+
+## 新一局清空 R34 接线记录（不改既有状态机 / 帧数据 / 输出格式）。
+func _reset_r34_records() -> void:
+	_pending_cost_key = ""
+	_pending_effect_key = ""
+	_pending_cost_value = 0.0
+	_active_cost_key = ""
+	_active_effect_key = ""
+	_active_cost_value = 0.0
+	_last_settled_points = 0
+	_last_combo_rank = "D"
+	_last_combo_multiplier = 1.0
+	_last_combo_count = 0
+	_settlement_count = 0
+	if _boon != null:
+		_boon.reset()
+
+
+## 波次开始：把上一波清波挂起的「代价 / 效果」作用到本波运行时（消费 cost_key /
+## effect_key），并让连击从本波干净重算；不改既有判定分支 / 帧数据 / 输出格式。
+func _consume_pending_boon() -> void:
+	if _combo != null:
+		_combo.reset()
+	_active_cost_key = _pending_cost_key
+	_active_effect_key = _pending_effect_key
+	_active_cost_value = _pending_cost_value
+	_pending_cost_key = ""
+	_pending_effect_key = ""
+	_pending_cost_value = 0.0
+
+
+## ---- R34 只读 / 驱动接口（供 Rank-1 接线 / 验证脚本 / HUD；不写存档）----
+func get_combo_service() -> ComboService:
+	return _combo
+
+
+func get_boon_service() -> BoonDraftService:
+	return _boon
+
+
+## 抉择三选一注入口（未来 UI / 验证脚本调用）；本导演不替玩家选择、不含数值。
+func select_boon(index: Variant) -> Dictionary:
+	if _boon == null:
+		return {"ok": false, "reason": "no_boon_service"}
+	return _boon.select(index)
+
+
+func get_settlement_snapshot() -> Dictionary:
+	return {
+		"last_settled_points": _last_settled_points,
+		"combo_rank": _last_combo_rank,
+		"combo_multiplier": _last_combo_multiplier,
+		"combo_count": _last_combo_count,
+		"boon_cost_key": _active_cost_key,
+		"boon_effect_key": _active_effect_key,
+		"boon_cost_value": _active_cost_value,
+		"settlement_count": _settlement_count,
+	}
+
+
 func get_snapshot() -> Dictionary:
 	return {
 		"state": _state,
@@ -709,4 +851,13 @@ func get_snapshot() -> Dictionary:
 		"wave_trial_completed": _completed_flag,
 		"persist_events": _persist_events.duplicate(),
 		"commit_count": _commit_count,
+		# ---- R34 新增只读 key（既有 key 逐字不动，回归不回退）----
+		"last_settled_points": _last_settled_points,
+		"combo_rank": _last_combo_rank,
+		"combo_multiplier": _last_combo_multiplier,
+		"combo_count": _last_combo_count,
+		"boon_cost_key": _active_cost_key,
+		"boon_effect_key": _active_effect_key,
+		"boon_cost_value": _active_cost_value,
+		"settlement_count": _settlement_count,
 	}

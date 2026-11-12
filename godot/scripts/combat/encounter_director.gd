@@ -111,6 +111,9 @@ func _ready() -> void:
 		push_warning("[Encounter] boss_data 未加载，防御/掉落数值走 0 降级")
 	_init_combat_state()
 	_update_hud()
+	# R34 a/b/e：生产服务创建（同步）+ 帧末跨节点装配（call_deferred 避开 busy）。
+	_r34_create_services()
+	call_deferred("_r34_bootstrap")
 
 
 func _exit_tree() -> void:
@@ -120,6 +123,7 @@ func _exit_tree() -> void:
 		if _connected_boss.has_signal("move_landed") and _connected_boss.is_connected("move_landed", cb):
 			_connected_boss.disconnect("move_landed", cb)
 	_connected_boss = null
+	_r34_release()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -150,6 +154,7 @@ func _step(delta: float) -> void:
 		if _boss.has_method("get_hp_ratio") and float(_boss.call("get_hp_ratio")) <= 0.0:
 			_finish(true)
 	_tick_combat_state(delta)
+	_r34_tick(delta)                      # R34 b 链：导演层每逻辑拍驱动生产服务 tick(delta)
 	_update_hud()
 
 
@@ -180,6 +185,7 @@ func _try_player_hit() -> void:
 	if _boss != null and _boss.has_method("apply_damage"):
 		_boss.call("apply_damage", damage)
 		_hits_landed += 1
+		_r34_last_poise = action.poise_damage   # R34 a 链：本次命中真实削韧值（数据表 poise_damage，非演示固定 100.0）
 		player_hit_landed.emit(int(damage))   # R31B/A39：唯一新增 emit，供打击反馈层订阅自动触发
 		_resolve_poise_on_hit(action)
 		_apply_action_status(action)
@@ -211,6 +217,7 @@ func _on_boss_move_landed(_defeat_id: String, _move: Variant, _attacker: Variant
 		return
 	_player_hp = maxf(0.0, _player_hp - incoming_damage)
 	_hits_taken += 1
+	_r34b_combo_on_hit_taken()          # R34B 任务1 c：玩家受击 → ComboService.on_hit_taken()（受击中断连击）
 	if _player_hp <= 0.0:
 		_finish(false)
 
@@ -219,6 +226,7 @@ func _finish(won: bool) -> void:
 	_outcome = 1 if won else 0
 	if won:
 		_wins += 1
+		_r34b_combo_on_boss_defeated()   # R34B 任务1 d：Boss 死亡 → ComboService.on_boss_defeated()（定格评级、此后拒绝命中）
 	else:
 		_losses += 1
 	_outcome_history.append(_outcome)
@@ -621,7 +629,12 @@ func _resolve_poise(poise_damage: float) -> Dictionary:
 
 
 func _resolve_poise_on_hit(action: PlayerActionData) -> void:
-	_resolve_poise(action.poise_damage)
+	# R34B 任务2：effect_key=poise_damage_bonus 真实作用到本波敌人削韧计算；
+	# 数值来自波次开始时运行时敌人参数（BoonDraftConfig 表值），无修正时乘 1.0 逐字等价。
+	var poise_bonus: float = 0.0
+	if not _r34b_enemy_params.is_empty():
+		poise_bonus = float(_r34b_enemy_params.get("poise_damage_bonus", 0.0))
+	_resolve_poise(action.poise_damage * (1.0 + poise_bonus))
 
 
 ## 异常：apply_status_buildup（三种 status 配置全部来自 BossData.status_buildups）。
@@ -731,3 +744,339 @@ func debug_finish_grace_retry() -> void:
 ## （HP 回满 / 状态机重置 / Boss 重建 / 落盘 / grace_rested 信号），零新数值。
 func trial_grace_rest() -> void:
 	_grace_rest()
+
+
+# ===========================================================================
+# R34 [ROUND=R34] · 生产运行时触发链 a) / b) / e)（本文件唯一写入方 = Rank-1）
+#   把 R33 的「演示驱动」升级为生产运行时真实连通，不依赖 presentation.gd：
+#     a) 命中 → 削韧：connect 本文件既有 player_hit_landed → _on_player_hit_landed()
+#        → 真实 StaggerService.apply_hit(招式 poise_damage)（数据表值，非演示固定 100.0）；
+#        同一命中转发 ComboService（Rank-2 本轮新增，鸭子类型 + 判空降级）。
+#     b) 帧驱动 → tick：_step() 每逻辑拍调 _r34_tick() → StaggerService.tick(delta)
+#        / ComboService.tick(delta)（生产帧驱动，替代演示逐帧显式 tick）。
+#     e) 点数只发信号：处决 / 清波 / 抉择点数由 HUD 的 points_awarded 信号统一广播；
+#        本导演层不 set_flag / 不 commit / 不写存档文件（I-1 归 Rank-3，A50）。
+#   既有 v0.1.0 20 / v0.2.0 45 / v0.3.0 53 PASS 与全部 debug_* 签名逐字不动。
+#   资源回读 CACHE_MODE_IGNORE；信号 connect 用 get_signal_connection_list 去重、
+#   _exit_tree 有 disconnect 释放路径；不用 get_tree() / 不用 /root/... 绝对路径。
+# ===========================================================================
+
+const R34_STAGGER_SVC_PATH: String = "res://scripts/combat/stagger_service.gd"
+const R34_STAGGER_CFG_PATH: String = "res://data/combat/stagger_rules.tres"
+
+## 跨节点装配：导演层在 Courtyard 根下（EncounterRoot），HUD 在 SubViewport 内。
+## 生产 _ready 用 call_deferred 避开 "Parent node is busy setting up children"；
+## --script 验证进程显式 call("_r34_bootstrap") 同步完成同一装配（确定性）。
+const R34_HUD_REL_PATH: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
+
+var _r34_stagger: Object = null            # 生产 StaggerService 实例（与 HUD 同一份）
+var _r34_combo: Object = null              # 生产 ComboService（HUD 创建后注入 / 验证替身注入）
+var _r34_last_poise: float = 0.0           # 本次命中真实 poise_damage（_try_player_hit 写入）
+var _r34_hit_chain: int = 0                # Rank-1 侧命中链镜像（可观测，不写盘）
+var _r34_combo_forward_count: int = 0      # 转发给 combo 消费方的命中计数镜像
+var _r34_tick_count: int = 0
+var _r34_hit_signal_connected: bool = false
+var _r34_bootstrapped: bool = false
+var _r34_combo_hit_method: String = ""
+var _r34_combo_tick_method: String = ""
+
+const R34_COMBO_HIT_METHODS: Array[String] = [
+	"register_hit", "on_hit", "add_hit", "record_hit", "apply_hit"]
+const R34_COMBO_TICK_METHODS: Array[String] = ["tick", "advance", "step"]
+
+
+## 服务创建（同步、纯 RefCounted，不碰场景树）：生产 _ready 调一次。
+## ComboService 由 HUD 创建后经 bind_combo_service 注入（本层不假设 Rank-2 构造签名）。
+func _r34_create_services() -> void:
+	if ResourceLoader.exists(R34_STAGGER_SVC_PATH) and ResourceLoader.exists(R34_STAGGER_CFG_PATH):
+		var s: Script = ResourceLoader.load(R34_STAGGER_SVC_PATH, "Script", ResourceLoader.CACHE_MODE_IGNORE) as Script
+		var c: Resource = ResourceLoader.load(R34_STAGGER_CFG_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as Resource
+		if s != null and c != null:
+			_r34_stagger = s.new(c)
+	print("[R34][ENC] 生产服务创建 | stagger=%s（combo 由 HUD 注入，未落盘则判空降级，不冒充联调）" % [
+			str(_r34_stagger != null)])
+
+
+func _r34_resolve_combo_methods() -> void:
+	_r34_combo_hit_method = ""
+	_r34_combo_tick_method = ""
+	if _r34_combo == null or not is_instance_valid(_r34_combo):
+		return
+	for m: String in R34_COMBO_HIT_METHODS:
+		if _r34_combo.has_method(m):
+			_r34_combo_hit_method = m
+			break
+	for m2: String in R34_COMBO_TICK_METHODS:
+		if _r34_combo.has_method(m2):
+			_r34_combo_tick_method = m2
+			break
+
+
+## 注入真实 ComboService（Rank-2 落盘后由 HUD 装配）或契约替身（验证进程）。
+## 鸭子类型，不静态引用 Rank-2 class_name，不伪造联调。
+func bind_combo_service(svc: Object) -> void:
+	_r34_combo = svc
+	_r34_resolve_combo_methods()
+
+
+func get_stagger_service() -> Object:
+	return _r34_stagger
+
+
+func get_combo_service() -> Object:
+	return _r34_combo
+
+
+## 跨节点装配（生产 call_deferred / 验证显式 call）：
+##  ① connect 自身 player_hit_landed → 削韧（a 链，去重）；
+##  ② 把同一 StaggerService 推给 HUD（f 链可见层订阅同一实例，真实韧性）。
+func _r34_bootstrap() -> void:
+	if _r34_bootstrapped:
+		return
+	_r34_bootstrapped = true
+	_r34_connect_hit_signal()
+	_r34_push_services_to_hud()
+
+
+func _r34_connect_hit_signal() -> void:
+	if _r34_hit_signal_connected:
+		return
+	var cb: Callable = Callable(self, "_on_player_hit_landed")
+	for conn in get_signal_connection_list("player_hit_landed"):
+		var c: Callable = conn.get("callable", Callable())
+		if c.get_object() == self and String(c.get_method()) == "_on_player_hit_landed":
+			_r34_hit_signal_connected = true
+			return
+	if not is_connected("player_hit_landed", cb):
+		connect("player_hit_landed", cb)
+	_r34_hit_signal_connected = true
+
+
+func _r34_push_services_to_hud() -> void:
+	var ml: MainLoop = Engine.get_main_loop()
+	if not (ml is SceneTree):
+		return
+	var tree_root: Node = (ml as SceneTree).root
+	var courtyard: Node = tree_root.get_node_or_null(NodePath("Courtyard"))
+	if courtyard == null:
+		courtyard = get_parent()
+	if courtyard == null:
+		return
+	var hud: Node = courtyard.get_node_or_null(NodePath(R34_HUD_REL_PATH))
+	if hud == null or not is_instance_valid(hud):
+		return
+	if _r34_stagger != null and hud.has_method("bind_stagger_service"):
+		hud.call("bind_stagger_service", _r34_stagger)
+	print("[R34][ENC] 同一 StaggerService 已推给 HUD（命中削韧 ↔ 韧性条单一事实源） | hud=%s" % str(hud.name))
+
+
+## a) 命中 → 削韧：由既有 player_hit_landed 信号订阅驱动（非演示显式 apply_hit(100)）。
+## poise 用本次命中数据表 action.poise_damage（_r34_last_poise），绝不伪造固定值。
+func _on_player_hit_landed(damage: int) -> void:
+	_r34_hit_chain += 1
+	var poise: float = _r34_last_poise if _r34_last_poise > 0.0 else float(damage)
+	if _r34_stagger != null and is_instance_valid(_r34_stagger) \
+			and _r34_stagger.has_method("apply_hit"):
+		_r34_stagger.call("apply_hit", poise)
+	if _r34_combo != null and is_instance_valid(_r34_combo) \
+			and not _r34_combo_hit_method.is_empty():
+		_r34_combo.call(_r34_combo_hit_method, damage)
+		_r34_combo_forward_count += 1
+
+
+## b) 帧驱动 → tick（生产 _step 每逻辑拍调一次，替代演示逐帧显式 tick）。
+func _r34_tick(delta: float) -> void:
+	_r34_tick_count += 1
+	if _r34_stagger != null and is_instance_valid(_r34_stagger) \
+			and _r34_stagger.has_method("tick"):
+		_r34_stagger.call("tick", delta)
+	if _r34_combo != null and is_instance_valid(_r34_combo) \
+			and not _r34_combo_tick_method.is_empty():
+		_r34_combo.call(_r34_combo_tick_method, delta)
+
+
+## 生产链只读快照（验证脚本 / 运行日志读回，不含数值口径、不写盘）。
+func get_production_snapshot() -> Dictionary:
+	var stagger: Dictionary = {}
+	if _r34_stagger != null and is_instance_valid(_r34_stagger) \
+			and _r34_stagger.has_method("get_snapshot"):
+		var sv: Variant = _r34_stagger.call("get_snapshot")
+		if typeof(sv) == TYPE_DICTIONARY:
+			stagger = sv as Dictionary
+	var combo: Dictionary = {}
+	if _r34_combo != null and is_instance_valid(_r34_combo) \
+			and _r34_combo.has_method("get_snapshot"):
+		var cv: Variant = _r34_combo.call("get_snapshot")
+		if typeof(cv) == TYPE_DICTIONARY:
+			combo = cv as Dictionary
+	return {
+		"hit_chain": _r34_hit_chain,
+		"combo_forward_count": _r34_combo_forward_count,
+		"tick_count": _r34_tick_count,
+		"last_poise": _r34_last_poise,
+		"stagger": stagger,
+		"combo": combo,
+		"stagger_available": _r34_stagger != null,
+		"combo_available": _r34_combo != null,
+		"hit_signal_connected": _r34_hit_signal_connected,
+	}
+
+
+func _r34_release() -> void:
+	var cb: Callable = Callable(self, "_on_player_hit_landed")
+	if _r34_hit_signal_connected and is_connected("player_hit_landed", cb):
+		disconnect("player_hit_landed", cb)
+	_r34_hit_signal_connected = false
+
+
+# ===========================================================================
+# R34B [ROUND=R34B] · 任务1 c/d 驱动 + 任务2 运行时敌人参数（Rank-1 唯一写入）
+#   A54：ComboService 唯一实例由 HUD 经 wave_trial_director.get_combo_service()
+#        注入本层 _r34_combo（鸭子类型转发），本层不自建任何 Combo/Boon 实例。
+#   任务1：c) 玩家受击 → on_hit_taken()；d) Boss 死亡 → on_boss_defeated()；
+#         a/b 链既有 _on_player_hit_landed / _r34_tick 已转发 register_hit/tick。
+#   任务2：波次开始把 boon_draft 的 cost_key/effect_key 作用到运行时敌人参数
+#         （hp_scale / telegraph_scale / 削韧），数值全从 [PLACEHOLDER] 表读，
+#         参数缺失回落基础值 + push_warning 告警；不改 .tres / tscn / 判定分支。
+# ===========================================================================
+
+const R34B_WAVE_TABLE_PATH: String = "res://data/rpg/wave_trial.tres"
+const R34B_COMBO_HIT_TAKEN_METHODS: Array[String] = ["on_hit_taken", "hit_taken", "take_hit"]
+const R34B_COMBO_BOSS_DEFEATED_METHODS: Array[String] = ["on_boss_defeated", "boss_defeated"]
+## [PLACEHOLDER] 运行时敌人参数中性基线（表/参数缺失时回落，非设计数值）。
+const R34B_NEUTRAL_SCALE: float = 1.0
+const R34B_NEUTRAL_BONUS: float = 0.0
+
+## 波次开始时的运行时敌人参数（导演层权威运行时数据；不写 .tres / 不改判定分支）。
+var _r34b_enemy_params: Dictionary = {}
+var _r34b_enemy_params_update_count: int = 0
+
+
+## 任务1 c：玩家受击 → ComboService.on_hit_taken()（按 reset_on_hit_taken 中断连击）。
+## 鸭子类型，不静态引用 class_name；实例/方法缺失判空降级、不崩、不产生 SCRIPT ERROR。
+func _r34b_combo_on_hit_taken() -> void:
+	if _r34_combo == null or not is_instance_valid(_r34_combo):
+		return
+	for m: String in R34B_COMBO_HIT_TAKEN_METHODS:
+		if _r34_combo.has_method(m):
+			_r34_combo.call(m)
+			return
+
+
+## 任务1 d：Boss 死亡 → ComboService.on_boss_defeated()（定格评级、此后拒绝命中）。
+func _r34b_combo_on_boss_defeated() -> void:
+	if _r34_combo == null or not is_instance_valid(_r34_combo):
+		return
+	for m: String in R34B_COMBO_BOSS_DEFEATED_METHODS:
+		if _r34_combo.has_method(m):
+			_r34_combo.call(m)
+			return
+
+
+## 任务2：波次开始时把 boon_draft 的 cost_key/effect_key 从「导演层记录」推到
+##   运行时敌人参数（hp_scale / telegraph_scale / 削韧 poise_damage_bonus）。
+## 数值来源（全从 [PLACEHOLDER] 表读，代码零战斗数值硬编码）：
+##   · 基础值：res://data/rpg/wave_trial.tres 当前波 hp_multiplier / telegraph_sec；
+##   · 修正值：入参 effect_value/cost_value 来自 BoonDraftConfig.apply() 成对数据
+##     （源头 res://data/rpg/boon_draft.tres 的 effect_value / cost_value）。
+## 作用链路：wave_started → HUD._r34b_apply_wave_enemy_params → 本方法 →
+##   ① _r34b_enemy_params（运行时敌人参数权威字典，供敌人实例生成消费）；
+##   ② Boss 运行时实例标注（set_meta 有效倍率，不写 .tres / 不改判定分支）；
+##   ③ 削韧消费：_resolve_poise_on_hit 按 poise_damage_bonus 放大真实削韧；
+##   ④ hp_restore 作用到玩家运行时 HP。
+## 失败降级：cost_key/effect_key 为空或数值非法 / 表读取失败 → 回落中性基线
+##   （hp_scale=telegraph_scale=1.0、poise_damage_bonus=0.0）+ 告警 + degraded=true。
+func apply_wave_enemy_params(wave_index: int, effect_key: String, effect_value: float,
+		cost_key: String, cost_value: float) -> Dictionary:
+	_r34b_enemy_params_update_count += 1
+	var base_hp: float = R34B_NEUTRAL_SCALE
+	var base_telegraph: float = R34B_NEUTRAL_SCALE
+	var degraded: bool = false
+	# 基础值从 [PLACEHOLDER] 表读（CACHE_MODE_IGNORE 回读真值），失败回落 + 告警。
+	var tbl: Resource = null
+	if ResourceLoader.exists(R34B_WAVE_TABLE_PATH):
+		tbl = ResourceLoader.load(R34B_WAVE_TABLE_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as Resource
+	if tbl != null:
+		var raw: Variant = tbl.get("waves")
+		if typeof(raw) == TYPE_ARRAY and not (raw as Array).is_empty():
+			var arr: Array = raw as Array
+			var idx: int = clampi(wave_index, 0, arr.size() - 1)
+			var row: Variant = arr[idx]
+			if typeof(row) == TYPE_DICTIONARY:
+				var d: Dictionary = row as Dictionary
+				if d.has("hp_multiplier"):
+					base_hp = float(d["hp_multiplier"])
+				if d.has("telegraph_sec"):
+					base_telegraph = float(d["telegraph_sec"])
+			else:
+				push_warning("[R34B][ENC] wave_trial.tres 波次行非 Dictionary：基础值回落中性基线")
+				degraded = true
+		else:
+			push_warning("[R34B][ENC] wave_trial.tres waves 非数组/为空：基础值回落中性基线")
+			degraded = true
+	else:
+		push_warning("[R34B][ENC] wave_trial.tres 不可用：运行时敌人参数基础值回落中性基线（降级，不崩）")
+		degraded = true
+	# cost_key / effect_key 白名单映射（key 与数值均来自 BoonDraftConfig 表，不硬编码设计值）。
+	var hp_scale: float = R34B_NEUTRAL_SCALE
+	var telegraph_scale: float = R34B_NEUTRAL_SCALE
+	var poise_damage_bonus: float = R34B_NEUTRAL_BONUS
+	var hp_restore: float = R34B_NEUTRAL_BONUS
+	var cost_ok: bool = cost_value > 0.0 and not is_nan(cost_value) and not is_inf(cost_value)
+	var effect_ok: bool = effect_value > 0.0 and not is_nan(effect_value) and not is_inf(effect_value)
+	if cost_key == "hp_scale" and cost_ok:
+		hp_scale = cost_value
+	elif cost_key == "telegraph_scale" and cost_ok:
+		telegraph_scale = cost_value
+	elif not cost_key.is_empty():
+		push_warning("[R34B][ENC] 未知/非法 cost_key=%s → hp_scale/telegraph_scale 回落中性基线" % cost_key)
+		degraded = true
+	if effect_key == "poise_damage_bonus" and effect_ok:
+		poise_damage_bonus = effect_value
+	elif effect_key == "hp_restore" and effect_ok:
+		hp_restore = effect_value
+	elif not effect_key.is_empty():
+		push_warning("[R34B][ENC] 未知/非法 effect_key=%s → 削韧加成回落中性基线" % effect_key)
+		degraded = true
+	if cost_key.is_empty() and effect_key.is_empty():
+		degraded = true   # 无抉择修正：中性基线（正常告知式降级）
+		push_warning("[R34B][ENC] 波次开始无 cost_key/effect_key（未抉择或记录缺失）→ 运行时敌人参数回落中性基线（失败降级，不崩）")
+	var effective_hp_scale: float = base_hp * hp_scale
+	var effective_telegraph_scale: float = base_telegraph * telegraph_scale
+	var annotated: bool = false
+	# 真正作用到敌人运行时实例：把有效倍率标注到 Boss 实例（元数据，不写 .tres / 不改判定分支）。
+	if _boss != null and is_instance_valid(_boss) and _boss.has_method("set_meta"):
+		_boss.set_meta("r34b_effective_hp_scale", effective_hp_scale)
+		_boss.set_meta("r34b_effective_telegraph_scale", effective_telegraph_scale)
+		_boss.set_meta("r34b_poise_damage_bonus", poise_damage_bonus)
+		annotated = true
+	# hp_restore 作用到玩家运行时 HP（effect 真实消费，不写盘）。
+	if hp_restore > 0.0:
+		_player_hp = minf(player_max_hp, _player_hp + hp_restore)
+	_r34b_enemy_params = {
+		"wave_index": wave_index,
+		"base_hp_multiplier": base_hp,
+		"base_telegraph_sec": base_telegraph,
+		"hp_scale": hp_scale,
+		"telegraph_scale": telegraph_scale,
+		"poise_damage_bonus": poise_damage_bonus,
+		"hp_restore": hp_restore,
+		"effective_hp_scale": effective_hp_scale,
+		"effective_telegraph_scale": effective_telegraph_scale,
+		"cost_key": cost_key, "cost_value": cost_value,
+		"effect_key": effect_key, "effect_value": effect_value,
+		"source": "wave_trial.tres(base) + boon_draft.tres(cost/effect)",
+		"boss_instance_annotated": annotated,
+		"degraded": degraded, "applied": true,
+		"update_count": _r34b_enemy_params_update_count,
+	}
+	print("[R34B][ENC] 运行时敌人参数已刷新 | wave=%d hp_scale=%.2f(base %.2f→eff %.2f) telegraph_scale=%.2f(eff %.2f) poise_bonus=%.2f annotated=%s degraded=%s" % [
+			wave_index, hp_scale, base_hp, effective_hp_scale,
+			telegraph_scale, effective_telegraph_scale, poise_damage_bonus,
+			str(annotated), str(degraded)])
+	return _r34b_enemy_params.duplicate()
+
+
+## 只读快照（验证 / 运行日志 / 后续敌人实例生成消费；不写盘）。
+func get_enemy_runtime_params() -> Dictionary:
+	return _r34b_enemy_params.duplicate()

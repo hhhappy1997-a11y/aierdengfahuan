@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-091304-451-A2",
+  "ai": 2,
+  "status": "done",
+  "result": "见 teamwork/Rank-2/DONE-R34.md 实际结论：R34 / v0.11.0「玩法闭合 · 连击评价」完成。新增 combo_rules.tres + combo_config.gd + combo_service.gd（4 个公开信号 / 完整公开方法，字段全 [PLACEHOLDER] + rationale + 调参唯一入口），对 wave_trial_director.gd 做最小接线（消费 BoonDraftService.apply()/settle() 的 cost_key/effect_key 并把 ComboService 评级倍率并入清波点数结算，不改既有判定分支/帧数据/输出格式/既有 .tres 数值）。新写 verify_combo_v110.gd（110 PASS/0 FAIL）与 verify_production_settlement_v110.gd（59 PASS/0 FAIL），两份 RESULT=ALL_MATCH。真跑三段门禁 GATE-1/2a/2b/3 全 EXIT=0，grep SCRIPT ERROR=0；既有 4 份 .tres（wave_trial/boon_draft/trial_modifiers/stagger_rules）md5 前后一致（零改动），courtyard.tscn node_count=41（A38 断言保持）。供 Rank-1 与 Rank-4 使用的公开方法 + 信号完整签名见 DONE-R34.md §3；未完成项与待裁决项见 §6 / §7。"
+}

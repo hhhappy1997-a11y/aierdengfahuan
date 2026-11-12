@@ -17,6 +17,11 @@ extends SceneTree
 ##   H R33 新增 · 真实 Tab 输入路径 → 实际节点 visible 互斥：
 ##     Input.parse_input_event() 注入真实 Tab 按下/松开配对，读 GraceShopLabel.visible
 ##     断言「图鉴打开→兑换隐藏 / 关闭→恢复 / 抉择压过一切」，既有 19 条不删不放宽
+##   I R34C 新增 · 真实节点 rect 运行时断言（既有 24 条不删不放宽）：
+##     注入真实 Tab（Input.parse_input_event + process_key_event）与真实命中
+##     （ComboService.register_hit(10.0)）后读真实 Label 节点 get_global_rect()，
+##     断言「生产机制可见层文本 vs 赐福成长标题行」不相交、「评级条 vs 其它 HUD
+##     文字块」两两不相交 + 四档降级不出界/不遮角色 + A46 单一 Tab / A48 常驻保持。
 ##
 ## --script / SceneTree 纪律：不用 get_tree()、不用 /root/... 绝对路径；
 ##   add_child 不自动 flush _ready() → 显式 call("_ready") 后 set_process(false)；
@@ -28,6 +33,9 @@ extends SceneTree
 const HUD_PATH: String = "res://scripts/hud.gd"
 const COURTYARD_PATH: String = "res://scenes/courtyard.tscn"
 const NODE_COUNT_EXPECTED: int = 41
+# R34C I 组：真实命中链路（只读 Rank-2 落盘件，不写、不改）。
+const COMBO_SVC_PATH: String = "res://scripts/combat/combo_service.gd"
+const COMBO_CFG_PATH: String = "res://data/rpg/combo_rules.tres"
 const VIEWPORTS: Array[Vector2] = [
 	Vector2(1280.0, 720.0), Vector2(960.0, 540.0),
 	Vector2(640.0, 360.0), Vector2(480.0, 270.0)]
@@ -40,6 +48,11 @@ var _hud: Node = null
 var _selected_count: int = 0
 # R33：H 组用的真实兑换面板节点（挂到 hud 夹具下，供读实际 visible，而非只读逻辑态）。
 var _shop_panel: Label = null
+# R34C：I 组用的真实生产可见层连击文本节点 + 真实命中服务引用。
+#   ComboService 4 信号经 _r34_connect_combo_signals() connect、由 hud._exit_tree
+#   → _r34_release() → _r34_disconnect_combo_signals() 释放；本对象随脚本结束回收。
+var _i_combo: Object = null
+var _i_combo_label: Label = null
 
 
 func _ck(tag: String, ok: bool, detail: String) -> void:
@@ -76,6 +89,17 @@ func _new_hud() -> Node:
 	host.add_child(hud)
 	if not hud.is_node_ready():
 		hud.call("_ready")
+	# R34C：独立 --script 实例 _ensure_shop_readable() 判空降级不设 offset，
+	#   这里按 hud 公开 get_shop_title_rect() 给赐福成长标题行真实节点补上与实机
+	#   同源的定位，供 I 组读真实节点 get_global_rect()（节点本身不变，H1 仍命中）。
+	var srt: Rect2 = hud.call("get_shop_title_rect") as Rect2
+	_shop_panel.offset_left = srt.position.x
+	_shop_panel.offset_top = srt.position.y
+	_shop_panel.offset_right = srt.end.x
+	_shop_panel.offset_bottom = srt.end.y
+	# R34C：显式建生产可见层真实节点（--script 无 deferred bootstrap；实机由
+	#   _r34_bootstrap() call_deferred 走同一入口，A48 常驻口径不变）。
+	hud.call("ensure_production_visible_layer")
 	hud.set_process(false)
 	hud.set_process_unhandled_input(false)
 	if hud.has_signal("boon_draft_selected"):
@@ -135,6 +159,7 @@ func _initialize() -> void:
 	_test_baseline()
 	_test_real_boon_draft()
 	_test_real_tab_mutex()
+	_test_r34c_real_rects()
 	_finish()
 
 
@@ -410,6 +435,133 @@ func _test_real_tab_mutex() -> void:
 	_ck("H5 赐福抉择卡片打开时真实兑换节点仍隐藏、右侧仅 boon_draft 可见（互斥优先级）",
 			not vis3 and side3.size() == 1 and side3.has("boon_draft"),
 			"shop_visible=%s side=%s" % [str(vis3), str(side3)])
+	# 恢复干净态（不影响后续 _finish 释放）
+	hud.call("close_boon_draft")
+	hud.call("set_codex_open", false)
+	hud.set("shop_open", false)
+
+
+# ---------------------------------------------------------------------------
+# I) R34C · 真实节点 rect 运行时断言（任务 2，既有 24 条不删不放宽）
+#   --script 模式注入真实 Tab（Input.parse_input_event + process_key_event，同 H 组
+#   路径）与真实命中（ComboService.register_hit），后者 emit combo_changed →
+#   hud._r34_on_combo_changed → _r34_refresh_visible() 刷新真实节点文本 / visible。
+#   断言全部读【真实 Label 节点 get_global_rect()】，不只读逻辑态 Rect2 字典。
+# ---------------------------------------------------------------------------
+func _i_rect_of(n: Control) -> Rect2:
+	return n.get_global_rect()
+
+
+func _test_r34c_real_rects() -> void:
+	var hud: Node = _hud
+	print("[V100HUD] ==== I 组 R34C 真实节点 rect 运行时断言（Tab + 命中注入） ====")
+	hud.call("set_layout_viewport", Vector2(1280.0, 720.0))
+	# 复位：关抉择 / 关图鉴 / 打开兑换 → 赐福成长标题行真实节点 visible=true
+	hud.call("close_boon_draft")
+	hud.call("set_codex_open", false)
+	hud.set("shop_open", true)
+	hud.call("apply_side_panel_visibility")
+
+	# ---- 真实命中注入：真实 ComboService + 真实 combo_rules.tres ----
+	var combo_script: Script = ResourceLoader.load(
+			COMBO_SVC_PATH, "Script", ResourceLoader.CACHE_MODE_IGNORE) as Script
+	var cfg: Resource = null
+	if ResourceLoader.exists(COMBO_CFG_PATH):
+		cfg = ResourceLoader.load(COMBO_CFG_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as Resource
+	var hit_ok: bool = false
+	if combo_script != null and cfg != null:
+		_i_combo = combo_script.new(cfg)
+		if _i_combo != null:
+			hud.call("bind_combo_service", _i_combo)
+			hud.call("_r34_connect_combo_signals")
+			var hr: Dictionary = _i_combo.call("register_hit", 10.0) as Dictionary
+			hit_ok = bool(hr.get("ok", false))
+	# 命中信号回调内已 _r34_refresh_visible()；--script 无 _process 帧循环，
+	#   显式再刷一次（等价生产帧末），随后读真实节点状态 / rect。
+	hud.call("_r34_refresh_visible")
+	_i_combo_label = hud.get("_r34_combo_label") as Label
+	var combo_node_ok: bool = _i_combo_label != null and is_instance_valid(_i_combo_label)
+	var combo_text: String = _i_combo_label.text if combo_node_ok else ""
+	_ck("I1 真实命中（ComboService.register_hit）后生产机制连击文本真实节点常驻可见且文本含连击/评级/倍率",
+			hit_ok and combo_node_ok and _i_combo_label.visible \
+					and combo_text.contains("连击") and combo_text.contains("评级") \
+					and combo_text.contains("倍率"),
+			"hit_ok=%s node=%s visible=%s text=%s" % [
+					str(hit_ok), str(combo_node_ok),
+					str(_i_combo_label.visible) if combo_node_ok else "?", combo_text])
+
+	# ---- I2 真实节点 rect：生产机制可见层文本 vs 赐福成长标题行 ----
+	var shop_node: Label = hud.get("_shop_label") as Label
+	var shop_ok: bool = shop_node != null and is_instance_valid(shop_node) \
+			and shop_node == _shop_panel
+	var cr: Rect2 = _i_rect_of(_i_combo_label) if combo_node_ok else Rect2()
+	var sr: Rect2 = _i_rect_of(shop_node) if shop_ok else Rect2()
+	var overlap_cs: float = cr.intersection(sr).get_area()
+	_ck("I2 真实节点 rect：生产机制可见层文本 vs 赐福成长标题行交集面积恒 == 0（R34B 叠压已消除）",
+			combo_node_ok and shop_ok and overlap_cs == 0.0,
+			"combo_rect=%s shop_rect=%s overlap=%.4f px²" % [str(cr), str(sr), overlap_cs])
+
+	# ---- I3 评级条锚点 rect vs 其它 HUD 文字块（6 分区 + 赐福成长标题行）----
+	var cmb: Rect2 = hud.call("get_production_mechanism_rect") as Rect2
+	var blocks: Array = hud.call("get_layout_rects") as Array
+	var blocks2: Array = []
+	for e in blocks:
+		blocks2.append(_rect_of(e))
+	blocks2.append(hud.call("get_shop_title_rect") as Rect2)
+	var worst: float = 0.0
+	for b in blocks2:
+		worst = maxf(worst, cmb.intersection(b as Rect2).get_area())
+	_ck("I3 评级条（生产机制独立分区）vs 其它 HUD 文字块（title/quality/wave/guide/status/side + 赐福成长标题行）两两不相交",
+			worst == 0.0 and cmb.get_area() > 0.0,
+			"combo_anchor=%s blocks=%d worst_overlap=%.4f px²" % [
+					str(cmb), blocks2.size(), worst])
+
+	# ---- I4 真实节点按锚点定位（非硬编码像素堆叠）----
+	var same: bool = combo_node_ok and cr.is_equal_approx(cmb)
+	_ck("I4 连击文本真实节点 rect 与独立分区锚点 rect 一致（按锚点定位，不硬编码像素堆叠）",
+			same, "node_rect=%s anchor_rect=%s" % [str(cr), str(cmb)])
+
+	# ---- I5 真实 Tab 注入：A46 单一仲裁者 + A48 生产可见层常驻 ----
+	var consumed1: bool = _inject_tab_pair(hud)
+	hud.call("_r34_refresh_visible")
+	var shop_hidden: bool = shop_ok and not shop_node.visible
+	var combo_still: bool = combo_node_ok and _i_combo_label.visible
+	var side1: Array = _side_panels(hud)
+	_ck("I5 真实 Tab 打开图鉴后：赐福成长标题行真实节点隐藏、连击文本仍常驻可见、右侧仅 codex（A46/A48）",
+			consumed1 and bool(hud.call("is_codex_open")) and shop_hidden and combo_still \
+					and side1.size() == 1 and side1.has("codex"),
+			"consumed=%s codex_open=%s shop_hidden=%s combo_visible=%s side=%s" % [
+					str(consumed1), str(hud.call("is_codex_open")), str(shop_hidden),
+					str(combo_still), str(side1)])
+	var consumed2: bool = _inject_tab_pair(hud)
+	_ck("I5b 真实 Tab 再注入关闭图鉴 → 赐福成长标题行恢复可见（互斥关闭恢复）",
+			consumed2 and not bool(hud.call("is_codex_open")) \
+					and shop_ok and shop_node.visible,
+			"consumed=%s codex_open=%s shop_visible=%s" % [
+					str(consumed2), str(hud.call("is_codex_open")),
+					str(shop_node.visible) if shop_ok else "?"])
+
+	# ---- I6 四档降级：真实连击节点不出界 / 不遮中央角色 / 不与赐福成长标题行相交 ----
+	var all_ok: bool = true
+	var details: Array[String] = []
+	for vp: Vector2 in VIEWPORTS:
+		hud.call("set_layout_viewport", vp)
+		var r2: Rect2 = _i_rect_of(_i_combo_label) if combo_node_ok else Rect2()
+		var chr: Rect2 = hud.call("get_center_char_rect") as Rect2
+		var sh: Rect2 = hud.call("get_shop_title_rect") as Rect2
+		var bounded: bool = r2.position.x >= -0.001 and r2.position.y >= -0.001 \
+				and r2.end.x <= vp.x + 0.001 and r2.end.y <= vp.y + 0.001 \
+				and r2.get_area() > 0.0
+		var ok: bool = bounded and r2.intersection(chr).get_area() == 0.0 \
+				and r2.intersection(sh).get_area() == 0.0
+		if not ok:
+			all_ok = false
+		details.append("%dx%d:rect=%s bounded=%s char_ov=%.2f shop_ov=%.2f" % [
+				int(vp.x), int(vp.y), str(r2), str(bounded),
+				r2.intersection(chr).get_area(), r2.intersection(sh).get_area()])
+	_ck("I6 1280x720 + 三档降级：真实连击节点不出界 / 不遮中央角色 / 不与赐福成长标题行相交",
+			all_ok, str(details))
+	hud.call("set_layout_viewport", Vector2(1280.0, 720.0))
 	# 恢复干净态（不影响后续 _finish 释放）
 	hud.call("close_boon_draft")
 	hud.call("set_codex_open", false)

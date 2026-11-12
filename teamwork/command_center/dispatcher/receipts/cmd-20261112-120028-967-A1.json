@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261112-120028-967-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "见 teamwork/Rank-1/DONE-R34C.md 实际结论：① 分区避让修复 hud.gd 新增 ANCHOR_COMBO 归一化锚点独立分区（锚点/包围盒布局，不硬编码像素堆叠），I2 真实节点 rect vs 赐福成长标题行 overlap=0.0000 px²（改前 9856 px²），I3 评级条 vs 7 个 HUD 文字块 worst_overlap=0.0000 px²，四档降级不出界/不遮角色，A46 单一 Tab 仲裁者/A48 生产可见层常驻口径不变；② verify_hud_layout_v100.gd 保留既有 24 条断言不删不放宽，新增 I 组 7 条真实节点 rect 运行时断言（注入真实 Tab 与 ComboService.register_hit 命中后读真实 Label get_global_rect）；③ 三段门禁 --headless --import / --check-only --script / --headless --script verify / --headless --quit 全 EXIT=0，全工程 G3 grep SCRIPT ERROR=0，A38 courtyard.tscn 节点数 41 / uv1_scale 2/1/1 不变。真跑 SUMMARY pass=31 fail=0 total=31 RESULT=ALL_MATCH，文字重叠已消除。如实登记正向证据：总指挥目视 capture/v110_final.mp4 第 340 帧「处决窗口 1.8s · 按 F」在真实链路下自然出现，不沿用旧「未覆盖」结论、既有链路未删改。未完成项/待裁决项详见 DONE-R34C.md §4/§5。"
+}
