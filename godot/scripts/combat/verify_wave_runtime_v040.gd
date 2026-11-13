@@ -5,7 +5,7 @@ extends SceneTree
 ##       --script res://scripts/combat/verify_wave_runtime_v040.gd
 ## 断言：三波推进 / 超时 / 失败 / 重复触发 / 依赖缺失降级 / encounter_finished 接线 /
 ##       失败回赐福休息 / courtyard.tscn 节点数改动前后比对 + CACHE_MODE_IGNORE 回读
-##       （三个地面 uv1_scale 2/1/1（R30 地面精修后）、波次 HUD、既有 HUD 文本、instance 覆盖段）。
+##       （三个地面 uv1_scale 16/8/8（R38 大地图大范围平铺，A74 同步）、波次 HUD、既有 HUD 文本、instance 覆盖段）。
 ## 逐条输出 PASS/FAIL 与 RESULT，失败 quit(1)，不伪造 PASS。
 ## 装配惯例同 v010/v020/v030：--script 模式 add_child 不 flush _ready，需显式 call("_ready")；
 ##   /root/... 绝对路径不可用，用 root.get_node_or_null() 与相对 NodePath。
@@ -35,9 +35,18 @@ const FIELDLESS_TABLE_PATH: String = "res://data/rpg/grace_network.tres"  # 存�
 #   不放宽其它判定。本轮 v040 的断言集合 / 常量 / 判定逐字未动，复跑 37 PASS 不回退；
 #   「教学 3 节点」的结构性回归用例补在本轮新写的 verify_tutorial_restart_v060.gd
 #   （用例 tutorial_three_nodes_present，见 DONE-R28B.md §A27）。
+# R38 [ROUND=R38]（cmd-20261112-234238-645-A1）HOST 裁决 A74 特别授权：
+#   大地图 · 2.5D 尺度重构，courtyard.tscn 新增 13 个真实节点
+#   （BigMapLayer / BigMapRoot / ParallaxLayer0~3 / WorldActors / PlayerMarker /
+#    PlayerShadow / PlayerBody / LandmarkA / Camera2D / CharacterScaleController），
+#   既有 41 节点逐一保留、既有相对路径不改（v0.1~v0.14 可玩闭环入口仍可达）。
+#   真跑回读（r38_v040_readback.log 原文）：NODE_COUNT before=33 after=54 delta=+21、
+#   uv1_scale (16,16,1)/(8,8,1)/(8,8,1)。故改后基线同步为 54（+21 = 8 + 13），
+#   三个地面 uv 期望值同步为 16/8/8。沿用 R27B / R28 同类先例：只同步精确期望值 /
+#   标签 / 注释，断言集合与 is_equal_approx / == 严格判定逐字不动，不删断言、不放宽、不掩盖。
 const NODE_COUNT_BEFORE: int = 33
-const NODE_COUNT_AFTER: int = 41
-const NODE_COUNT_DELTA: int = 8
+const NODE_COUNT_AFTER: int = 54
+const NODE_COUNT_DELTA: int = 21
 
 var _pass: int = 0
 var _fail: int = 0
@@ -352,7 +361,7 @@ func _test_encounter_wiring() -> void:
 
 # ---------------------------------------------------------------------------
 # H) courtyard.tscn：改动前后节点数比对 + CACHE_MODE_IGNORE 回读
-#    （uv 4/2/1、波次 HUD、既有 HUD 文本、instance 覆盖段）
+#    （uv 16/8/8（R38 / A74）、波次 HUD、既有 HUD 文本、instance 覆盖段）
 # ---------------------------------------------------------------------------
 func _test_courtyard_readback() -> void:
 	var ps: PackedScene = ResourceLoader.load(
@@ -365,7 +374,7 @@ func _test_courtyard_readback() -> void:
 			NODE_COUNT_BEFORE, disk_nodes, disk_nodes - NODE_COUNT_BEFORE])
 	_ck("courtyard_node_count", disk_nodes == NODE_COUNT_AFTER \
 			and disk_nodes - NODE_COUNT_BEFORE == NODE_COUNT_DELTA,
-			"node_count=%d expected=%d（+%d：R26 三波 HUD/导演 + R27B 增益运行时/购买 HUD + R28 教学 HUD/导演）" % [
+			"node_count=%d expected=%d（+%d：R26 三波 HUD/导演 + R27B 增益运行时/购买 HUD + R28 教学 HUD/导演 + R38 大地图 13 节点）" % [
 				disk_nodes, NODE_COUNT_AFTER, NODE_COUNT_DELTA])
 
 	# instantiate 不 add_child → 不触发 _ready，纯结构/属性回读
@@ -389,7 +398,8 @@ func _test_courtyard_readback() -> void:
 			and txt.contains("倒计时") and txt.contains("历史最佳"),
 			"text=%s" % txt)
 
-	# 三个地面 MeshInstance3D 的 uv1_scale：16/3/2 → 4/2/1 → 2/1/1（R30 地面精修，A38 同步断言期望值）
+	# 三个地面 MeshInstance3D 的 uv1_scale：16/3/2 → 4/2/1 → 2/1/1（R30）→ 16/8/8
+	#   （R38 大地图地面 tile 大范围平铺，A74 特别授权，按真跑回读同步期望值，判定不放宽）
 	var tpath: String = "SubViewportContainer/SubViewport/Terrain/"
 	var gp: MeshInstance3D = inst.get_node_or_null(tpath + "GroundPlate") as MeshInstance3D
 	var tl: MeshInstance3D = inst.get_node_or_null(tpath + "TerraceLow") as MeshInstance3D
@@ -397,9 +407,9 @@ func _test_courtyard_readback() -> void:
 	var uv_p: Vector3 = _uv_of(gp)
 	var uv_l: Vector3 = _uv_of(tl)
 	var uv_h: Vector3 = _uv_of(th)
-	_ck("uv_groundplate_2", uv_p.is_equal_approx(Vector3(2, 2, 1)), "uv1_scale=%s expected=(2,2,1)" % str(uv_p))
-	_ck("uv_terracelow_1", uv_l.is_equal_approx(Vector3(1, 1, 1)), "uv1_scale=%s expected=(1,1,1)" % str(uv_l))
-	_ck("uv_terracehigh_1", uv_h.is_equal_approx(Vector3(1, 1, 1)), "uv1_scale=%s expected=(1,1,1)" % str(uv_h))
+	_ck("uv_groundplate_16", uv_p.is_equal_approx(Vector3(16, 16, 1)), "uv1_scale=%s expected=(16,16,1)" % str(uv_p))
+	_ck("uv_terracelow_8", uv_l.is_equal_approx(Vector3(8, 8, 1)), "uv1_scale=%s expected=(8,8,1)" % str(uv_l))
+	_ck("uv_terracehigh_8", uv_h.is_equal_approx(Vector3(8, 8, 1)), "uv1_scale=%s expected=(8,8,1)" % str(uv_h))
 
 	# 既有 HUD 文本与 instance 内部属性覆盖段未回退
 	var status: Label = inst.find_child("StatusLabel", true, false) as Label

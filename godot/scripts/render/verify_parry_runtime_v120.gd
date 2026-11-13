@@ -22,7 +22,7 @@ extends SceneTree
 ##   不冒充已联调、不伪造产物。
 ##
 ## 断言组：
-##   P 装配：A54 唯一实例 / A48① 生产运行时订阅者 / 信号方法 / A38 节点 41 uv 2/1/1
+##   P 装配：A54 唯一实例 / A48① 生产运行时订阅者 / 信号方法 / A38 节点 54 uv 16/8/8
 ##   W 窗口：金色预兆 + 读秒可见 / 窗口内成功 / 窗口外拒绝 / 重复幂等 /
 ##           冷却期拒绝 / 超时关窗 / 非空 window_id 且两次窗口不合并（A58）
 ##   C 生产链：parry_performed → ENC 真实削韧 / points_awarded → 编排层 → 磁盘 /
@@ -38,7 +38,7 @@ extends SceneTree
 ## ===========================================================================
 
 const COURTYARD_PATH: String = "res://scenes/courtyard.tscn"
-const NODE_COUNT_EXPECTED: int = 41
+const NODE_COUNT_EXPECTED: int = 54  # R38 / A74 新基线（A38 旧基线 41）
 const REL_HUD: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
 const REL_ENC: String = "EncounterRoot"
 const REL_WAVE: String = "WaveTrialDirector"
@@ -415,9 +415,9 @@ func _t_p_assembly() -> void:
 	for line: String in text.split("\n"):
 		if line.begins_with("[node "):
 			count += 1
-	var uv_2x: int = text.count("Vector3(2, 2, 1)")
-	var uv_1x: int = text.count("Vector3(1, 1, 1)")
-	_ck("P5 A38 courtyard.tscn 节点 41 / uv 2/1/1 原样（只读不改）",
+	var uv_2x: int = text.count("Vector3(16, 16, 1)")
+	var uv_1x: int = text.count("Vector3(8, 8, 1)")
+	_ck("P5 A38 courtyard.tscn 节点 54 / uv 16/8/8 原样（只读不改；R38 / A74 新基线 41→54 / 2-1-1→16-8-8）",
 			count == NODE_COUNT_EXPECTED and uv_2x == 1 and uv_1x == 2,
 			"count=%d uv_2x=%d uv_1x=%d" % [count, uv_2x, uv_1x])
 

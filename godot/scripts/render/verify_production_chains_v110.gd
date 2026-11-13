@@ -35,7 +35,7 @@ extends SceneTree
 ## ===========================================================================
 
 const COURTYARD_PATH: String = "res://scenes/courtyard.tscn"
-const NODE_COUNT_EXPECTED: int = 41
+const NODE_COUNT_EXPECTED: int = 54  # R38 / A74 新基线（A38 旧基线 41）
 
 # 关键节点相对路径（相对主场景根 Courtyard，不用 /root/... 绝对路径）
 const REL_HUD: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
@@ -266,7 +266,7 @@ func _on_selected(index: int, choice_id: String) -> void:
 
 
 # ---------------------------------------------------------------------------
-# A38 基线：courtyard.tscn 节点数 41 / uv 2/1/1 / 关键信号方法
+# A38 基线：courtyard.tscn 节点数 54 / uv 16/8/8 / 关键信号方法（R38 / A74 新基线）
 # ---------------------------------------------------------------------------
 func _t_a38() -> void:
 	var text: String = FileAccess.get_file_as_string(COURTYARD_PATH)
@@ -274,11 +274,11 @@ func _t_a38() -> void:
 	for line: String in text.split("\n"):
 		if line.begins_with("[node "):
 			count += 1
-	_ck("A38-1 courtyard.tscn 静态 [node] 行数 == 41（只读不改）",
+	_ck("A38-1 courtyard.tscn 静态 [node] 行数 == 54（只读不改；R38 / A74 新基线 41→54）",
 			count == NODE_COUNT_EXPECTED, "count=%d expected=%d" % [count, NODE_COUNT_EXPECTED])
-	var uv_2x: int = text.count("Vector3(2, 2, 1)")
-	var uv_1x: int = text.count("Vector3(1, 1, 1)")
-	_ck("A38-2 uv 2/1/1 原样（Vector3(2,2,1)×1 + Vector3(1,1,1)×2）",
+	var uv_2x: int = text.count("Vector3(16, 16, 1)")
+	var uv_1x: int = text.count("Vector3(8, 8, 1)")
+	_ck("A38-2 uv 16/8/8 原样（Vector3(16,16,1)×1 + Vector3(8,8,1)×2；R38 / A74 新基线 2-1-1→16-8-8）",
 			uv_2x == 1 and uv_1x == 2, "uv_2x=%d uv_1x=%d" % [uv_2x, uv_1x])
 	if _hud != null:
 		var sigs: Array[String] = ["grace_selected", "travel_confirmed", "rest_requested",
@@ -1099,13 +1099,13 @@ func _t_r36_focus_chain() -> void:
 					fp_before, fp_after, events0, events1,
 					str(esnap1.get("skill_poise_applied_count", "?")),
 					str(esnap1.get("skill_damage_applied_count", "?"))])
-	# ⑤ A38 节点 41 保持（只读核对，不改场景）
+	# ⑤ A38 节点 54 保持（只读核对，不改场景；R38 / A74 新基线）
 	var text: String = FileAccess.get_file_as_string(COURTYARD_PATH)
 	var count: int = 0
 	for line: String in text.split("\n"):
 		if line.begins_with("[node "):
 			count += 1
-	_ck("R36-5 A38 courtyard.tscn 节点数 == 41（R36 运行时建层、不写场景）",
+	_ck("R36-5 A38 courtyard.tscn 节点数 == 54（R36 运行时建层、不写场景；R38 / A74 新基线 41→54）",
 			count == NODE_COUNT_EXPECTED, "count=%d expected=%d" % [count, NODE_COUNT_EXPECTED])
 	print("[V110][R36] ==== R36 专注值 FP / 战技 Q 生产链接线组结束 ====")
 
@@ -1223,12 +1223,12 @@ func _t_r37_life_chain() -> void:
 	_ck("R37-7 赐福休息（真实 E）→ grace_rested 生产订阅 → 元素瓶补满不超上限",
 			hf != null and f2 == fmax and fmax > 0,
 			"flask=%d max=%d" % [f2, fmax])
-	# ⑧ A38 节点 41 保持（只读核对，不改场景）
+	# ⑧ A38 节点 54 保持（只读核对，不改场景；R38 / A74 新基线）
 	var text: String = FileAccess.get_file_as_string(COURTYARD_PATH)
 	var count: int = 0
 	for line: String in text.split("\n"):
 		if line.begins_with("[node "):
 			count += 1
-	_ck("R37-8 A38 courtyard.tscn 节点数 == 41（R37 运行时建层、不写场景）",
+	_ck("R37-8 A38 courtyard.tscn 节点数 == 54（R37 运行时建层、不写场景；R38 / A74 新基线 41→54）",
 			count == NODE_COUNT_EXPECTED, "count=%d expected=%d" % [count, NODE_COUNT_EXPECTED])
 	print("[V110][R37] ==== R37 元素瓶 G / 死亡轮回生产链接线组结束 ====")

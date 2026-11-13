@@ -115,6 +115,7 @@ func _ready() -> void:
 	_build_stars()
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_r29_init()
+	_r38_init()
 
 
 func _process(delta: float) -> void:
@@ -227,6 +228,7 @@ func _draw() -> void:
 	_draw_layered_motes(t)
 	if _r29_draw_fallback:
 		_r29_draw_grade(t)
+	_draw_r38_layers()
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
@@ -640,3 +642,110 @@ func _r29_vignette_frame(m: float, a: float) -> void:
 	draw_rect(Rect2(0.0, BUFFER_H - m, BUFFER_W, m), col)              # 下
 	draw_rect(Rect2(0.0, 0.0, m, BUFFER_H), col)                       # 左
 	draw_rect(Rect2(BUFFER_W - m, 0.0, m, BUFFER_H), col)              # 右
+
+
+# ===========================================================================
+# R38 / v0.15.0 · 大地图多层视差素材接线（Rank-4 · 派单 cmd-20261112-234238-662-A4 ①④）
+#   把 godot/assets/generated/r23/parallax_*.png（4 张 128px 基准 / 单帧 ≤16 色受控索引 /
+#   RGBA 保 alpha / 硬边无渐变无 dithering 无噪点素材）以【只读 load()】接入本既有
+#   ParallaxBackdrop._draw() 远景层；按 world_scale.tres 的 4 层视差系数（0.06/0.14/0.26/0.42）
+#   随【真实相机位移 + 确定性时间漂移】以不同速度横向滚动铺满 640 逻辑px，并按层深度雾
+#   做 modulate 近似（远浓近淡）。不改 courtyard.tscn 任何节点 / uv / 不新增节点 / 不新增信号。
+#   【A48①】本层不引入任何新信号（只读生产快照 + _draw() 直接绘制，无广播）；
+#   【A54】复用 Rank-1 唯一 world_scale.tres 配置源，不自建第二份配置 / 不新增全局服务。
+#   【A47 规避】headless（门禁 / dummy 渲染器）下整段新层零绘制，避免 texture_2d_get
+#   空纹理崩溃；Movie Maker（非 headless）正常绘制，用录屏证明画面真的变了。
+#   既有 R23/R27/R29/R31 全部 sky / fog / ridge / grade / motes / shader 逻辑逐字保留。
+#   [PLACEHOLDER] R38_DRIFT_PER_FRAME / R38_LAYER_Y 为演示漂移速度与 4 层 y 落点，待试玩校准；
+#     rationale：450 帧演示 8 向移动互相抵消、相机净位移仅 32px，单靠相机位移视差几乎
+#     不可见，故叠加与系数成正比的缓慢帧计数漂移，使 4 层滚动速度在实机录屏中可辨；
+#     真跑实证：Movie Maker --fixed-fps 下 Time.get_ticks_msec() 与 _process(delta) 均不推进
+#     （两次录屏互相关 dx=0），故改用 Engine.get_process_frames()（引擎级帧计数，每帧必 +1）；
+#     调参唯一入口 = world_scale.tres（视差系数 / 雾），漂移速度与 y 落点仅本常量，不散落硬编码。
+#   分层系数 / 锚点 / 尺寸 / 色数落盘实测见 r23/parallax_import.json。
+# ===========================================================================
+const R38_LAYER_PATHS := [
+	"res://assets/generated/r23/parallax_far_mountains.png",
+	"res://assets/generated/r23/parallax_fog_band.png",
+	"res://assets/generated/r23/parallax_mid_silhouette.png",
+	"res://assets/generated/r23/parallax_foreground.png",
+]
+const R38_WORLD_SCALE_PATH: String = "res://data/render/world_scale.tres"
+const R38_TILE_PX: float = 128.0
+const R38_TILES: int = 6                 # 640/128=5 + 1 余量（覆盖滚动偏移）
+const R38_DRIFT_PER_FRAME: float = 0.467  # [PLACEHOLDER] 逻辑px/帧 ≈14px/s@30fps（乘各层系数）
+const R38_LAYER_Y := [0.0, -8.0, 8.0, 220.0]   # [PLACEHOLDER] 4 层在设计缓冲中的 y 落点
+
+var _r38_textures: Array[Texture2D] = []
+var _r38_coeffs: Array = [0.06, 0.14, 0.26, 0.42]   # 兜底（运行时从 world_scale.tres 覆盖）
+var _r38_fog: Array = [0.30, 0.18, 0.09, 0.02]      # 兜底（运行时从 world_scale.tres 覆盖）
+var _r38_headless: bool = false
+var _r38_layers_loaded: int = 0
+var _r38_config_source: String = "FALLBACK[PLACEHOLDER]"
+
+
+func _r38_init() -> void:
+	_r38_headless = DisplayServer.get_name().to_lower().contains("headless")
+	var cfg: Resource = null
+	if ResourceLoader.exists(R38_WORLD_SCALE_PATH):
+		cfg = load(R38_WORLD_SCALE_PATH) as Resource
+	if cfg != null:
+		var c: Variant = cfg.get("parallax_coefficients")
+		if c is PackedFloat32Array:
+			var ca: PackedFloat32Array = c as PackedFloat32Array
+			if ca.size() >= 4:
+				_r38_coeffs = [ca[0], ca[1], ca[2], ca[3]]
+		var f: Variant = cfg.get("fog_density_by_layer")
+		if f is PackedFloat32Array:
+			var fa: PackedFloat32Array = f as PackedFloat32Array
+			if fa.size() >= 4:
+				_r38_fog = [fa[0], fa[1], fa[2], fa[3]]
+		_r38_config_source = R38_WORLD_SCALE_PATH
+	for p: String in R38_LAYER_PATHS:
+		var tex: Texture2D = null
+		if ResourceLoader.exists(p):
+			tex = load(p) as Texture2D
+		_r38_textures.append(tex)
+		if tex != null:
+			_r38_layers_loaded += 1
+	print("[R38][PARALLAX] 4 层视差素材接线 | loaded=%d/4 source=%s coeffs=%s fog=%s headless=%s" % [
+		_r38_layers_loaded, _r38_config_source, str(_r38_coeffs), str(_r38_fog), str(_r38_headless)])
+
+
+## 只读生产 BigMapRuntime 快照的真实相机 x（节点/接口缺失静默回退 0，不臆造数值）。
+func _r38_camera_x() -> float:
+	var bm: Node = get_tree().root.get_node_or_null("Courtyard/BigMapLayer/BigMapRoot")
+	if bm != null and bm.has_method("get_bigmap_snapshot"):
+		var s: Dictionary = bm.call("get_bigmap_snapshot")
+		var cp: Variant = s.get("camera_position", Vector2.ZERO)
+		if cp is Vector2:
+			return (cp as Vector2).x
+	return 0.0
+
+
+## 4 层 PNG 按各自系数滚动平铺；每层深度雾以常数 modulate 近似（无渐变 / 无噪点）。
+## 漂移由 Engine.get_process_frames() 引擎帧计数驱动（Movie Maker 下墙钟/delta 不推进）。
+func _draw_r38_layers() -> void:
+	if _r38_headless or _r38_layers_loaded == 0:
+		return
+	var cam_x: float = _r38_camera_x()
+	var frames: float = float(Engine.get_process_frames())
+	var offsets: Array = []
+	for i in range(4):
+		if i >= _r38_textures.size() or i >= _r38_coeffs.size() or i >= _r38_fog.size():
+			break
+		var tex: Texture2D = _r38_textures[i]
+		if tex == null:
+			continue
+		var coef: float = float(_r38_coeffs[i])
+		var off: float = fposmod(-(cam_x * coef + frames * R38_DRIFT_PER_FRAME * coef), R38_TILE_PX)
+		offsets.append(roundf(off * 100.0) / 100.0)
+		var fog: float = clampf(float(_r38_fog[i]), 0.0, 1.0)
+		var mod_col: Color = Color(1.0, 1.0, 1.0, 1.0 - fog * 0.45)
+		var y: float = float(R38_LAYER_Y[i])
+		for k in range(R38_TILES):
+			var x: float = -R38_TILE_PX + float(k) * R38_TILE_PX + off
+			draw_texture_rect(tex, Rect2(x, y, R38_TILE_PX, R38_TILE_PX), false, mod_col)
+	if Engine.get_process_frames() % 150 == 0:
+		print("[R38][PARALLAX][MOTION] frame=%d cam_x=%.1f offsets(4 layers, px)=%s" % [
+			Engine.get_process_frames(), cam_x, str(offsets)])

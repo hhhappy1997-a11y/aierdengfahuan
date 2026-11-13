@@ -24,7 +24,7 @@ extends SceneTree
 ##   口径同 R35 FakeParry 先例，不冒充已联调。
 ##
 ## 断言组：
-##   F 装配：A38 节点 41 uv 2/1/1 / 新信号 / 关键方法 / A54 唯一实例（真实 FocusService）/
+##   F 装配：A38 节点 54 uv 16/8/8 / 新信号 / 关键方法 / A54 唯一实例（真实 FocusService）/
 ##           A48① 生产运行时订阅者 / FP 条真实可见节点 / 不加载 presentation.gd
 ##   Q 真实 Q 输入 → FP 扣减 / A57 倍率后值 / 生产链路真实消费（Rank-1 + Rank-2 双方订阅者）/ 画面节点变化
 ##   R 边界：专注不足拒绝（不扣 FP）/ 冷却拒绝（不扣 FP）/ 重复按键幂等 /
@@ -41,7 +41,7 @@ extends SceneTree
 ## ===========================================================================
 
 const COURTYARD_PATH: String = "res://scenes/courtyard.tscn"
-const NODE_COUNT_EXPECTED: int = 41
+const NODE_COUNT_EXPECTED: int = 54  # R38 / A74 新基线（A38 旧基线 41）
 const REL_HUD: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
 const REL_ENC: String = "EncounterRoot"
 const REL_WAVE: String = "WaveTrialDirector"
@@ -494,15 +494,15 @@ func _t_f_assembly() -> void:
 	_ck("F6b FP 条独立分区 rect 面积 > 0 且真实节点按锚点定位（非硬编码像素堆叠）",
 			fl_ok and frect.get_area() > 0.0 and fl.get_global_rect().is_equal_approx(frect),
 			"anchor=%s node_rect=%s" % [str(frect), str(fl.get_global_rect()) if fl_ok else "?"])
-	# F7 A38
+	# F7 A38（R38 / A74 新基线：节点 54 / uv 16-8-8）
 	var text: String = FileAccess.get_file_as_string(COURTYARD_PATH)
 	var count: int = 0
 	for line: String in text.split("\n"):
 		if line.begins_with("[node "):
 			count += 1
-	var uv_2x: int = text.count("Vector3(2, 2, 1)")
-	var uv_1x: int = text.count("Vector3(1, 1, 1)")
-	_ck("F7 A38 courtyard.tscn 节点 41 / uv 2/1/1 原样（只读不改）",
+	var uv_2x: int = text.count("Vector3(16, 16, 1)")
+	var uv_1x: int = text.count("Vector3(8, 8, 1)")
+	_ck("F7 A38 courtyard.tscn 节点 54 / uv 16/8/8 原样（只读不改；R38 / A74 新基线 41→54 / 2-1-1→16-8-8）",
 			count == NODE_COUNT_EXPECTED and uv_2x == 1 and uv_1x == 2,
 			"count=%d uv_2x=%d uv_1x=%d" % [count, uv_2x, uv_1x])
 	# F8 运行时事实口径：本进程 root 下【不存在】挂载 presentation 脚本的节点，

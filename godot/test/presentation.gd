@@ -183,6 +183,18 @@ extends SceneTree
 ##   不建动态可见层；死亡与重生是否在 450 帧内自然出现由真跑日志判定，未覆盖则
 ##   在 DONE-R37.md 登记「链路已接线但演示未覆盖」，不冒充。
 ## [PLACEHOLDER] R37_* 为演示节奏（非玩法数值，待试玩校准；调参唯一入口 = 本节常量，只改节奏不改代码）。
+##
+## R38 [ROUND=R38] · 【大地图 + 2.5D 尺度重构 · 演示构图同步（任务③）】：
+##   新增 BigMapRoot 大地图层（4096×2304，world_scale.tres 数据驱动）+ Camera2D 跟随 /
+##   limit 边界 / zoom 扩大视野 / 4 层视差 / y-sort / 深度雾 / 落地阴影；人物显示尺寸
+##   由 world_scale.tres 统一缩到基线 1.6 × 0.40 = 0.64。
+##   本轮【只追加真实按键注入 + 只读回读】：新增 WASD / 方向键真实
+##   Input.parse_input_event 注入（→ BigMapRuntime._unhandled_input → 玩家位移 /
+##   相机跟随 / 视差滚动，证明大地图可探索）+ 关键帧只读回读
+##   BigMapRuntime.get_bigmap_snapshot() 的 camera / player 位置（不写、不构造状态）。
+##   既有 J/Space/K/F/Q/R/G/E/Tab 注入节奏与全部 [PLACEHOLDER] 数值逐字不动，
+##   保留全部既有键位注入，不回退 R34 已移除的演示驱动。
+## [PLACEHOLDER] R38_* 为演示节奏（非玩法数值，待试玩校准；调参唯一入口 = 本节常量）。
 
 const TOTAL_FRAMES: int = 450
 
@@ -276,6 +288,26 @@ const R37_PARRY_BURST_FROM: int = 350
 const R37_PARRY_BURST_TO: int = 445
 const R37_PARRY_BURST_INTERVAL: int = 2
 
+# ---- R38 [ROUND=R38] · 大地图探索演示（真实 WASD / 方向键 + 相机跟随只读回读）----
+#   任务③：同步演示构图，注入真实移动键证明 4096×2304 大地图可探索；
+#   键码与 BigMapRuntime 一致（WASD + 四方向键），不与既有战斗键冲突。
+# [PLACEHOLDER] R38_* 为演示节奏（非玩法数值，待试玩校准；调参唯一入口 = 本节常量）。
+const KEY_W_CODE: int = 87
+const KEY_A_CODE: int = 65
+const KEY_S_CODE: int = 83
+const KEY_D_CODE: int = 68
+const KEY_UP_CODE: int = 4194320
+const KEY_LEFT_CODE: int = 4194319
+const KEY_DOWN_CODE: int = 4194322
+const KEY_RIGHT_CODE: int = 4194321
+# 8 向轮转：W→D→S→A→↑→→→↓→←（数字与上方常量逐一对应）
+const R38_MOVE_KEYS: Array = [87, 68, 83, 65, 4194320, 4194321, 4194322, 4194319]
+const R38_MOVE_SCAN_FROM: int = 30
+const R38_MOVE_SCAN_TO: int = 420
+const R38_MOVE_KEY_INTERVAL: int = 12
+const BIGMAP_PATH: String = "BigMapLayer/BigMapRoot"
+const BIGMAP_EVIDENCE_FRAMES: Array = [0, 225, 449]
+
 # R28 既有输入路由节点路径（只读引用）
 const HUD_PATH: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
 const ENCOUNTER_PATH: String = "EncounterRoot"
@@ -307,6 +339,8 @@ var _status_label: Label = null
 # Rank-1 tutorial_director 接口（并发时序下可能未落盘；如实登记，不假设存在）
 var _tutorial_director: Node = null
 var _tutorial_api_available: bool = false
+# R38 · 大地图运行时（BigMapRoot，只读引用 + 只读快照回读，不写场景状态）
+var _big_map: Node = null
 
 
 func _initialize() -> void:
@@ -366,6 +400,13 @@ func _initialize() -> void:
 			str(_hud != null), str(_encounter != null), str(_status_label != null)])
 	_resolve_tutorial_api()
 
+	# ④d R38：大地图运行时（BigMapRoot，只读引用 + 只读快照回读，不写场景状态）
+	_big_map = _courtyard.get_node_or_null(BIGMAP_PATH) as Node
+	if _big_map != null and _big_map.has_method("get_bigmap_snapshot"):
+		print("[R38][BIGMAP] 找到 BigMapRoot name=%s（大地图可探索演示已接线）" % str(_big_map.name))
+	else:
+		push_warning("[R38][BIGMAP] BigMapRoot 未落盘 / 快照接口缺失，大地图演示如实降级")
+
 	# ⑤ 逐帧驱动：process_frame 每帧一次，帧号与 --quit-after 450 对齐；退出交给 --quit-after。
 	process_frame.connect(Callable(self, "_on_frame"))
 	print("[R22] process_frame 已连接 | TOTAL_FRAMES=%d @--fixed-fps 30 (15s)" % TOTAL_FRAMES)
@@ -395,6 +436,7 @@ func _on_frame() -> void:
 	_drive_wave_space(_frame)
 	_drive_growth_hud(_frame)
 	_drive_real_input(_frame)
+	_drive_bigmap_explore(_frame)
 	_frame += 1
 	if _frame == TOTAL_FRAMES:
 		print("==== [R22 presentation] 时间线完成 frame=%d（--quit-after 450 负责退出）====" % _frame)
@@ -886,6 +928,34 @@ func _drive_real_input(f: int) -> void:
 	if R37_REST_FRAMES.has(f):
 		_inject_key(KEY_E)
 		print("[R37][INPUT] frame=%d 真实按键 E(interact) -> Input.parse_input_event(InputEventKey) → ENC._grace_rest() → grace_rested（赐福补满瓶 / 一次死亡与重生机会）" % f)
+
+
+## R38 · 大地图可探索演示：只追加真实 WASD / 方向键 Input.parse_input_event 注入，
+##   绝不改既有注入节奏 / [PLACEHOLDER] 数值 / 不构造服务状态 / 不回退演示驱动。
+##   移动键 → 引擎输入分发 → BigMapRuntime._unhandled_input → 玩家位移 /
+##   Camera2D 跟随 + limit clamp / 4 层视差按不同系数滚动（证明大地图可探索）。
+func _drive_bigmap_explore(f: int) -> void:
+	if f >= R38_MOVE_SCAN_FROM and f <= R38_MOVE_SCAN_TO \
+			and (f - R38_MOVE_SCAN_FROM) % R38_MOVE_KEY_INTERVAL == 0:
+		var step: int = (f - R38_MOVE_SCAN_FROM) / R38_MOVE_KEY_INTERVAL
+		var code: int = int(R38_MOVE_KEYS[step % R38_MOVE_KEYS.size()])
+		_inject_key(code)
+		print("[R38][INPUT] frame=%d 真实按键 移动(KEY=%d) -> Input.parse_input_event(InputEventKey) → BigMapRuntime._unhandled_input → 大地图玩家位移 / 相机跟随 / 4 层视差滚动（可探索）" % [f, code])
+	if BIGMAP_EVIDENCE_FRAMES.has(f):
+		_log_bigmap_evidence(f)
+
+
+## R38 · 只读回读大地图运行时快照（相机跟随 / 玩家位置 / 视差层数 / zoom / 地图尺寸）。
+func _log_bigmap_evidence(f: int) -> void:
+	if _big_map == null or not is_instance_valid(_big_map) \
+			or not _big_map.has_method("get_bigmap_snapshot"):
+		print("[R38][BIGMAP][EVIDENCE] frame=%d 大地图运行时未就绪（如实降级，不伪造）" % f)
+		return
+	var s: Dictionary = _big_map.call("get_bigmap_snapshot") as Dictionary
+	print("[R38][BIGMAP][EVIDENCE] frame=%d camera=%s player=%s layers=%s zoom=%s map=%s（只读回读，不写）" % [
+			f, str(s.get("camera_position", "n/a")), str(s.get("player_position", "n/a")),
+			str(s.get("parallax_layer_count", "n/a")), str(s.get("camera_zoom", "n/a")),
+			str(s.get("map_logic_size", "n/a"))])
 
 
 ## 教学闭环监测：读 tutorial_director 既有只读快照 + is_tutorial_active()；

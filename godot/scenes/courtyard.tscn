@@ -20,24 +20,33 @@
 [ext_resource type="Texture2D" path="res://assets/generated/r23/ground_tile.png" id="18_tile"]
 [ext_resource type="Script" path="res://scripts/combat/grace_upgrade_runtime.gd" id="19_grt"]
 [ext_resource type="Script" path="res://scripts/combat/tutorial_director.gd" id="20_tut"]
+[ext_resource type="Script" path="res://scripts/world/big_map_runtime.gd" id="21_bmr"]
+[ext_resource type="Script" path="res://scripts/render/character_scale.gd" id="22_csa"]
 
 ; [R30 v0.8.0 · A35 Rank-4 独占视觉属性] [PLACEHOLDER] uv1_scale 4/2/1 → 2/1/1，待试玩校准
 ; rationale：与 ground_tile.png 精修(16 砖色阶微扰/受控磨损)配套降低高倍平铺重复感；
 ;   GroundPlate 平铺倍率减半(4→2)、TerraceLow 减半(2→1)、TerraceHigh 本已 1 保持不变；
 ;   仅改三个地面材质视觉属性，不新增 [node 条目（磁盘节点数恒 41）。
+; [R38 v0.15.0 · A74 HOST 特别授权] 大地图 · 2.5D 尺度重构：
+;   [PLACEHOLDER] 地面 tile 大范围平铺 uv1_scale 2/1/1 → 16/8/8（待试玩校准）。
+;   rationale：地图逻辑尺寸 4096×2304（world_scale.tres）远大于单屏 1280×720，
+;   地面 tile 需大倍率平铺才不在扩大视野下拉伸 / 稀疏；三档仍成组、硬边无噪点、
+;   美术规格（128px 基准 / 单帧 ≤16 色 / RGBA）不变。
+;   本轮 A74 特别授权同时新增 BigMapLayer 等大地图节点 → 磁盘节点数由 41 增至新基线；
+;   verify_wave_runtime_v040.gd 的 node_count / uv 期望值按真跑回读同步（不删断言、不放宽判定）。
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uvplate"]
 albedo_texture = ExtResource("18_tile")
-uv1_scale = Vector3(2, 2, 1)
+uv1_scale = Vector3(16, 16, 1)
 texture_filter = 0
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uvlow"]
 albedo_texture = ExtResource("18_tile")
-uv1_scale = Vector3(1, 1, 1)
+uv1_scale = Vector3(8, 8, 1)
 texture_filter = 0
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uvhigh"]
 albedo_texture = ExtResource("18_tile")
-uv1_scale = Vector3(1, 1, 1)
+uv1_scale = Vector3(8, 8, 1)
 texture_filter = 0
 
 [sub_resource type="Environment" id="Environment_e34af"]
@@ -142,7 +151,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 0, 2.0)
 script = ExtResource("1_ypt7w")
 
 [node name="PixelSprite" type="AnimatedSprite3D" parent="SubViewportContainer/SubViewport/Player/Hybrid2D3DAnimatedSprite" unique_id=532282728]
-transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 centered = false
 offset = Vector2(-16, -48)
 pixel_size = 0.03125
@@ -162,7 +171,7 @@ pose_frame_counts = {
 }
 
 [node name="PixelSprite" type="AnimatedSprite3D" parent="SubViewportContainer/SubViewport/BossVisual/Hybrid2D3DAnimatedSprite" unique_id=1900000005]
-transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 centered = false
 offset = Vector2(-16, -48)
 pixel_size = 0.03125
@@ -265,3 +274,59 @@ text = "赐福引导 · 准备中"
 script = ExtResource("20_tut")
 wave_director_path = NodePath("../WaveTrialDirector")
 tutorial_label_path = NodePath("../TutorialHud/TutorialLabel")
+
+; ====================== R38 / v0.15.0 大地图 · 2.5D 分区世界层（A74 特别授权新增） ======================
+; BigMapLayer 为独立 CanvasLayer（layer=1），与既有 3D SubViewport / HUD 各层并行共存；
+; BigMapRoot(Node2D) 下挂 4 层视差 + WorldActors(y-sort) + Camera2D，全部数值由
+; res://data/render/world_scale.tres 数据驱动（big_map_runtime.gd 运行时从表读取并覆盖）。
+; 既有 41 节点一律保留、既有相对路径不改（v0.1~v0.14 可玩闭环入口仍可达）。
+[node name="BigMapLayer" type="CanvasLayer" parent="." unique_id=1940000001]
+layer = 1
+
+[node name="BigMapRoot" type="Node2D" parent="BigMapLayer" unique_id=1940000002]
+y_sort_enabled = true
+script = ExtResource("21_bmr")
+metadata/world_scale_path = "res://data/render/world_scale.tres"
+
+[node name="ParallaxLayer0" type="Node2D" parent="BigMapLayer/BigMapRoot" unique_id=1940000003]
+y_sort_enabled = true
+metadata/parallax_index = 0
+metadata/layer_role = "远景色带（系数最小）"
+
+[node name="ParallaxLayer1" type="Node2D" parent="BigMapLayer/BigMapRoot" unique_id=1940000004]
+y_sort_enabled = true
+metadata/parallax_index = 1
+metadata/layer_role = "中景地形与地标"
+
+[node name="ParallaxLayer2" type="Node2D" parent="BigMapLayer/BigMapRoot" unique_id=1940000005]
+y_sort_enabled = true
+metadata/parallax_index = 2
+metadata/layer_role = "地面 tile 大范围平铺"
+
+[node name="ParallaxLayer3" type="Node2D" parent="BigMapLayer/BigMapRoot" unique_id=1940000006]
+y_sort_enabled = true
+z_index = 10
+metadata/parallax_index = 3
+metadata/layer_role = "前景遮挡层"
+
+[node name="WorldActors" type="Node2D" parent="BigMapLayer/BigMapRoot" unique_id=1940000007]
+y_sort_enabled = true
+
+[node name="PlayerMarker" type="Node2D" parent="BigMapLayer/BigMapRoot/WorldActors" unique_id=1940000008]
+
+[node name="PlayerShadow" type="Node2D" parent="BigMapLayer/BigMapRoot/WorldActors/PlayerMarker" unique_id=1940000009]
+
+[node name="PlayerBody" type="Node2D" parent="BigMapLayer/BigMapRoot/WorldActors/PlayerMarker" unique_id=1940000010]
+
+[node name="LandmarkA" type="Node2D" parent="BigMapLayer/BigMapRoot/WorldActors" unique_id=1940000011]
+
+[node name="Camera2D" type="Camera2D" parent="BigMapLayer/BigMapRoot" unique_id=1940000012]
+position = Vector2(2048, 1152)
+zoom = Vector2(0.5, 0.5)
+limit_left = 0
+limit_top = 0
+limit_right = 4096
+limit_bottom = 2304
+
+[node name="CharacterScaleController" type="Node" parent="." unique_id=1940000013]
+script = ExtResource("22_csa")

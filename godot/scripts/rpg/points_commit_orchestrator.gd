@@ -111,6 +111,20 @@ const K_DEATH_RECLAIM_COUNT: String = "grace.death.reclaim_count"    # int 成�
 const FLASK_SIGNALS: Array[String] = ["flask_used", "flask_rejected", "flask_restored"]
 const DEATH_SIGNALS: Array[String] = ["death_occurred", "respawn_performed", "points_reclaimed", "action_rejected"]
 
+## ---- R38 / v0.15.0 新增三段式 flag（契约 §3.3 R38 段登记 / 裁决 A74~A78）----
+## ★ 严格匹配三段式正则 FLAG_KEY_REGEX（对象段全小写 snake_case、不含点号）。
+## 任务单示意 `world.map.region_<id>.discovered` 为四段、与冻结三段式正则冲突，
+## R38 收敛为 `world.region_<id>.discovered`（域 world / 对象 region_<id> / 属性 discovered），
+## `<id>` 逐字保留、语义不变；`grace.site_<id>.lit` / `world.map.progress` 本身即三段、原样采用。
+const GRACE_SITES_PATH: String = "res://data/rpg/grace_sites.tres"
+const K_MAP_PROGRESS: String = "world.map.progress"                  # int 地图交互累计进度（单调递增、只增不减）
+const K_MAP_FOG_REVEALED: String = "world.map.fog_revealed"          # int 已揭开迷雾区域数（单调递增）
+const K_MAP_LAST_FAST_TRAVEL: String = "world.map.last_fast_travel"  # String 最近快旅落点（非单调·最近覆盖）
+## R38 / A48①：4 个 WorldMapService 信号的生产运行时订阅者 = 本编排层 autoload（非验证脚本）。
+const WORLD_MAP_SIGNALS: Array[String] = [
+	"region_discovered", "grace_site_lit", "fast_travel_performed", "map_action_rejected",
+]
+
 ## ---- [PLACEHOLDER] cost→points 映射（A59）----
 ## rationale：Rank-2 boon_draft_service.apply() 的 cost_value 是「下一波敌人难度乘性修正」
 ##   （hp_scale / telegraph_scale，> 0 的倍率），并非赐福点数；A59 需要把它换算成点数消耗，
@@ -170,6 +184,13 @@ var _life_bound: bool = false
 var _life_bind_retry: int = 0
 var _life_reject_observed: int = 0      # flask_rejected / action_rejected 观测（拒绝事件不写盘证据）
 
+## ---- R38 / v0.15.0 运行时态（不落盘）：A54 唯一实例引用 / 绑定态 / 拒绝观测 ----
+var _world_map_service: Object = null   # A54：grace_sites.tres 加载所得唯一实例，经 get_world_map_service() 复用，绝不 new 第二个
+var _world_map_bound: bool = false
+var _world_map_bind_done: bool = false  # 本进程已装配过唯一实例（_release 后不清，退出阶段 deferred 不重复 load 第二个）
+var _world_map_bind_retry: int = 0
+var _world_map_reject_observed: int = 0  # map_action_rejected 观测（拒绝事件不写盘证据）
+
 
 func _ready() -> void:
 	_re = RegEx.new()
@@ -186,6 +207,8 @@ func _ready() -> void:
 	call_deferred("_deferred_bind_focus")
 	# R37 / A70 / A71：延迟绑定 A54 唯一 FlaskService / DeathService（生产订阅者；无主场景时安全降级、不写盘）。
 	call_deferred("_deferred_bind_life")
+	# R38 / A76 / A48①：延迟绑定 A54 唯一 WorldMapService（生产订阅者；无主场景时安全降级、不写盘）。
+	call_deferred("_deferred_bind_world_map")
 
 
 ## 相对 root 查找 WorldState 单例（不用 /root/... 绝对路径字符串）。
@@ -296,6 +319,7 @@ func bind_hud(hud: Node) -> bool:
 func _release() -> void:
 	_release_focus()
 	_release_life()
+	_release_world_map()
 	if _hud != null and is_instance_valid(_hud):
 		for sig: String in BOUND_SIGNALS:
 			var cb: Callable = Callable(self, "_on_" + sig)
@@ -358,6 +382,12 @@ func get_status() -> Dictionary:
 		"death_count": int(_runtime_flags.get(K_DEATH_COUNT, 0)),
 		"death_respawn_count": int(_runtime_flags.get(K_DEATH_RESPAWN_COUNT, 0)),
 		"death_reclaim_count": int(_runtime_flags.get(K_DEATH_RECLAIM_COUNT, 0)),
+		"world_map_bound": _world_map_bound,
+		"world_map_service": _world_map_service != null,
+		"world_map_reject_observed": _world_map_reject_observed,
+		"map_progress": int(_runtime_flags.get(K_MAP_PROGRESS, 0)),
+		"map_fog_revealed": int(_runtime_flags.get(K_MAP_FOG_REVEALED, 0)),
+		"map_last_fast_travel": String(_runtime_flags.get(K_MAP_LAST_FAST_TRAVEL, "")),
 	}
 
 
@@ -1157,3 +1187,187 @@ func _on_points_reclaimed(_points: int, _grace_points_snapshot: int) -> void:
 ##   （重复回收被拒 / 死亡期间行动被拒 / 异常输入只走 HUD 反馈，避免无效 commit 膨胀）。
 func _on_action_rejected(_reason: String, _action_id: String) -> void:
 	_life_reject_observed += 1
+
+
+# ===========================================================================
+# R38 / v0.15.0「大地图 · 2.5D 尺度重构」追加段（Rank-3 唯一写入）
+#   A76：大地图逻辑尺寸 4096×2304 / 分区 id / 相机边界口径数据驱动（Rank-1
+#        world_scale.tres 唯一入口）；本段只消费 grace_sites.tres 的 region_id /
+#        site_id，不硬编码 4096 / 分区名 / 位置 / 赐福点数量。
+#   A48①：4 个 WorldMapService 信号的生产运行时订阅者 = 本编排层 autoload；
+#        A54 唯一实例 = 从 grace_sites.tres 加载的那一个 Resource，经
+#        get_world_map_service() 复用，验证脚本绝不 new / load 第二个。
+#   ★ A77：大地图 / 赐福网络是新增层，既有 A55/A57/A59/A66/A70/A71 三波试炼
+#        与成长闭环逐字不动；本段只追加新信号订阅与新 flag，不改既有分支。
+#   口径：十字段冻结 / schema_version=3 / 不写 removals / 不回退
+#        grace.trial.points / commit(reason) 原子写 / 先落盘再改运行时实例 /
+#        重启读回一致；拒绝事件（map_action_rejected）不写盘、只走 HUD 反馈。
+#   安全降级：无主场景 / --import / --check-only / 纯 --headless --quit 场景
+#        grace_sites.tres 加载失败或信号不全时重试耗尽仅 push_warning，
+#        不订阅、不写盘、不报错、不 null 解引用。
+# ===========================================================================
+
+## 三段式 flag key 生成（<id> 逐字来自表；合法性由 _commit_world_map 的正则统一校验，
+## 非法 id 生成的多段 key 会被拒绝、不落盘 → 异常输入拒绝）。
+func region_flag(region_id: String) -> String:
+	return "world.region_%s.discovered" % region_id
+
+
+func site_flag(site_id: String) -> String:
+	return "grace.site_%s.lit" % site_id
+
+
+## 从 grace_sites.tres 加载 A54 唯一实例（CACHE_MODE_IGNORE 回读磁盘真值）。
+## ★ 惰性：只在需要时加载一次并持有，绝不第二次 load / 绝不 new。
+func _ensure_world_map_service() -> bool:
+	if _world_map_service != null and is_instance_valid(_world_map_service):
+		return true
+	var res: Resource = ResourceLoader.load(
+		GRACE_SITES_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as Resource
+	if res == null:
+		return false
+	if not res.has_signal("region_discovered") or not res.has_method("is_valid"):
+		return false
+	_world_map_service = res
+	return true
+
+
+## 延迟绑定（autoload 早于主场景入树；本服务唯一实例不依赖主场景节点）。
+##   加载失败 → 重试耗尽 push_warning 降级（不订阅 / 不写盘 / 不报错）。
+func _deferred_bind_world_map() -> void:
+	if _world_map_bound or _world_map_bind_done:
+		return
+	if _ensure_world_map_service():
+		bind_world_map_service(null)
+		return
+	_world_map_bind_retry += 1
+	if _world_map_bind_retry <= MAX_BIND_RETRY:
+		call_deferred("_deferred_bind_world_map")
+	else:
+		push_warning("[R38][PCO] A76：grace_sites.tres / WorldMapService 未就绪（重试 %d 次）→ 绑定降级：不订阅、不写盘" % MAX_BIND_RETRY)
+
+
+## A54 唯一实例 getter（供 HUD / 输入层 / 验证复用，绝不 new 第二个）。
+func get_world_map_service() -> Object:
+	if _ensure_world_map_service():
+		return _world_map_service
+	return null
+
+
+## 显式绑定入口（正常游戏由 _deferred_bind_world_map 调；--script 验证进程直接调
+## 以保证确定性）。connect 前 is_connected 去重、绝不重复连接；★ connect 在
+## 本生产脚本内完成（A48① 生产订阅者，非验证脚本自建订阅 / 不模拟编排）。
+## service=null 时复用 _ensure_world_map_service() 的唯一实例；非 null 时用于验证
+## 把同一实例显式注入，★ 若与已持有实例不同则拒绝替换（A54 唯一实例不可被顶替）。
+func bind_world_map_service(service: Object) -> bool:
+	if service != null and is_instance_valid(service):
+		if _world_map_service != null and is_instance_valid(_world_map_service) \
+				and _world_map_service != service:
+			push_warning("[R38][PCO] A54：拒绝替换已持有的唯一实例（绝不 new 第二个）")
+			return false
+		_world_map_service = service
+	if not _ensure_world_map_service():
+		return false
+	# 本进程已装配过唯一实例：_release_world_map() 后退出阶段 flush 的 deferred
+	# 不再重新 load 第二个实例（A54 唯一实例严谨性）。
+	_world_map_bind_done = true
+	var wm: Object = _world_map_service
+	var connected: int = 0
+	for sig: String in WORLD_MAP_SIGNALS:
+		if not wm.has_signal(sig):
+			continue
+		var cb: Callable = Callable(self, "_on_" + sig)
+		if not wm.is_connected(sig, cb):
+			wm.connect(sig, cb)
+		connected += 1
+	_world_map_bound = connected == WORLD_MAP_SIGNALS.size()
+	if _world_map_bound:
+		print("[R38][PCO] A48①/A76 生产订阅者已绑定 WorldMapService 唯一实例 | signals=%d slot=%s（赐福网络 / 大地图进度落盘）" % [
+			connected, _slot_dir])
+	else:
+		push_warning("[R38][PCO] A76 WorldMapService 信号不全，绑定降级（connected=%d/%d）" % [
+			connected, WORLD_MAP_SIGNALS.size()])
+	return _world_map_bound
+
+
+## 释放 4 个信号连接（有释放路径，不留悬空 Callable）。
+func _release_world_map() -> void:
+	if _world_map_service != null and is_instance_valid(_world_map_service):
+		for sig: String in WORLD_MAP_SIGNALS:
+			var cb: Callable = Callable(self, "_on_" + sig)
+			if _world_map_service.has_signal(sig) and _world_map_service.is_connected(sig, cb):
+				_world_map_service.disconnect(sig, cb)
+	_world_map_service = null
+	_world_map_bound = false
+
+
+## R38 专用 commit 封装：★ 显式隔离，world_writes 绝不含 K_POINTS / K_SPENT
+##   （绝不回退 / 改写 grace.trial.points、绝不二次入账），所有 key 必须以
+##   "world.map." / "world.region_" / "grace.site_" 开头且通过三段式正则；
+##   复用既有 _commit（十字段冻结 / schema_version=3 / 不写 removals /
+##   原子写 / 先落盘再改实例）。awarded_points=0 / new_total=磁盘 points 原值。
+func _commit_world_map(reason: String, world_writes: Dictionary) -> bool:
+	if _re == null:
+		_re = RegEx.new()
+		_re.compile(FLAG_KEY_REGEX)
+	for k: Variant in world_writes.keys():
+		var key: String = String(k)
+		if not (key.begins_with("world.map.") or key.begins_with("world.region_") \
+				or key.begins_with("grace.site_")) or key == K_POINTS or key == K_SPENT:
+			push_warning("[R38][PCO] A76 非法地图 flag key（越界或混用赐福点数），本次不落盘：%s" % key)
+			return false
+		if _re.search(key) == null:
+			push_warning("[R38][PCO] A76 非法三段式地图 flag key，本次不落盘：%s" % key)
+			return false
+		if not _is_scalar(world_writes[k]):
+			push_warning("[R38][PCO] A76 非标量地图 flag value，本次不落盘：%s" % key)
+			return false
+	var delta: Dictionary = _read_delta()
+	var disk_points: int = int((delta.get("flags", {}) as Dictionary).get(K_POINTS, 0))
+	return _commit(reason, world_writes, 0, disk_points)
+
+
+## A76 生产回调 ①：区域发现 → 落盘（区域 discovered + 迷雾揭开 + 进度单调）。
+##   ★ 进度取 max(磁盘旧值, 信号 payload)，磁盘永远追平服务真值且绝不回退。
+func _on_region_discovered(region_id: String, discovered_count: int, progress: int) -> void:
+	var delta: Dictionary = _read_delta()
+	var flags: Dictionary = delta.get("flags", {}) as Dictionary
+	var writes: Dictionary = {
+		region_flag(region_id): true,
+		K_MAP_PROGRESS: maxi(int(flags.get(K_MAP_PROGRESS, 0)), progress),
+		K_MAP_FOG_REVEALED: maxi(int(flags.get(K_MAP_FOG_REVEALED, 0)), discovered_count),
+	}
+	if not _commit_world_map("world_map_region_discovered_" + region_id, writes):
+		push_warning("[R38][PCO] A76 region_discovered commit 失败 → 磁盘未改、运行时实例保持旧值")
+
+
+## A76 生产回调 ②：赐福首次点亮 → 落盘（site lit + 进度单调）。
+##   ★ 重复激活被拒时服务只发 map_action_rejected，本回调不会被触发 → 不写盘、进度不增。
+func _on_grace_site_lit(site_id: String, _region_id: String, _lit_count: int, progress: int) -> void:
+	var delta: Dictionary = _read_delta()
+	var flags: Dictionary = delta.get("flags", {}) as Dictionary
+	var writes: Dictionary = {
+		site_flag(site_id): true,
+		K_MAP_PROGRESS: maxi(int(flags.get(K_MAP_PROGRESS, 0)), progress),
+	}
+	if not _commit_world_map("grace_site_lit_" + site_id, writes):
+		push_warning("[R38][PCO] A76 grace_site_lit commit 失败 → 磁盘未改、运行时实例保持旧值")
+
+
+## A76 生产回调 ③：快旅成功 → 落盘（最近落点 + 进度单调）。
+##   ★ 未解锁快旅被拒时服务只发 map_action_rejected，本回调不会被触发 → 不写盘。
+func _on_fast_travel_performed(site_id: String, _region_id: String, _travel_count: int, progress: int) -> void:
+	var delta: Dictionary = _read_delta()
+	var flags: Dictionary = delta.get("flags", {}) as Dictionary
+	var writes: Dictionary = {
+		K_MAP_LAST_FAST_TRAVEL: site_id,
+		K_MAP_PROGRESS: maxi(int(flags.get(K_MAP_PROGRESS, 0)), progress),
+	}
+	if not _commit_world_map("fast_travel_performed_" + site_id, writes):
+		push_warning("[R38][PCO] A76 fast_travel_performed commit 失败 → 磁盘未改、运行时实例保持旧值")
+
+
+## A76 生产回调 ④：★ 拒绝事件不写盘（沿用 R37 既定策略）——重复发现 / 重复激活 /
+##   未解锁快旅 / 区域未发现 / 异常输入只做运行时观测 + HUD 反馈，避免无效 commit 膨胀。
+func _on_map_action_rejected(_reason: String, _action_id: String) -> void:
+	_world_map_reject_observed += 1

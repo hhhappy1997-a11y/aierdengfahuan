@@ -1412,6 +1412,52 @@ func get_center_char_rect() -> Rect2:
 	return _scaled_rect(ANCHOR_CHAR)
 
 
+# ==========================================================================
+# 11b) R38 [ROUND=R38] · 人物 40% → 数据驱动角色包围盒避让几何（任务③）
+# ==========================================================================
+# 根因：R38 把既有角色 scale 基线 1.6 统一缩到 1.6×0.40=0.64（world_scale.tres）。
+#   旧 ANCHOR_CHAR 是 1.6 时代的中央角色【保守保护区】，本轮【逐字保留】：
+#   6 分区 / 独立分区文字仍按大保护区避让（面板不遮角色 / HUD 文字不重叠，
+#   既有 V100HUD / V110 / V140 断言逐字不回退，get_hud_layout() 字典也不加 key）。
+# 同步：新增 get_character_bbox_rect()，从同一张 world_scale.tres 读 ratio，
+#   把保护区按 ratio 等比缩小并居中 → 表征【真实新尺寸】角色占位；
+#   verify_bigmap_v150.gd 断言该缩小包围盒不与任一 HUD 分区 / 文字包围盒相交
+#   （HUD 避让不因角色缩小失效），并断言 ratio ≈ 0.40。
+# 【数据驱动 / 禁止散落硬编码】ratio 只从 .tres 读，脚本不写 0.4 / 0.64 / 1.6；
+#   配置未加载时回落 1.0（中性基线，不是设计值，不冒充缩放生效）。
+const WORLD_SCALE_PATH: String = "res://data/render/world_scale.tres"
+
+
+## 角色显示尺寸比例（character_scale_ratio，从 world_scale.tres 读）。
+func get_character_scale_ratio() -> float:
+	var cfg: Resource = ResourceLoader.load(
+			WORLD_SCALE_PATH, "Resource", ResourceLoader.CACHE_MODE_IGNORE) as Resource
+	if cfg == null:
+		return 1.0
+	var ratio: float = float(cfg.get("character_scale_ratio"))
+	return ratio if ratio > 0.0 else 1.0
+
+
+## 真实新尺寸角色包围盒：以 ANCHOR_CHAR 为基线矩形，按 ratio 等比缩小并居中。
+func get_character_bbox_rect() -> Rect2:
+	var ratio: float = get_character_scale_ratio()
+	var guard: Rect2 = ANCHOR_CHAR
+	var w: float = guard.size.x * ratio
+	var h: float = guard.size.y * ratio
+	var cx: float = guard.position.x + guard.size.x * 0.5
+	var cy: float = guard.position.y + guard.size.y * 0.5
+	return _scaled_rect(Rect2(cx - w * 0.5, cy - h * 0.5, w, h))
+
+
+## 只读视图（供 V150 断言：ratio / 新包围盒 / 保守保护区三者互证）。
+func get_character_bbox_view() -> Dictionary:
+	return {
+		"ratio": get_character_scale_ratio(),
+		"bbox": get_character_bbox_rect(),
+		"guard": get_center_char_rect(),
+	}
+
+
 ## R34C · 生产机制连击评级文本【独立分区】的实际包围盒（归一化锚点 → 当前视口线性缩放）。
 ##   供 ProdComboLabel 真实节点定位与运行时 rect 断言读取；不并入 6 分区数组（A1 不回退）。
 func get_production_mechanism_rect() -> Rect2:

@@ -16,7 +16,7 @@ extends SceneTree
 ##   G HUD 避让区像素 0（flash 峰值态：几何交集 0、采样 0、安全区 >0、三关键矩形被覆盖）
 ##   H 重复 connect 不重复触发（bind 两次仍 1 条连接、emit 一次仅 1 次 impact）
 ##   I 面板打开不遮挡（shop / codex 打开后矩形内像素仍 0）
-##   J A38 不破坏（courtyard.tscn [node]==41 / uv 2/1/1 / 无反馈层静态节点）
+##   J A38 不破坏（courtyard.tscn [node]==54 / uv 16/8/8 / 无反馈层静态节点；R38 / A74 新基线 41→54 / 2-1-1→16-8-8）
 ##   K hud.gd 运行时挂载接线（常量 / add_child / bind_director / 降级 / 面板同步）
 ##   L R31B 集成（A39：真实导演层 player_hit_landed emit → 反馈层自动触发；
 ##     连续命中不叠加异常 / 降级下 shake·hitstop=0 但仍闪光 / HUD 避让区像素仍 0）
@@ -50,7 +50,7 @@ const SCREEN: Rect2 = Rect2(0.0, 0.0, 1280.0, 720.0)
 const RECT_TITLE: Rect2 = Rect2(0.0, 0.0, 730.0, 220.0)
 const RECT_SHOP: Rect2 = Rect2(740.0, 358.0, 536.0, 210.0)
 const RECT_CODEX: Rect2 = Rect2(24.0, 272.0, 356.0, 236.0)
-const NODE_COUNT_EXPECTED: int = 41
+const NODE_COUNT_EXPECTED: int = 54  # R38 / A74 新基线（A38 旧基线 41）
 ## R35C/A64：中景半透明大矩形（R35B 精确定位 x≈388..1280 / y≈188..720）作为
 ##   「不再被闪光覆盖」的对照矩形；M 组断言收敛后 bbox 不覆盖它、其远锚点像素为 0。
 const MID_RECT: Rect2 = Rect2(388.0, 188.0, 892.0, 532.0)
@@ -514,7 +514,7 @@ func _test_panel_open() -> void:
 
 
 # ---------------------------------------------------------------------------
-# J) A38 不破坏（courtyard.tscn 节点数 41 / uv 2/1/1 / 无静态反馈层节点）
+# J) A38 不破坏（courtyard.tscn 节点数 54 / uv 16/8/8 / 无静态反馈层节点；R38 / A74 新基线 41→54 / 2-1-1→16-8-8）
 # ---------------------------------------------------------------------------
 func _test_a38() -> void:
 	var text: String = FileAccess.get_file_as_string(COURTYARD_PATH)
@@ -522,11 +522,11 @@ func _test_a38() -> void:
 	for line: String in text.split("\n"):
 		if line.begins_with("[node "):
 			count += 1
-	_ck("J1 courtyard.tscn 静态 [node] 行数 == 41（A38 节点数保持）",
+	_ck("J1 courtyard.tscn 静态 [node] 行数 == 54（A38 节点数保持；R38 / A74 新基线 41→54）",
 			count == NODE_COUNT_EXPECTED, "count=%d expected=%d" % [count, NODE_COUNT_EXPECTED])
-	var n2: int = _count_substr(text, "uv1_scale = Vector3(2, 2, 1)")
-	var n1: int = _count_substr(text, "uv1_scale = Vector3(1, 1, 1)")
-	_ck("J2 uv 2/1/1 原样：Vector3(2,2,1) ×1 + Vector3(1,1,1) ×2",
+	var n2: int = _count_substr(text, "uv1_scale = Vector3(16, 16, 1)")
+	var n1: int = _count_substr(text, "uv1_scale = Vector3(8, 8, 1)")
+	_ck("J2 uv 16/8/8 原样：Vector3(16,16,1) ×1 + Vector3(8,8,1) ×2（R38 / A74 新基线）",
 			n2 == 1 and n1 == 2, "uv_2x=%d uv_1x=%d" % [n2, n1])
 	_ck("J3 courtyard.tscn 文本无 ImpactFeedbackLayer / impact_feedback.gd（运行时挂载、不写场景）",
 			not text.contains("ImpactFeedbackLayer") and not text.contains("impact_feedback.gd"),

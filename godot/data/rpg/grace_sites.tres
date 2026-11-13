@@ -1,0 +1,93 @@
+[gd_resource type="Resource" script_class="WorldMapService" load_steps=2 format=3]
+
+; R38 / v0.15.0「大地图 · 2.5D 尺度重构」赐福点唯一数据表（Rank-3）
+; [PLACEHOLDER] 全部数值为设计初值，待人工试玩校准；rationale 逐字段见下方，
+;   结构 / 字段契约 / is_valid() / 4 信号 / 纯逻辑方法见
+;   res://scripts/rpg/world_map_service.gd 头注与常量段。
+; 调参唯一入口 = 本文件（只改表不改代码）；world_map_service.gd /
+;   points_commit_orchestrator.gd / 两份 verify 一律从本表读取 / 依本表落盘。
+;
+; 【分区 id 对齐（A76 / 任务单 ①「与 Rank-1 大地图分区 id 对齐」）】
+;   region_ids 逐字取自既有 godot/data/rpg/m6_area_bindings.tres 的 region 字段
+;   （4 个 is_dungeon=false 的地表/野外区域），与 Rank-1 大地图 4096×2304 逻辑
+;   尺寸（world_scale.tres）/ Rank-2 world_encounters.tres 的 region_ids 同一真源：
+;     limgrave / weeping_peninsula / stormveil / siofra_well
+;   ★ 仍标 [PLACEHOLDER]：A76 最终口径由 Rank-1 world_scale.tres 与本表落定；
+;   若总指挥调整分区命名，只改本表 region_ids / 各行 region_id 两处即可对齐，
+;   不改代码、不改服务、不改编排层（数据驱动）。
+;
+; 【赐福点 5 字段契约（任务单 ①，全部 [PLACEHOLDER]）】
+;   site_id           : String   赐福点唯一 id（全表唯一、非空、全小写 snake_case）
+;                               ★ 对象段直接用于三段式 flag `grace.site_<site_id>.lit`，
+;                                 故必须能通过 ^[a-z0-9_]+$（is_valid() 机器判定）。
+;   region_id         : String   所属分区 id，必须 ∈ region_ids（与 Rank-1 分区对齐）
+;   position          : Vector2  2.5D 俯视世界坐标（XZ 平面，单位=逻辑像素）；
+;                               落在 Rank-1 4096×2304 大地图内、4 点沿 X 由西到东分散
+;   display_name      : String   地图 / HUD 展示名（纯展示，不进 flag、不参与判定）
+;   unlock_condition  : String   点亮前置条件；首版唯一合法值 "none" / "region_discovered"
+;                               （后者要求所属区域先发现）；扩展需先补回归再改代码+表+验证
+; 表级：invalid_input_policy : String  异常输入策略；首版唯一合法值 "reject"
+;
+; 【设计数值 [PLACEHOLDER] rationale（数值实例在 [resource]，本块只写「为什么」）】
+;   ⚠ 以下全部为 [PLACEHOLDER] 首版假设、待人工试玩校准；只改 .tres 不改代码。
+;   ① 4 个分区 / 4 个赐福点（每区 1 个）
+;      rationale：任务单要求「至少 4 个赐福点、与 Rank-1 大地图分区 id 对齐」；
+;      4 个分区各配 1 个初始赐福，便于覆盖「区域发现 → 赐福激活 → 快旅」完整链、
+;      「未解锁快旅拒绝」「重复激活拒绝」「进度单调递增」机器判定；site_id 去掉
+;      既有 m6_area_bindings.tres grace_ids 的 `grace_` 前缀（如
+;      grace_limgrave_gatefront → limgrave_gatefront），使三段式 flag 对象段简洁、
+;      与规范 §3.1 示例 `grace.limgrave_gatefront.lit` 同风格，对应关系逐字可查。
+;   ② position（(512,384) / (1536,384) / (2048,768) / (3072,896)）
+;      rationale：落在 Rank-1 4096×2304 逻辑像素大地图内（world_scale.tres 唯一
+;      调参入口）、与 Rank-2 world_encounters.tres 遭遇点同位量纲，4 点沿 X 由西到
+;      东分散，使相机随玩家位移时各赐福点有可辨识间隔；纯 2.5D 俯视坐标、不含渲染信息。
+;   ③ display_name（中文展示名）
+;      rationale：地图 / HUD 只读展示用，不进 flag、不参与任何判定；本地 UTF-8 文本、
+;      零付费零外部依赖。
+;   ④ unlock_condition = "none"（全表）
+;      rationale：首版 4 个初始赐福无附加点亮前置（只需「未点亮 + 表合法」），
+;      保留 "region_discovered" 分支供后续「需先发现区域才能点亮」增量；
+;      快旅解锁由「目标已点亮 + 所属区域已发现」运行时状态机判定（不改表）。
+;   ⑤ invalid_input_policy = "reject"
+;      rationale：异常输入一律拒绝且不改状态，避免 clamp / ignore 造成「隐式发现 /
+;      隐式二次点亮 / 隐式快旅」不可测分支；首版唯一合法值。
+;
+; 【三段式 flag 落盘（编排层实现，本表只提供 id）】
+;   world.region_<region_id>.discovered  bool / grace.site_<site_id>.lit  bool /
+;   world.map.progress  int / world.map.fog_revealed  int /
+;   world.map.last_fast_travel  String
+;   ★ 任务单示意 `world.map.region_<id>.discovered` 为四段、与冻结三段式正则冲突，
+;     R38 收敛为 `world.region_<id>.discovered`（域 world / 对象 region_<id> /
+;     属性 discovered），<id> 逐字保留、语义不变、机器正则全 PASS（见契约 §3.3 R38 段）。
+
+[ext_resource type="Script" path="res://scripts/rpg/world_map_service.gd" id="1_wms"]
+
+[resource]
+script = ExtResource("1_wms")
+region_ids = PackedStringArray("limgrave", "weeping_peninsula", "stormveil", "siofra_well")
+sites = Array[Dictionary]([{
+"site_id": "limgrave_gatefront",
+"region_id": "limgrave",
+"position": Vector2(512, 384),
+"display_name": "宁姆格福·关口赐福",
+"unlock_condition": "none"
+}, {
+"site_id": "weeping_shore",
+"region_id": "weeping_peninsula",
+"position": Vector2(1536, 384),
+"display_name": "啜泣半岛·海岸赐福",
+"unlock_condition": "none"
+}, {
+"site_id": "stormveil_gate",
+"region_id": "stormveil",
+"position": Vector2(2048, 768),
+"display_name": "史东薇尔·城门赐福",
+"unlock_condition": "none"
+}, {
+"site_id": "siofra_well",
+"region_id": "siofra_well",
+"position": Vector2(3072, 896),
+"display_name": "希芙拉河·井口赐福",
+"unlock_condition": "none"
+}])
+invalid_input_policy = "reject"

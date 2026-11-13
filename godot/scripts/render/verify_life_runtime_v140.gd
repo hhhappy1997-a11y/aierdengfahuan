@@ -27,7 +27,7 @@ extends SceneTree
 ## ===========================================================================
 
 const COURTYARD_PATH: String = "res://scenes/courtyard.tscn"
-const NODE_COUNT_EXPECTED: int = 41
+const NODE_COUNT_EXPECTED: int = 54  # R38 / A74 新基线（A38 旧基线 41）
 const REL_HUD: String = "SubViewportContainer/SubViewport/FXLayer/Hud"
 const REL_ENC: String = "EncounterRoot"
 const REL_WAVE: String = "WaveTrialDirector"
@@ -469,13 +469,13 @@ func _tree_has_script(n: Node, keyword: String) -> bool:
 # ===========================================================================
 func _t_a_assembly() -> void:
 	print("[V140] ==== A 组 R37 装配 / A38 / A48① / A54 ====")
-	# A2 A38 节点数 41
+	# A2 A38 节点数 54（R38 / A74 新基线）
 	var text: String = FileAccess.get_file_as_string(COURTYARD_PATH)
 	var count: int = 0
 	for line: String in text.split("\n"):
 		if line.begins_with("[node "):
 			count += 1
-	_ck("A2 A38 courtyard.tscn 节点数 == 41（R37 运行时建层、不写场景）",
+	_ck("A2 A38 courtyard.tscn 节点数 == 54（R37 运行时建层、不写场景；R38 / A74 新基线 41→54）",
 			count == NODE_COUNT_EXPECTED, "count=%d expected=%d" % [count, NODE_COUNT_EXPECTED])
 	# A3 不加载 presentation.gd
 	_ck("A3 A48③ 不加载 presentation.gd（运行时树零 presentation 节点）",

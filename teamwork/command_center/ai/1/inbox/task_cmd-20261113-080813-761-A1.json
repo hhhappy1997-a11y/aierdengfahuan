@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261113-080813-761-A1",
+  "command_id": "cmd-20261113-080813-761",
+  "ai": 1,
+  "from": "总指挥",
+  "task": "[ROUND=R38C] 【R38C · Rank-1 清理第 6 份回归的旧基线断言（HOST 裁决 A80 越界授权）】R38B 已按 A79 把 5 份回归的 8 条 A38 断言同步到新基线 54 / 16-8-8（219 PASS / 0 FAIL），但如实登记**清单外第 6 份 `godot/scripts/render/verify_impact_feedback_v090.gd`** 仍有 2 条旧基线断言 FAIL（45 PASS / 2 FAIL / MISMATCH / EXIT=1，非功能回归），因不在 DONE-R38.md §10 清单与 A79 授权范围内未越权改，并附了精确改法。\n【裁决 A80（HOST 越界授权）】：授权 Rank-1 本轮把 `verify_impact_feedback_v090.gd` 的 2 条 A38 断言同步到**新基线 54 / 16-8-8**（只改期望数字 / 标签 / 注释，**不删断言、不放宽判定、不改判定逻辑**），并在 DONE-R38C.md 里逐条写清改前 → 改后。\n【任务 1】同步 2 条断言后复跑该脚本，输出 **47 PASS / 0 FAIL / RESULT=ALL_MATCH / EXIT=0**。\n【任务 2 · 全量回归收口】复跑所有受 A74 影响的回归（verify_wave_runtime_v040.gd、verify_bigmap_v150.gd、verify_hud_layout_v100.gd、verify_production_chains_v110.gd、verify_life_runtime_v140.gd、verify_focus_runtime_v130.gd、verify_parry_runtime_v120.gd、verify_impact_feedback_v090.gd、verify_world_encounter_v150.gd、verify_world_settlement_v150.gd、verify_v150_save_commit.gd、verify_world_production_v150.gd 等），确认**全工程 0 FAIL**、人物 40% 断言仍 PASS、既有战斗入口仍可达（A77）；输出汇总 PASS/FAIL 数字与 SCRIPT ERROR=0。\n【任务 3 · 门禁】真跑三段门禁 + 全工程 G3 grep SCRIPT ERROR=0。\n【公共契约·R38C / godogen 纪律】用跑起来的画面判断进度；零付费、零外部依赖、不启 GPU job、不列任何付费项；直接改直接真跑，不新建只读探针 / 巡检脚本、不主动扫目录做进度巡检；不伪造产物、不谎报成功、不自行 git（总指挥收尾）。**定稿录屏与目视由 Rank-4 / 总指挥负责，你不重复录屏**。\n【目录所有权·R38C】唯一写入方 = Rank-1：godot/scripts/render/verify_impact_feedback_v090.gd、teamwork/Rank-1/DONE-R38C.md、回执；其余文件一律只读不改。\n【交付·缺一不可】写 teamwork/Rank-1/DONE-R38C.md（2 条断言改前→改后逐条对照 / 复跑输出 / 全量回归汇总 / 验收三态 / 未完成项 / 待裁决项）；并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/1/outbox/<id>.json（是 teamwork/command_center/，不是工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":1,\"status\":\"done\",\"result\":\"引用 DONE-R38C.md 实际结论\"}。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-13 08:08:14",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261113-080813-761-A1\",\"ai\":1,\"status\":\"done\",\"result\":\"...\"}"
+}

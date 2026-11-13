@@ -12,7 +12,7 @@ extends SceneTree
 ##   C 分辨率适配（1280x720 / 960x540 / 640x360 / 480x270：文字不出界且仍不重叠）
 ##   D 不遮中央角色（所有分区 + 抉择卡片矩形与角色保护区交集 0）
 ##   E 机制 A 数字键状态隔离（抉择打开时 process_key_event 数字键只走抉择、不误触兑换）
-##   F 基线保护（A38 节点数 41 / 既有 4 信号 + 关键方法可寻址 / 新增 2 信号存在）
+##   F 基线保护（A38 节点数 54 / 既有 4 信号 + 关键方法可寻址 / 新增 2 信号存在；R38 / A74 新基线）
 ##   G 真实 Rank-2 BoonDraftService 联调（落盘则跑真实实例，未落盘如实 SKIP）
 ##   H R33 新增 · 真实 Tab 输入路径 → 实际节点 visible 互斥：
 ##     Input.parse_input_event() 注入真实 Tab 按下/松开配对，读 GraceShopLabel.visible
@@ -32,7 +32,7 @@ extends SceneTree
 
 const HUD_PATH: String = "res://scripts/hud.gd"
 const COURTYARD_PATH: String = "res://scenes/courtyard.tscn"
-const NODE_COUNT_EXPECTED: int = 41
+const NODE_COUNT_EXPECTED: int = 54  # R38 / A74 新基线（A38 旧基线 41）
 # R34C I 组：真实命中链路（只读 Rank-2 落盘件，不写、不改）。
 const COMBO_SVC_PATH: String = "res://scripts/combat/combo_service.gd"
 const COMBO_CFG_PATH: String = "res://data/rpg/combo_rules.tres"
@@ -306,7 +306,7 @@ func _test_baseline() -> void:
 	for line: String in text.split("\n"):
 		if line.begins_with("[node "):
 			count += 1
-	_ck("F1 courtyard.tscn 静态 [node] 行数 == 41（A38 保持，场景只读）",
+	_ck("F1 courtyard.tscn 静态 [node] 行数 == 54（A38 保持，场景只读；R38 / A74 新基线 41→54）",
 			count == NODE_COUNT_EXPECTED, "count=%d expected=%d" % [count, NODE_COUNT_EXPECTED])
 	var sigs: Array[String] = ["grace_selected", "travel_confirmed", "rest_requested",
 			"hud_refreshed", "execution_performed", "boon_draft_selected"]

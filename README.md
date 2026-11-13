@@ -523,3 +523,68 @@
 - 总指挥亲自重跑 `capture/v140_final.mp4`：450 帧 / 15.000s / 1,672,894 B；目视确认暖金斩击弧可辨、元素瓶 HUD 状态齐全、HUD 无重叠、弹反金环仍可辨。
 - 双产物重导：exe 109,178,880 B / pck 2,302,732 B / apk 30,852,997 B / idsig 247,218 B；apksigner v2/v3 true、icon_error=0。
 - **如实登记**：HD-2D 全绿仍未达成；死亡轮回与连击 D→A / S 级爆发录屏未覆盖（链路已实证）；`focus_rejected` 策略冲突待裁决；`[PLACEHOLDER]` 待人工试玩校准；定稿录屏禁止加 `--headless`（A47）。
+
+## 九、R38 / v0.15.0「大地图 · 2.5D 尺度重构」状态表（追加段，历史行一律保留未动）
+
+> 本段为 **R38 / cmd-20261112-234238-656-A3（Rank-3）** 追加；「一、已做了什么」/「二、还差什么」/「三、资产清单表」/「四、R32 / v0.10.0 状态表」/「五、R34 / v0.11.0 状态表」/「六、R35 / v0.12.0 状态表」/「七、R36 / v0.13.0 状态表」/「八、R37 / v0.14.0 状态表」及全部「总指挥定稿」历史行按「只追加、不改历史条款」保留未动，v0.15.0 增量以本段 + `teamwork/迭代-v0.15.0-大地图与2.5D.md` + `teamwork/Rank-3/DONE-R38.md` 为准。零付费、零外部依赖、不启 GPU job。**「R38 系列 / v0.15.0 总指挥定稿」段（定稿录屏目视 / 双产物重导）待总指挥收尾亲自追加，Rank-3 不代写、不冒充目视通过。**
+
+### 9.1 v0.15.0 状态表
+
+| 域 | 状态 | 说明 |
+|---|---|---|
+| 赐福网络数据表（A76） | ✅ 已落地 | 新写 `godot/data/rpg/grace_sites.tres`：4 分区 id 逐字取既有 `m6_area_bindings.tres` 的 `region` 字段（`limgrave / weeping_peninsula / stormveil / siofra_well`，与 Rank-1 大地图 / Rank-2 `world_encounters.tres` 同一真源）+ 4 个赐福点 × 5 字段（`site_id / region_id / position / display_name / unlock_condition`），全部 `[PLACEHOLDER]` + 逐字段 rationale + **调参唯一入口 = 本表（只改表不改代码）** |
+| 大地图纯逻辑服务（A76） | ✅ 已落地 | 新写 `godot/scripts/rpg/world_map_service.gd`（`extends Resource` + `class_name WorldMapService`，既是表脚本又是纯逻辑服务，授权清单只允许 1 个新脚本）：4 个公开信号 + `is_valid()` 表校验 + 区域发现 / 赐福激活 / 快旅 / 迷雾揭开 / 地图进度；**重复激活拒绝 / 未解锁快旅拒绝 / 异常输入拒绝 / 进度单调递增**；I-1 纯逻辑边界（不读写存档 / 不碰场景树 / 不碰渲染 / 不落盘） |
+| 编排层 R38 落盘（A48① / A54 / I-1） | ✅ 已落地（生产链路） | `PointsCommitOrchestrator` autoload 末尾追加 R38 段：订阅 4 信号（生产订阅者、connect 在生产脚本内）、A54 唯一实例（`grace_sites.tres` 加载所得、`get_world_map_service()` 复用、显式拒绝替换）、11 个三段式 flag、`_commit_world_map()` 显式隔离、惰性初始化 / 安全降级、`get_status()` 追加 6 个观测字段；**既有 A55/A57/A59/A66/A70/A71 逻辑逐字未改（A77）** |
+| 11 个新三段式 flag | ✅ 已登记 | 4 个 `world.region_<id>.discovered` bool / 4 个 `grace.site_<id>.lit` bool / `world.map.progress` int 单调 / `world.map.fog_revealed` int 单调 / `world.map.last_fast_travel` String 最近覆盖；只作 `flags` 字典新 key、十字段冻结、`schema_version=3`、**不写 `removals`、不回退 `grace.trial.points`**；★ 任务单示意 `world.map.region_<id>.discovered` 为四段、与冻结三段式正则冲突，R38 收敛为 `world.region_<id>.discovered`（`<id>` 逐字保留、语义不变、机器正则全 PASS） |
+| A74~A78 裁决登记 | ✅ 已登记 | 契约 §3.3 **只追加** R38 说明段：A74 放开 `courtyard.tscn` 节点 41 / uv 2-1-1 冻结（新基线 **54 / 16-8-8** 由 Rank-1 真跑回读同步 `verify_wave_runtime_v040.gd`、不删断言不放宽判定）/ A75 人物 `1.6 × 0.40 = 0.64`（`world_scale.tres` 唯一入口）/ A76 大地图 4096×2304 / 分区 id / 相机边界数据驱动 / A77 野外遭遇与既有三波并存、既有闭环不废 / A78 HD-2D 全绿仍按 A41/A52/A61/A68/A73、`128bit` 保留 A53、零付费不变 |
+| `verify_v150_save_commit.gd` | ✅ 通过 | 新写三进程三态存档验证件：`all` **85 PASS / 0 FAIL**，三进程 `write 25 + load 14 + assert 66 = 105 PASS / 0 FAIL`（RUN=R38，pid 6520 / 24584 / 23240 互不相同）；13 个关键 flag 磁盘 / 期望 / 新进程内存读回三方一致、旧档缺 11 个 key 回落基线、全 `RESULT=ALL_MATCH` |
+| `verify_world_production_v150.gd` | ✅ 通过（A48③ 真实可达） | 新写：不加载 `presentation.gd`（B00 运行时树零 presentation 节点）、不在验证脚本内模拟编排、不实例化 `courtyard.tscn`（避免踩 A74 旧基线 41 断言）；取生产编排层 autoload → 独立 PID 临时槽 → `bind_world_map_service()` → 调 A54 唯一真实 `WorldMapService` 生产方法 → 读磁盘断言「区域发现 → 赐福激活 → 快旅 → 重启读回一致 → 重复激活被拒」；**53 PASS / 0 FAIL / RESULT=ALL_MATCH** |
+| 三段门禁 `grep SCRIPT ERROR=0` | ✅ 通过 | G1 `--import` / G2a `--check-only --script` ×4 / G2b `--headless --script` ×5（两份 verify + 三进程三态）/ G3 `--headless --quit` 全 `EXIT=0`；11 份 `R38_*.log` 统计 `TOTAL_SCRIPT_ERROR_LINES=0` / `PARSE_ERROR=0` / 其它 `ERROR=0`；G3 回读 `node_count=54`（A74 新基线）+ `[R38][PCO] … signals=4` 生产订阅者自动装配、无输入不写盘 |
+| 既有回归 / 生产存档 | ✅ 全绿 | 两份新脚本 `85 + 53 = 138 PASS / 0 FAIL` + 三进程三态 `105 PASS / 0 FAIL`，合计 **243 PASS / 0 FAIL**，全 `RESULT=ALL_MATCH`；生产 `slot_01` md5 前后一致；G3 主场景 R34~R38 全部生产订阅者并存（A77 既有闭环不废） |
+| 赐福点与分区对齐结论 | ✅ 机器判定 | `verify_world_production_v150.gd` T07 / T08：4 个 region_ids 逐字对齐 Rank-1/2 同一真源；4 个赐福点各归属 1 个已注册分区、4 区一一覆盖（`site→region={limgrave_gatefront:limgrave, weeping_shore:weeping_peninsula, stormveil_gate:stormveil, siofra_well:siofra_well}`） |
+| `[PLACEHOLDER]` 校准（赐福点 / 缩放 / 地图数值） | ⚠️ 需用户确认 | 用户侧人工试玩，Rank-3 不代做；调参唯一入口 `grace_sites.tres`（Rank-3）/ `world_scale.tres`（Rank-1），只改表不改代码，见迭代文档 §1.3 |
+| 跨 Rank 运行时接线 | ⚠️ 需总指挥裁决 | Rank-1 输入层「玩家坐标 / 分区切换 → 调 `WorldMapService`」与 Rank-2 野外遭遇触发点归属统一裁决；本轮 Rank-3 只提供稳定签名 + 生产订阅者 |
+| 15~20 秒实机录屏目视（A78 / A42 / A67 / A72） | ⚠️ 需用户确认 | 大地图空旷无目标 / 角色 40% 可读性 / 相机跟随晕眩 / 视差层错位 / 赐福点 HUD 必须总指挥定稿录屏关键帧目视，代码断言 / 逻辑真跑 / headless 帧计数均不算画面验收；Rank-3 不代做手感 / 审美判断 |
+| HD-2D 全绿（A78 按 A41/A52/A61/A68/A73） | ❌ 未达 | 光效仍 2D `_draw()` / screen-reading shader 近似、地面 2D tile、角色 billboard 像素精灵；不得据单路自评宣称全绿，A30 不切后端 |
+| `128bit` 歧义（A53 继续保留） | ⚠️ 保留待用户确认 | A15 / A43 / A61 / A68 / A73 / A78 保留口径、不消歧、不编码进任何期望值 |
+| A74 旧基线断言同步 | ⚠️ 如实登记 + 待裁决 | 既有 5 份回归 8 条 A38 旧基线（41 / 2-1-1）过期 FAIL 属 Rank-1 并行断言同步（用户口径称 A79；Rank-1 `DONE-R38.md` §10 待裁决 #1）；Rank-3 不越权改别人的脚本，本轮真实可达回归不实例化 `courtyard.tscn`、不含节点数断言，故未遇到该 FAIL；G3 回读已是 `node_count=54` |
+
+### 9.2 资产表增量（R38 新增 / 改动文件，字节数为 `os.path.getsize` 实测，非编造）
+
+| 文件（相对工程根） | 字节 | 类型 / 归属 |
+|---|--:|---|
+| `godot/data/rpg/grace_sites.tres` | **5,947** | 新写赐福点唯一数据表（4 分区 / 4 赐福点 / `[PLACEHOLDER]` + rationale） |
+| `godot/scripts/rpg/world_map_service.gd` | **18,373** | 新写纯逻辑服务（表脚本 + 4 信号 + 区域发现 / 激活 / 快旅 / 迷雾 / 进度） |
+| `godot/scripts/rpg/points_commit_orchestrator.gd` | **70,361** | 修改（A56 生产编排层 autoload，Rank-3 唯一写入）：R38 订阅 4 信号 + 11 flag + `_commit_world_map`；既有 A55/A57/A59/A66/A70/A71 逻辑逐字未改 |
+| `godot/scripts/rpg/verify_v150_save_commit.gd` | **39,743** | 新写三进程三态存档验证件（85 PASS / 三进程 105 PASS） |
+| `godot/scripts/rpg/verify_world_production_v150.gd` | **31,363** | 新写 A48③ 真实可达回归（不加载 `presentation.gd` / 不模拟编排，53 PASS） |
+| `teamwork/迭代-v0.15.0-大地图与2.5D.md` | **44,637** | 新写迭代收口文档（§9 backlog 只列零付费零外部依赖增量） |
+| `teamwork/00-协作契约.md`（§3.3 追加 R38 段） | **119,695** | 只追加、历史条款 / I-1~I-6 / §3.1 §3.2 缺号未动 |
+| `teamwork/Rank-3/存档与flag规范.md`（§3.3 补 11 行 + 注记） | **52,911** | 全局登记表同步，历史行未删 |
+| `teamwork/Rank-3/R38_*.log`（11 份真跑 stdout：G1 / G2a×4 / G2b×5 / G3） | **55,762** | 真跑日志留档；逐份 `SCRIPT ERROR=0`（合计 `TOTAL_SCRIPT_ERROR_LINES=0`） |
+| `README.md` / `teamwork/Rank-3/DONE-R38.md` / 回执 | —（不登记自指静态字节数） | 运行时状态文档 / 交付报告 / 回执：内容按「只追加」维护，字节数随段落追加变动，不做自指静态登记以免失真 |
+
+> §3.1~§3.4 既有 I-5 素材 / 场景 / 脚本 / 产物实测字节数与「中枢 done 轮次」表（仍 R22 快照）一律未改；R38 未新增任何 I-5 素材 / 场景节点 / 导出产物，`project.godot`（既有 autoload）/ `courtyard.tscn`（Rank-1 A74 后节点 54 / uv 16-8-8）/ `hud.gd` / `presentation.gd` / `world_scale.tres` / 全部既有 `.tres` 数值一律只读未改；生产 `slot_01` 全程不 open WRITE、md5 前后一致。
+
+### 9.3 「一、已做了什么」v0.15.0 增量（追加）
+
+| 域 | 已落地 |
+|---|---|
+| **v0.15.0 大地图 · 2.5D 尺度重构**（R38 派单 · Rank-3 赐福网络 / 大地图存档 / 契约登记 / 迭代收口） | ① 新写 `grace_sites.tres`（4 区 4 点全部 `[PLACEHOLDER]` + rationale，与 Rank-1 大地图分区逐字对齐）+ `world_map_service.gd`（纯逻辑：区域发现 / 赐福激活 / 快旅 / 迷雾揭开 / 进度，4 信号，重复激活 / 未解锁快旅 / 异常输入拒绝、进度单调递增）；② `points_commit_orchestrator.gd` 作为 A48① 生产订阅者订阅 4 信号，11 个三段式 flag 落盘（A54 唯一实例 / 十字段冻结 / `schema_version=3` / `commit(reason)` 原子写 / 先落盘再改实例 / 重启读回一致 / **不写 `removals`、不回退 `grace.trial.points`** / 拒绝事件不写盘）；③ 新写 `verify_v150_save_commit.gd`（三态 85 / 三进程 105 PASS）与 `verify_world_production_v150.gd`（A48③ 真实可达 53 PASS：区域发现 → 赐福激活 → 快旅 → 重启读回一致 → 重复激活被拒）；④ 契约 §3.3 只追加 R38 段（11 flag + **A74~A78**），规范 §3.3 补 11 行；⑤ 迭代文档 + 本 README §九 状态段；⑥ 三段门禁全 `EXIT=0`、`SCRIPT ERROR=0`（11 份日志）、G3 `node_count=54` / `signals=4`、生产 `slot_01` 零改动；⑦ `DONE-R38.md` + 回执。**所有新数值标 `[PLACEHOLDER]` + rationale + 调参唯一入口（只改表 / 常量不改逻辑），Rank-3 未写任何其它 `godot/` 业务代码、未改其它 Rank 产出、未自行 git（总指挥收尾）** |
+| **R38 回归真跑**（Rank-3） | 两份新脚本 `85 + 53 = 138 PASS / 0 FAIL`；三进程三态 `write 25 + load 14 + assert 66 = 105 PASS / 0 FAIL`、三 pid 互不相同；合计 **243 PASS / 0 FAIL**，全 `RESULT=ALL_MATCH`。生产实证：区域发现 `world.region_limgrave.discovered=true` / `progress=1` / `fog_revealed=1` → 赐福激活 `grace.site_limgrave_gatefront.lit=true` / `progress=2` → 快旅 `world.map.last_fast_travel=limgrave_gatefront` / `progress=3`（序列 `[0,1,2,3]` 严格单调）→ 重启读回 5 项逐项一致 → 重复激活 `already_lit` 被拒（`progress 3→3` / `commit 3→3` / `reject 0→1`）、未解锁快旅 `not_lit` / 重复发现 `already_discovered` / 异常输入 4 类全拒绝且不写盘；`grace.trial.points` 全程不回退、`removals=[]`、旧档缺 11 个 key 回落基线；G3 回读 `node_count=54`（A74 新基线）、`[R38][PCO] signals=4` 自动装配、R34~R37 既有订阅者并存（A77） |
+
+### 9.4 「二、还差什么」v0.15.0 增量（追加）
+
+| # | 项 | 状态 | 说明 |
+|---|---|---|---|
+| 23 | **v0.15.0：赐福点 / 缩放 / 地图 `[PLACEHOLDER]` 校准、跨 Rank 运行时接线（玩家坐标 / 分区切换 / 触发点归属）、A74 旧基线断言同步授权冲突、定稿录屏关键帧目视（大地图目标密度 / 角色 40% 可读性 / 相机跟随晕眩 / 视差层错位 / A78 代码断言不算画面验收）、HD-2D 全绿（A78 按 A41/A52/A61/A68/A73）、`128bit` 歧义（A53）继续保留、`focus_rejected` 策略统一（R37 遗留）、死亡与重生 / 连击 D→A·S 级演示覆盖、真机 exe·apk 手感与移动端触控** | **未达 · 待用户侧试玩 + 其它 Rank 裁决 / 运行时接线 + 总指挥目视** | 全部 `[PLACEHOLDER]` 待人工试玩校准、rationale 与调参唯一入口见迭代文档 §1.3（`grace_sites.tres` / `world_scale.tres`，只改表不改代码）；A74 旧基线断言同步归 Rank-1 并行处理 / 总指挥裁决（Rank-3 不越权改别人的脚本）；A78 以 `HD2D-STYLE-ANCHOR-v2.md` 三判据为准、如实记「未达全绿」，A30 不切后端；`128bit` 歧义（A53）继续保留待用户确认、不消歧；跨 Rank 接线 / `focus_rejected` 策略 / 触发点归属归总指挥与其它 Rank 裁决（迭代文档 §7 / §9 backlog，均零付费零外部依赖增量） |
+
+> **v0.15.0（R38）复核「还差什么」**：第 **10 项**（人工试玩，A17）/ **11 项**（`128bit` 歧义，A53 保留）/ **12 项**（HD-2D 全绿未达，A78 按 A41/A52/A61/A68/A73）/ **2 项**（真 HDR bloom / 3D 体积光 / SSR）在 v0.15.0 **仍未达**；第 **13~22 项**（各版 `[PLACEHOLDER]` 校准 / 并发表落地校对 / 运行时接线 / 录屏目视 / `focus_rejected` 策略冲突）仍未达且本版第 23 项新增同类缺口；Rank-3 均未代做、未宣称完成。
+
+### R38 系列 / v0.15.0 大地图 · 2.5D 尺度重构（2026-11-13 总指挥定稿）
+
+- 用户指令「换画面路线，大地图+2.5d，人物是只有现在的40%；玩法也要更新」，按**人物显示尺寸缩到 40%**理解。
+- 已做：`courtyard.tscn` 节点 41→54 / uv 2/1/1→16-8-8（A74）；`BigMapRoot` 4096×2304、`Camera2D zoom 0.5`、4 层视差、y-sort / 深度雾 / 落地阴影 / 前景遮挡；`character_scale = 1.6×0.40 = 0.64` 数据驱动（A75）；`world_encounters.tres` 野外遭遇与 `grace_sites.tres` 赐福网络 / 快旅 / 区域发现 / 地图进度（A77）；4 张程序化分层视差 PNG 与 40% 描边增强精灵。
+- 真跑：13 个验证脚本全绿、FAIL 0；R38C 汇总 12 份回归 605 PASS / 0 FAIL；全工程门禁 `SCRIPT ERROR=0`。`capture/v150_final.mp4` 450 帧 / 15.000s / 2,392,828 B。双产物重导：exe 109,178,880 B / pck 2,471,948 B / apk 31,021,370 B / idsig 251,314 B，apksigner v2/v3 true。
+- **验收三态（如实）**：架构 / 数据 / 玩法层 **通过**；**画面呈现需用户确认方向** —— 逻辑层人物 ratio 0.4000 成立，但画面是「左上 3D 战斗区保留原角色 + 中央新增约 30px 大地图小人」的双画面，实测占屏比 ≈0.11~0.22，不冒充 0.40；第 225 帧 HUD 四组文字重叠不可读；大地图缺路径 / 地标 / 分区边界。**HD-2D 全绿仍未达成**。
+- 详见 `teamwork/迭代-v0.15.0-大地图与2.5D.md` 与 `00-群聊总线.md` MSG-20261113-0930-HOST。`[PLACEHOLDER]` 数值待人工试玩校准；定稿录屏禁止加 `--headless`（A47）。

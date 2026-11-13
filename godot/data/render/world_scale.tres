@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="WorldScaleConfig" load_steps=2 format=3]
+
+; R38 / v0.15.0「大地图 · 2.5D 尺度重构」世界尺度唯一配置表（Rank-1）
+; [PLACEHOLDER] 全部数值为设计初值，待人工试玩校准；rationale 逐字段见
+;   res://scripts/world/world_scale_config.gd 字段注释。
+; 调参唯一入口 = 本文件（只改表不改代码）；big_map_runtime.gd /
+;   character_scale.gd / hud.gd / verify_bigmap_v150.gd 一律从本表读取。
+; 计算式：character_scale = character_scale_baseline × character_scale_ratio
+;                         = 1.6 × 0.40 = 0.64（人物显示尺寸 40% 硬指标）
+
+[ext_resource type="Script" path="res://scripts/world/world_scale_config.gd" id="1_ws"]
+
+[resource]
+script = ExtResource("1_ws")
+map_logic_size = Vector2(4096, 2304)
+viewport_logic_size = Vector2(1280, 720)
+character_scale_baseline = 1.6
+character_scale_ratio = 0.4
+character_scale = 0.64
+character_frame_size = Vector2(32, 48)
+pixels_per_meter = 32.0
+camera_zoom = Vector2(0.5, 0.5)
+camera_limit_left = 0.0
+camera_limit_top = 0.0
+camera_limit_right = 4096.0
+camera_limit_bottom = 2304.0
+parallax_layer_count = 4
+parallax_coefficients = PackedFloat32Array(0.06, 0.14, 0.26, 0.42)
+fog_density_by_layer = PackedFloat32Array(0.30, 0.18, 0.09, 0.02)
+y_sort_enabled = true
+foreground_z_index = 10
+player_move_speed = 320.0
+input_pulse_delta = 0.05

@@ -1,0 +1,11 @@
+{
+  "id": "cmd-20261113-002853-270-A1",
+  "command_id": "cmd-20261113-002853-270",
+  "ai": 1,
+  "from": "总指挥",
+  "task": "[ROUND=R38B] 【R38B · Rank-1 清理 A74 大改后的 8 条旧基线断言（HOST 裁决 A79 越界授权）】R38 主改工位已把 courtyard.tscn 从节点 41 / uv 2/1/1 改为 **54 / 16-8-8**，并同步了 verify_wave_runtime_v040.gd（V040 37/37 PASS）。但 Rank-1 复跑既有 5 份回归得到 **211 PASS / 8 FAIL**，8 条全部且仅是 A38 旧基线（41 / 2-1-1）过期断言，非功能回归；因这 5 份不在 R38 授权清单内，Rank-1 按硬约束未越权改，并在 teamwork/Rank-1/DONE-R38.md §10 附了逐条精确同步清单。\n【裁决 A79（HOST 越界授权）】：授权 Rank-1 本轮把这 5 份回归脚本里的 8 条 A38 断言同步到**新基线 54 / 16-8-8**（只改期望数字 / 标签 / 注释，**不删断言、不放宽判定、不改判定逻辑**），并在 DONE-R38B.md 里逐条写清改前 → 改后。若另有别的回归因大改产生的真实功能失败（不是旧基线数字），**如实登记并定位根因、不得靠改断言掩盖**。\n【任务 1 · 断言同步】按 teamwork/Rank-1/DONE-R38.md §10 清单定位那 5 份脚本与 8 条断言，逐条同步到新基线；同步后复跑这 5 份回归，输出 **0 FAIL** 与各自 RESULT。\n【任务 2 · 全量回归】再跑一次本轮相关关键回归（verify_wave_runtime_v040.gd、verify_bigmap_v150.gd、verify_hud_layout_v100.gd、verify_production_chains_v110.gd 等），确认 A74 大改后无残留 FAIL、人物 40% 断言仍 PASS、既有战斗入口仍可达（A77）。\n【任务 3 · 门禁】真跑三段门禁 + 全工程 G3 grep SCRIPT ERROR=0；不改 courtyard.tscn / world_scale.tres / 既有 .tres 数值 / project.godot / 其它 Rank 产出。\n【公共契约·R38B / godogen 纪律】用跑起来的画面判断进度；零付费、零外部依赖、不启 GPU job、不列任何付费项；直接改直接真跑，不新建只读探针 / 巡检脚本、不主动扫目录做进度巡检；不伪造产物、不谎报成功、不自行 git（总指挥收尾）。**定稿录屏与目视由 Rank-4 / 总指挥负责，你不重复录屏**。\n【目录所有权·R38B】唯一写入方 = Rank-1：DONE-R38.md §10 清单列出的那 5 份回归脚本、teamwork/Rank-1/DONE-R38B.md、回执；其余文件一律只读不改（courtyard.tscn 本轮也不再改）。\n【交付·缺一不可】写 teamwork/Rank-1/DONE-R38B.md（8 条断言改前→改后逐条对照 / 5 份回归复跑输出 / 全量回归结果 / 验收三态 / 未完成项 / 待裁决项）；并严格按本任务单 id 把回执 JSON 写到 F:/Game/aierdengfahuan/teamwork/command_center/ai/1/outbox/<id>.json（是 teamwork/command_center/，不是工程根 command_center/）：{\"task_id\":\"<id>\",\"ai\":1,\"status\":\"done\",\"result\":\"引用 DONE-R38B.md 实际结论\"}。",
+  "priority": "high",
+  "note": "GUI 下达",
+  "issued_at": "2026-11-13 00:28:53",
+  "hint": "执行完下一步任务后，请在 outbox 写回执 JSON：{\"task_id\":\"cmd-20261113-002853-270-A1\",\"ai\":1,\"status\":\"done\",\"result\":\"...\"}"
+}

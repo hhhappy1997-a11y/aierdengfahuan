@@ -1,0 +1,6 @@
+{
+  "task_id": "cmd-20261113-002853-270-A1",
+  "ai": 1,
+  "status": "done",
+  "result": "R38B 完成：按 teamwork/Rank-1/DONE-R38.md §10 清单把 5 份回归脚本的 8 条 A38 旧基线断言逐条同步到新基线 54 / 16-8-8（只改期望数字/标签/注释，不删断言、不放宽判定、不改判定逻辑），逐条改前→改后对照见 teamwork/Rank-1/DONE-R38B.md §2。① 5 份复跑 219 PASS / 0 FAIL，各自 RESULT=ALL_MATCH、EXIT=0（V140 26/26、V100HUD 48/48、V110 75/75、V130 39/39、V120P 31/31）。② 关键回归 verify_wave_runtime_v040 37/37、verify_bigmap_v150 37/37 双 ALL_MATCH；人物 40% 断言（A4/A5/C2/C3/E2/E3）仍 PASS、既有战斗入口仍可达（A77，B3/F1）、A74 新基线 54 / 16-8-8 一致。③ 三段门禁 G1 import / G2b V040 / G3 quit 全 EXIT=0，最终全工程 SCRIPT ERROR=0 / PARSE ERROR=0。如实登记（均未靠改断言掩盖、未越权改清单外文件）：(a) 首次 V040/V150 真跑瞬时捕获 2 条 SCRIPT ERROR，根因为 Rank-3 points_commit_orchestrator.gd:321 并行追加 WorldMapService 接线时 _release_world_map() 函数定义未落盘的竞态，已定位、门禁复跑自愈归零；(b) 清单外第 6 份 verify_impact_feedback_v090.gd 仍有 2 条 A38 旧基线 FAIL（45 PASS / 2 FAIL / RESULT=MISMATCH / EXIT=1、SCRIPT ERROR=0），不在 §10 清单与裁决 A79 授权写入范围，按硬约束未越权同步，列 DONE-R38B.md §8 待裁决 #1 请总指挥补单裁决。只写授权文件（5 份脚本 + DONE-R38B.md + 本回执），courtyard.tscn 等其余只读未改；零付费、零外部依赖、不启 GPU job、不自行 git、不重复录屏。"
+}

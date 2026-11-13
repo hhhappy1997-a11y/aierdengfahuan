@@ -47,6 +47,8 @@ const FOCUS_RULES_PATH: String = "res://data/combat/focus_rules.tres"   # 新增
 # ---- R37 / v0.14.0 最小接线 · 元素瓶与死亡轮回（Rank-2 唯一写入）----
 const FLASK_RULES_PATH: String = "res://data/rpg/flask_rules.tres"      # 新增表（R37），只读
 const DEATH_RULES_PATH: String = "res://data/rpg/death_rules.tres"      # 新增表（R37），只读
+# ---- R38 / v0.15.0 最小接线 · 大地图野外遭遇（Rank-2 唯一写入）----
+const WORLD_ENCOUNTERS_PATH: String = "res://data/rpg/world_encounters.tres"  # 新增表（R38），只读
 const REQUIRED_WAVE_FIELDS: PackedStringArray = [
 	"telegraph_sec", "time_limit_sec", "reward_points"
 ]
@@ -185,6 +187,20 @@ var _reclaim_count: int = 0              # 一次性回收累计
 var _death_reject_count: int = 0         # 死亡期间/异常拒绝累计
 var _death_reclaim_acc: int = 0          # 待并入清波结算的回收点数（并入后清零，不二次入账）
 var _life_last_reject_reason: String = ""
+
+# ---- R38 / v0.15.0 最小接线 · 大地图野外遭遇（Rank-2 唯一写入）----
+# A54 唯一实例：WorldEncounterService 由本导演装配，Rank-1 / Rank-3 / Rank-4 经
+#   get_world_encounter_service() 复用，绝不另建第二个。
+var _world: WorldEncounterService = null
+var _world_reward_acc: int = 0           # 待并入清波结算的遭遇奖励（并入后清零，不二次入账）
+var _world_enter_count: int = 0          # 进入区域累计（A48① 生产订阅者实证）
+var _world_trigger_count: int = 0        # 遭遇触发累计（A48① 生产订阅者实证）
+var _world_clear_count: int = 0          # 区域清除累计（A48① 生产订阅者实证）
+var _world_reject_count: int = 0         # 触发被拒累计（A48① 生产订阅者实证）
+var _world_current_region: String = ""   # 最近进入区域（只读记录）
+var _world_active_encounter: String = "" # 最近触发的活跃遭遇（只读记录）
+var _world_active_region: String = ""    # 最近触发的活跃区域（只读记录）
+var _world_last_reject_reason: String = ""
 
 
 func _ready() -> void:
@@ -671,6 +687,12 @@ func _clear_wave() -> void:
 	#      并入后立即清零 _death_reclaim_acc（回收只生效一次、绝不二次入账）。
 	base_for_combo = maxi(0, base_for_combo + _death_reclaim_acc)
 	_death_reclaim_acc = 0
+	# ---- R38 最小接线 ③：大地图野外遭遇奖励并入清波点数结算基数 ----
+	#      沿用 A55/A57：base_for_combo 经 combo.settle() 得唯一最终结算值，
+	#      HUD 经 get_last_settlement() 取该值发 points_awarded 一次入账；
+	#      并入后立即清零 _world_reward_acc（遭遇奖励只入账一次、绝不二次入账）。
+	base_for_combo = maxi(0, base_for_combo + _world_reward_acc)
+	_world_reward_acc = 0
 	# ---- R35：最后一波（Boss 波）死亡 → ParryService 不再开窗 ----
 	if _index + 1 >= _total and _parry != null:
 		_parry.on_boss_defeated()
@@ -696,6 +718,9 @@ func _clear_wave() -> void:
 	_points_total += settled_points
 	_cleared_waves.append(_index)
 	wave_cleared.emit(_index, pts)
+	# ---- R38 最小接线 ④：清波后标记区域已清除（encounter_cleared 供 Rank-3 落盘）----
+	#      只在确有活跃野外遭遇时生效；既有三波试炼正常清波（无 active）完全等价（A77）。
+	_mark_world_cleared_on_wave()
 	_refresh_hud()
 
 
@@ -872,6 +897,14 @@ func _init_combat_services() -> void:
 		_bind_death_signals()
 	else:
 		push_warning("[WaveTrial] DeathService 规则表不可用：死亡轮回降级为不记录（不崩）")
+	# ---- R38 / v0.15.0：装配 WorldEncounterService 唯一实例 + 生产运行时订阅者 ----
+	var world_cfg: WorldEncounterConfig = ResourceLoader.load(
+			WORLD_ENCOUNTERS_PATH, "", ResourceLoader.CACHE_MODE_IGNORE) as WorldEncounterConfig
+	if world_cfg != null:
+		_world = WorldEncounterService.new(world_cfg)
+		_bind_world_encounter_signals()
+	else:
+		push_warning("[WaveTrial] WorldEncounterService 规则表不可用：野外遭遇降级为不触发（不崩）")
 	if _combo != null:
 		_combo.reset()
 
@@ -928,6 +961,18 @@ func _reset_r34_records() -> void:
 		_flask.reset()
 	if _death != null:
 		_death.reset()
+	# ---- R38：新一局清大地图遭遇记录，并复位唯一实例 ----
+	_world_reward_acc = 0
+	_world_enter_count = 0
+	_world_trigger_count = 0
+	_world_clear_count = 0
+	_world_reject_count = 0
+	_world_current_region = ""
+	_world_active_encounter = ""
+	_world_active_region = ""
+	_world_last_reject_reason = ""
+	if _world != null:
+		_world.reset()
 
 
 ## 波次开始：把上一波清波挂起的「代价 / 效果」作用到本波运行时（消费 cost_key /
@@ -1178,6 +1223,9 @@ func get_settlement_snapshot() -> Dictionary:
 		"flask_use_count": _flask_use_count,
 		"life_death_count": _death_count,
 		"life_respawn_count": _respawn_count,
+		# ---- R38 新增只读 key（既有 key 逐字不动）----
+		"world_reward_bonus": _world_reward_acc,
+		"world_cleared_count": _world.get_cleared_count() if _world != null else 0,
 	}
 
 
@@ -1257,6 +1305,17 @@ func get_snapshot() -> Dictionary:
 		"life_reclaim_acc": _death_reclaim_acc,
 		"life_reject_count": _death_reject_count,
 		"life_last_reject_reason": _life_last_reject_reason,
+		# ---- R38 新增只读 key（既有 27 + R34 8 + R35 8 + R36 11 + R37 14 个 key 逐字不动）----
+		"world_current_region": _world_current_region,
+		"world_active_encounter": _world_active_encounter,
+		"world_active_region": _world_active_region,
+		"world_reward_acc": _world_reward_acc,
+		"world_cleared_count": _world.get_cleared_count() if _world != null else 0,
+		"world_enter_count": _world_enter_count,
+		"world_trigger_count": _world_trigger_count,
+		"world_clear_count": _world_clear_count,
+		"world_reject_count": _world_reject_count,
+		"world_last_reject_reason": _world_last_reject_reason,
 	}
 
 
@@ -1417,3 +1476,100 @@ func guard_life_action(action_id: Variant) -> Dictionary:
 	if _death == null:
 		return {"ok": false, "reason": "no_death_service"}
 	return _death.request_action(action_id)
+
+
+# ===========================================================================
+# R38 / v0.15.0 最小接线 · 大地图野外遭遇（Rank-2 唯一写入）
+#   - A48①：本导演（挂 courtyard.tscn 的生产节点）在装配时 connect 全部 4 信号，
+#     生产运行时订阅者真实存在、有真实职责（acc 累计 / 计数 / active 记录 / 清除），
+#     绝不在验证脚本里才订阅；
+#   - A54：唯一实例 _world 由本导演装配，经 get_world_encounter_service() 供
+#     Rank-1 / Rank-3 / Rank-4 复用，绝不另建第二个；
+#   - 不改既有判定分支 / 帧数据 / 输出格式 / 既有 .tres 数值；野外遭遇触发只标记
+#     active 并累计奖励来源，结算仍走既有 _clear_wave() / combo.settle() /
+#     HUD points_awarded 一次入账（A55/A57），清波后标记区域已清除（A77 既有入口不废）；
+#   - 无野外遭遇时 _world_reward_acc 恒 0、_mark_world_cleared_on_wave() 空转，
+#     既有三波试炼结算逐字等价；Rank-2 不写存档、不碰渲染。
+# ===========================================================================
+
+## 取本导演装配的 WorldEncounterService 唯一实例（A54：供 Rank-1 / Rank-3 / Rank-4 复用）。
+func get_world_encounter_service() -> WorldEncounterService:
+	return _world
+
+
+## A48① 生产订阅者：4 个公开信号在装配时即 connect 到本导演（非验证脚本）。
+func _bind_world_encounter_signals() -> void:
+	if _world == null:
+		return
+	var pairs: Array = [
+		["region_entered", "_on_world_region_entered"],
+		["encounter_triggered", "_on_world_encounter_triggered"],
+		["encounter_cleared", "_on_world_encounter_cleared"],
+		["trigger_rejected", "_on_world_trigger_rejected"],
+	]
+	for p: Array in pairs:
+		var sig: String = str(p[0])
+		var method: String = str(p[1])
+		if not _world.has_signal(sig):
+			continue
+		var cb: Callable = Callable(self, method)
+		if not _world.is_connected(sig, cb):
+			_world.connect(sig, cb)
+	print("[R38][WaveTrial] 大地图野外遭遇生产订阅者已装配：WorldEncounterService 唯一实例 + 4 信号 connect（A48①/A54）")
+
+
+func _on_world_region_entered(region_id: String) -> void:
+	_world_enter_count += 1
+	_world_current_region = region_id
+
+
+## 遭遇触发：★ reward_points 只累计到待结算 acc，清波时并入 base_for_combo 一次入账
+## （A55/A57）；active 记录供清波后标记区域已清除，绝不二次累计（service 幂等）。
+func _on_world_encounter_triggered(encounter_id: String, region_id: String,
+		reward_points: int) -> void:
+	_world_reward_acc = maxi(0, _world_reward_acc + maxi(0, reward_points))
+	_world_trigger_count += 1
+	_world_active_encounter = encounter_id
+	_world_active_region = region_id
+
+
+func _on_world_encounter_cleared(_encounter_id: String, _region_id: String,
+		_cleared_count: int) -> void:
+	_world_clear_count += 1
+	_world_active_encounter = ""
+	_world_active_region = ""
+
+
+func _on_world_trigger_rejected(reason: String, _encounter_id: String) -> void:
+	_world_reject_count += 1
+	_world_last_reject_reason = reason
+
+
+## 清波后标记区域已清除：取 service 内部 active（唯一真相源）避免与镜像脱节；
+## 无 active（既有三波正常清波）空转、不改既有行为；依赖缺失只登记、不崩。
+func _mark_world_cleared_on_wave() -> void:
+	if _world == null:
+		return
+	var active: String = _world.get_active_encounter_id()
+	if active.is_empty():
+		return
+	_world.on_encounter_cleared(active)
+
+
+## ---- R38 真实输入驱动口（供 Rank-1 输入层 / 验证调用；转调 A54 唯一实例）----
+func enter_world_region(region_id: Variant) -> Dictionary:
+	if _world == null:
+		return {"ok": false, "reason": "no_world_service"}
+	return _world.enter_region(region_id)
+
+
+func try_world_encounter(position: Variant) -> Dictionary:
+	if _world == null:
+		return {"ok": false, "reason": "no_world_service"}
+	return _world.try_trigger(position)
+
+
+func on_world_encounter_cleared(encounter_id: Variant) -> Dictionary:
+	if _world == null:
+		return {"ok": false, "reason": "no_world_service"}
+	return _world.on_encounter_cleared(encounter_id)

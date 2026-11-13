@@ -1,0 +1,201 @@
+{
+  "schema_version": "1.0",
+  "round": "R38",
+  "task_id": "cmd-20261112-234238-662-A4",
+  "asset_id": "parallax_layers_r38_v150",
+  "version": "v1",
+  "generated_at": "2026-11-13",
+  "note": "R38 大地图 4 层视差背景素材规格（新写）。既有 r23/import.json 为 impact_fx.png 专用（hd2d_fx.gd R32 只读加载其帧参数），逐字未动；本文件独立登记，不破坏既有接线。",
+  "contract": "00-协作契约.md §9.3 / I-5（R25 裁决 A15 统一口径）；用户原文「换画面路线，大地图+2.5d，人物只有现在40%」",
+  "spec": {
+    "canvas": "128x128（128px 基准画布不变）",
+    "mode": "RGBA（保留 alpha 通道）",
+    "per_frame_max_colors": 16,
+    "project_palette_min_colors": 256,
+    "palette_id": "hd2d_index_256_v1",
+    "palette_ref": "res://assets/generated/palette_256.json",
+    "palette_measured_colors": 256,
+    "meets_ge_256": true,
+    "indexed_from_project_palette": true,
+    "hard_edge": true,
+    "gradient": false,
+    "dithering": false,
+    "noise": false,
+    "alpha_bins": [
+      0,
+      255
+    ],
+    "filter": "nearest",
+    "mipmaps": false,
+    "compression": "lossless",
+    "color_depth": "RGBA8 (alpha preserved)"
+  },
+  "coefficients_note": "0.06/0.14/0.26/0.42 与 world_scale.tres parallax_coefficients 逐值一致（远小近大）。运行时 hd2d_parallax.gd 从该表读取，不硬编码；本 JSON 的分层系数为素材侧登记值。",
+  "layers": [
+    {
+      "index": 0,
+      "file": "parallax_far_mountains.png",
+      "role": "远山（3 层深蓝剪影 + 冷亮边）",
+      "res_path": "res://assets/generated/r23/parallax_far_mountains.png",
+      "size": [
+        128,
+        128
+      ],
+      "anchor": {
+        "x": 64,
+        "y": 128,
+        "note": "128px 基准画布底部中心对齐；横向 tile 平铺铺满 640 逻辑px 视差层"
+      },
+      "parallax_coefficient": 0.06,
+      "coefficient_source": "res://data/render/world_scale.tres parallax_coefficients[0]（数据驱动唯一入口，运行时由 hd2d_parallax.gd 从表读取）",
+      "tileable": "横向平铺；第 127 列复制第 0 列 → LR_col_mismatch_px=0",
+      "measured": {
+        "size": [
+          128,
+          128
+        ],
+        "unique_rgb_visible": 4,
+        "hex_sorted": [
+          "#0E1B33",
+          "#16294A",
+          "#205098",
+          "#486090"
+        ],
+        "alpha_set": [
+          0,
+          255
+        ],
+        "LR_col_mismatch_px": 0,
+        "within_16": true,
+        "hard_alpha_only_0_255": true
+      },
+      "png_bytes": 1087
+    },
+    {
+      "index": 1,
+      "file": "parallax_fog_band.png",
+      "role": "雾带（冷雾横带 4 阶）",
+      "res_path": "res://assets/generated/r23/parallax_fog_band.png",
+      "size": [
+        128,
+        128
+      ],
+      "anchor": {
+        "x": 64,
+        "y": 128,
+        "note": "128px 基准画布底部中心对齐；横向 tile 平铺铺满 640 逻辑px 视差层"
+      },
+      "parallax_coefficient": 0.14,
+      "coefficient_source": "res://data/render/world_scale.tres parallax_coefficients[1]（数据驱动唯一入口，运行时由 hd2d_parallax.gd 从表读取）",
+      "tileable": "横向平铺；第 127 列复制第 0 列 → LR_col_mismatch_px=0",
+      "measured": {
+        "size": [
+          128,
+          128
+        ],
+        "unique_rgb_visible": 3,
+        "hex_sorted": [
+          "#4A6089",
+          "#7E96BF",
+          "#BFD0EA"
+        ],
+        "alpha_set": [
+          0,
+          255
+        ],
+        "LR_col_mismatch_px": 0,
+        "within_16": true,
+        "hard_alpha_only_0_255": true
+      },
+      "png_bytes": 291
+    },
+    {
+      "index": 2,
+      "file": "parallax_mid_silhouette.png",
+      "role": "中景建筑剪影（哥特塔楼 + 暖金窗光）",
+      "res_path": "res://assets/generated/r23/parallax_mid_silhouette.png",
+      "size": [
+        128,
+        128
+      ],
+      "anchor": {
+        "x": 64,
+        "y": 128,
+        "note": "128px 基准画布底部中心对齐；横向 tile 平铺铺满 640 逻辑px 视差层"
+      },
+      "parallax_coefficient": 0.26,
+      "coefficient_source": "res://data/render/world_scale.tres parallax_coefficients[2]（数据驱动唯一入口，运行时由 hd2d_parallax.gd 从表读取）",
+      "tileable": "横向平铺；第 127 列复制第 0 列 → LR_col_mismatch_px=0",
+      "measured": {
+        "size": [
+          128,
+          128
+        ],
+        "unique_rgb_visible": 4,
+        "hex_sorted": [
+          "#080F1F",
+          "#081020",
+          "#16294A",
+          "#C89838"
+        ],
+        "alpha_set": [
+          0,
+          255
+        ],
+        "LR_col_mismatch_px": 0,
+        "within_16": true,
+        "hard_alpha_only_0_255": true
+      },
+      "png_bytes": 768
+    },
+    {
+      "index": 3,
+      "file": "parallax_foreground.png",
+      "role": "前景遮挡（岩石/石柱剪影）",
+      "res_path": "res://assets/generated/r23/parallax_foreground.png",
+      "size": [
+        128,
+        128
+      ],
+      "anchor": {
+        "x": 64,
+        "y": 128,
+        "note": "128px 基准画布底部中心对齐；横向 tile 平铺铺满 640 逻辑px 视差层"
+      },
+      "parallax_coefficient": 0.42,
+      "coefficient_source": "res://data/render/world_scale.tres parallax_coefficients[3]（数据驱动唯一入口，运行时由 hd2d_parallax.gd 从表读取）",
+      "tileable": "横向平铺；第 127 列复制第 0 列 → LR_col_mismatch_px=0",
+      "measured": {
+        "size": [
+          128,
+          128
+        ],
+        "unique_rgb_visible": 4,
+        "hex_sorted": [
+          "#000010",
+          "#080F1F",
+          "#081020",
+          "#16233F"
+        ],
+        "alpha_set": [
+          0,
+          255
+        ],
+        "LR_col_mismatch_px": 0,
+        "within_16": true,
+        "hard_alpha_only_0_255": true
+      },
+      "png_bytes": 880
+    }
+  ],
+  "measured_max_per_frame": 4,
+  "measured_all_within_16": true,
+  "measured_all_hard_alpha": true,
+  "measured_all_lr_seamless": true,
+  "zero_gpu_job": true,
+  "zero_paid_service": true,
+  "zero_external_dependency": true,
+  "pipeline": "procedural_pil_pixel",
+  "generated_by": "Python + Pillow 逐像素/ImageDraw 硬边纯色块（零渐变/零 dithering/零噪点/零随机）；颜色全部从 palette_256.json 项目级色库取（缺失则取板内最近色，不新增色号、不改色库文件）",
+  "pipeline_note": "任务单授权「程序化 PIL（零 GPU job、零付费）」；契约 §9.3 第 347 行记「所有美术素材统一用本地 ComfyUI 制作，程序化 _draw() 仅作 M0 占位」。本轮按任务单「以任务单为准」+ 硬约束「不启 GPU job」走 PIL 路线，口径冲突已登记 DONE-R38.md 待裁决项。"
+}

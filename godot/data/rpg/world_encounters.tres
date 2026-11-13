@@ -1,0 +1,57 @@
+[gd_resource type="Resource" script_class="WorldEncounterConfig" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/world_encounter_config.gd" id="1_wec"]
+
+[resource]
+script = ExtResource("1_wec")
+region_ids = PackedStringArray("limgrave", "weeping_peninsula", "stormveil", "siofra_well")
+encounters = Array[Dictionary]([{
+"id": "enc_limgrave_gatefront",
+"region_id": "limgrave",
+"position": Vector2(512, 384),
+"enemy_group": "enemy_01_limgrave_soldier",
+"trigger_radius": 96.0,
+"cleared_flag": false,
+"reward_points": 80
+}, {
+"id": "enc_limgrave_chapel",
+"region_id": "limgrave",
+"position": Vector2(1024, 640),
+"enemy_group": "enemy_01_limgrave_soldier",
+"trigger_radius": 80.0,
+"cleared_flag": false,
+"reward_points": 100
+}, {
+"id": "enc_weeping_shore",
+"region_id": "weeping_peninsula",
+"position": Vector2(1536, 384),
+"enemy_group": "enemy_01_limgrave_soldier",
+"trigger_radius": 112.0,
+"cleared_flag": false,
+"reward_points": 120
+}, {
+"id": "enc_stormveil_gate",
+"region_id": "stormveil",
+"position": Vector2(2048, 768),
+"enemy_group": "boss_01_margit",
+"trigger_radius": 96.0,
+"cleared_flag": false,
+"reward_points": 150
+}, {
+"id": "enc_siofra_well_entry",
+"region_id": "siofra_well",
+"position": Vector2(2560, 512),
+"enemy_group": "enemy_01_limgrave_soldier",
+"trigger_radius": 128.0,
+"cleared_flag": false,
+"reward_points": 160
+}, {
+"id": "enc_siofra_well_deep",
+"region_id": "siofra_well",
+"position": Vector2(3072, 896),
+"enemy_group": "boss_01_margit",
+"trigger_radius": 128.0,
+"cleared_flag": false,
+"reward_points": 200
+}])
+invalid_input_policy = "reject"
